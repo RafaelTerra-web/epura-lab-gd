@@ -83,9 +83,28 @@ export async function POST(req: NextRequest) {
           },
         };
 
-    const promptText = isDialogue
-      ? `Faça uma aula em diálogo natural, empolgante e didática em português do Brasil (sotaque carioca/brasileiro suave) entre Prof. Monge e Profa. Épura:\n\n${text}`
-      : `Fale em português do Brasil com entonação calorosa, expressiva e didática de professor universitário explicando um desenho ao vivo:\n\n${text}`;
+    const parts = isDialogue
+      ? text
+          .split(/\n+/)
+          .map((l) => l.trim())
+          .filter(Boolean)
+          .map((line) => {
+            if (/^profa\.?\s*[eé]pura\s*:/i.test(line)) {
+              return {
+                text: line.replace(/^profa\.?\s*[eé]pura\s*:/i, "").trim(),
+                speechMetadata: { speaker: "Profa. Épura" },
+              };
+            }
+            return {
+              text: line.replace(/^prof\.?\s*monge\s*:/i, "").trim(),
+              speechMetadata: { speaker: "Prof. Monge" },
+            };
+          })
+      : [
+          {
+            text: `Fale em português do Brasil com entonação calorosa, expressiva e didática de professor universitário explicando um desenho ao vivo:\n\n${text}`,
+          },
+        ];
 
     let lastStatus = 0;
     let lastDetail = "";
@@ -99,7 +118,7 @@ export async function POST(req: NextRequest) {
           "x-goog-api-key": apiKey,
         },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }],
+          contents: [{ parts }],
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig,

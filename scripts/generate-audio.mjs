@@ -143,9 +143,15 @@ async function main() {
 
   console.log(`Gerando ${SCRIPTS.length} áudios com ${model} em public/audio/...`);
 
+  const force = process.argv.includes("--force");
   const generatedIds = [];
   for (const item of SCRIPTS) {
     const outPath = path.join(outDir, `${item.id}.wav`);
+    if (!force && fs.existsSync(outPath) && fs.statSync(outPath).size > 1000) {
+      generatedIds.push(item.id);
+      console.log(`• ${item.id}.wav já existe (mantido)`);
+      continue;
+    }
     const isDialogue = item.professor === "dialogue";
 
     const speechConfig = isDialogue
@@ -171,9 +177,28 @@ async function main() {
           },
         };
 
-    const promptText = isDialogue
-      ? `Faça uma aula em diálogo natural, empolgante e didática em português do Brasil entre Prof. Monge e Profa. Épura:\n\n${item.text}`
-      : `Fale em português do Brasil com entonação calorosa, expressiva e didática de professor universitário:\n\n${item.text}`;
+    const parts = isDialogue
+      ? item.text
+          .split(/\n+/)
+          .map((l) => l.trim())
+          .filter(Boolean)
+          .map((line) => {
+            if (/^profa\.?\s*[eé]pura\s*:/i.test(line)) {
+              return {
+                text: line.replace(/^profa\.?\s*[eé]pura\s*:/i, "").trim(),
+                speechMetadata: { speaker: "Profa. Épura" },
+              };
+            }
+            return {
+              text: line.replace(/^prof\.?\s*monge\s*:/i, "").trim(),
+              speechMetadata: { speaker: "Prof. Monge" },
+            };
+          })
+      : [
+          {
+            text: `Fale em português do Brasil com entonação calorosa, expressiva e didática de professor universitário:\n\n${item.text}`,
+          },
+        ];
 
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -184,7 +209,7 @@ async function main() {
           "x-goog-api-key": apiKey,
         },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }],
+          contents: [{ parts }],
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig,
