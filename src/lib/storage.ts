@@ -28,6 +28,7 @@ export interface UserProgress {
     theme: "atelier" | "blueprint";
     voiceRate: number;
     ttsModelTier: TtsModelTier;
+    soundEffects: boolean;
     customGeminiKey?: string;
   };
   updatedAt: string;
@@ -57,6 +58,7 @@ export const DEFAULT_PROGRESS: UserProgress = {
     theme: "atelier",
     voiceRate: 1.0,
     ttsModelTier: "gemini-3.8-flash-tts",
+    soundEffects: true,
   },
   updatedAt: new Date().toISOString(),
 };

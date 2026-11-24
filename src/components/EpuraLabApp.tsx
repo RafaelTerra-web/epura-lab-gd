@@ -17,6 +17,7 @@ import {
   UserProgress,
 } from "@/lib/storage";
 import { useProfessorVoice } from "@/lib/voice";
+import { sfx } from "@/lib/sfx";
 import { LabStudio } from "./LabStudio";
 import { LessonsView } from "./LessonsView";
 import { PracticeArena } from "./PracticeArena";
@@ -78,12 +79,13 @@ export function EpuraLabApp() {
     setHydrated(true);
   }, []);
 
-  // Sync dark class onto <html>
+  // Sync dark class & sound effects preference
   const dark = progress.preferences.theme === "blueprint";
   useEffect(() => {
     if (!hydrated) return;
     document.documentElement.classList.toggle("dark", dark);
-  }, [dark, hydrated]);
+    sfx.setEnabled(progress.preferences.soundEffects !== false);
+  }, [dark, hydrated, progress.preferences.soundEffects]);
 
   // Persist progress changes
   const updateProgress = (updater: (prev: UserProgress) => UserProgress) => {
@@ -102,6 +104,7 @@ export function EpuraLabApp() {
   };
 
   const handleLoadPreset = (preset: ScenePreset) => {
+    sfx.click();
     setActivePresetId(preset.id);
     setPoints(preset.points.map((p) => ({ ...p })));
     setSegments(preset.segments.map((s) => ({ ...s })));
@@ -328,7 +331,10 @@ export function EpuraLabApp() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setSection(item.id)}
+                  onClick={() => {
+                    sfx.click();
+                    setSection(item.id);
+                  }}
                   className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
                     active
                       ? "bg-paper-50 dark:bg-blueprint-700 text-ink-900 dark:text-white shadow-sm"
@@ -562,7 +568,10 @@ export function EpuraLabApp() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setSection(item.id)}
+                onClick={() => {
+                  sfx.click();
+                  setSection(item.id);
+                }}
                 className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition ${
                   active
                     ? "text-ph dark:text-sky-400 font-extrabold"

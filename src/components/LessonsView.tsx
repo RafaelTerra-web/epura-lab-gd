@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { LESSON_CHAPTERS, LessonChapter } from "@/lib/curriculum";
 import { ProfessorAvatar } from "./ProfessorAvatar";
 import { TtsModelTier, VoiceState } from "@/lib/voice";
+import { sfx } from "@/lib/sfx";
 import { ConceptAnatomyStage } from "./ConceptAnatomyStage";
 import { AxisParallelWidget } from "./AxisParallelWidget";
 import { MotionVideoPlayer } from "./MotionVideoPlayer";
@@ -143,7 +144,10 @@ export function LessonsView({
             <button
               key={item.id}
               type="button"
-              onClick={() => setSubTab(item.id)}
+              onClick={() => {
+                sfx.click();
+                setSubTab(item.id);
+              }}
               className={`flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl text-left transition-all ${
                 selected
                   ? "bg-paper-50 dark:bg-blueprint-800 shadow-sm ring-1 ring-ink-900/10 dark:ring-sky-400/30"
@@ -555,7 +559,93 @@ export function LessonsView({
               ))}
             </div>
 
-            <footer className="pt-4 border-t border-paper-200 dark:border-blueprint-800 space-y-4">
+                {/* Contextual Author / Editorial Illustration Card */}
+                {(active.id === "01-problema-monge" ||
+                  active.id === "04-rebatimento-epura" ||
+                  active.id === "02-coordenadas-xyz" ||
+                  active.id === "06-uerj-aula1-resolucao") && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {(active.id === "01-problema-monge" ||
+                      active.id === "04-rebatimento-epura") && (
+                      <figure className="flex items-center gap-3 p-3 rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-100/80 dark:bg-blueprint-950">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/illustrations/gaspard-monge.png"
+                          alt="Retrato de Gaspard Monge (1746–1818)"
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-paper-300 dark:border-blueprint-700"
+                        />
+                        <figcaption className="text-xs space-y-0.5">
+                          <div className="font-extrabold text-ink-900 dark:text-white">
+                            Gaspard Monge (1746–1818)
+                          </div>
+                          <div className="text-[11px] text-ink-500 dark:text-slate-400 leading-snug">
+                            Matemático francês criador da Geometria Descritiva (1799) — projetando 3D em 2 planos a 90°.
+                          </div>
+                        </figcaption>
+                      </figure>
+                    )}
+
+                    {active.id === "01-problema-monge" && (
+                      <figure className="flex items-center gap-3 p-3 rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-100/80 dark:bg-blueprint-950">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/illustrations/fly-room-3d.png"
+                          alt="Ilustração da mosca no quarto com projeções em π e π'"
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-paper-300 dark:border-blueprint-700"
+                        />
+                        <figcaption className="text-xs space-y-0.5">
+                          <div className="font-extrabold text-ink-900 dark:text-white">
+                            A Mosca na Sala (2 Projeções)
+                          </div>
+                          <div className="text-[11px] text-ink-500 dark:text-slate-400 leading-snug">
+                            Sombra no chão (π) + sombra na parede (π&apos;) travam a posição espacial exata.
+                          </div>
+                        </figcaption>
+                      </figure>
+                    )}
+
+                    {(active.id === "02-coordenadas-xyz" ||
+                      active.id === "06-uerj-aula1-resolucao") && (
+                      <figure className="flex items-center gap-3 p-3 rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-100/80 dark:bg-blueprint-950">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/illustrations/uerj-atelier.png"
+                          alt="Prancheta de desenho técnico da UERJ"
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-paper-300 dark:border-blueprint-700"
+                        />
+                        <figcaption className="text-xs space-y-0.5">
+                          <div className="font-extrabold text-ink-900 dark:text-white">
+                            Prancheta Clássica (UERJ)
+                          </div>
+                          <div className="text-[11px] text-ink-500 dark:text-slate-400 leading-snug">
+                            Convenção de Príncipe Júnior &amp; Álvaro Rodrigues: (A) no espaço, A em π, A&apos; em π&apos;.
+                          </div>
+                        </figcaption>
+                      </figure>
+                    )}
+
+                    {active.id === "02-coordenadas-xyz" && (
+                      <figure className="flex items-center gap-3 p-3 rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-100/80 dark:bg-blueprint-950">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/illustrations/cg-vs-cad.png"
+                          alt="Monitor 3D Y-Up comparado à prancheta Z-Up"
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-paper-300 dark:border-blueprint-700"
+                        />
+                        <figcaption className="text-xs space-y-0.5">
+                          <div className="font-extrabold text-ink-900 dark:text-white">
+                            3D Games (Y-Up) ⇄ GD (Z-Up)
+                          </div>
+                          <div className="text-[11px] text-ink-500 dark:text-slate-400 leading-snug">
+                            Cota muda de Y para Z na Academia!
+                          </div>
+                        </figcaption>
+                      </figure>
+                    )}
+                  </div>
+                )}
+
+                <footer className="pt-4 border-t border-paper-200 dark:border-blueprint-800 space-y-4">
               <div>
                 <div className="text-[11px] font-extrabold uppercase tracking-wider text-ink-500 dark:text-slate-400">
                   Fontes Didáticas &amp; Bibliografia Clássica (UERJ / Brasil)
@@ -575,7 +665,11 @@ export function LessonsView({
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => onToggleComplete(active.id)}
+                  onClick={() => {
+                    if (!isDone) sfx.success();
+                    else sfx.tick();
+                    onToggleComplete(active.id);
+                  }}
                   className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition ${
                     isDone
                       ? "bg-lt text-white border-lt"

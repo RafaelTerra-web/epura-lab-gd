@@ -19,6 +19,7 @@ import { Epura2D } from "./Epura2D";
 import { ProfessorAvatar } from "./ProfessorAvatar";
 import { TtsModelTier, VoiceState } from "@/lib/voice";
 import { LabSpotlight } from "@/lib/director";
+import { sfx } from "@/lib/sfx";
 import {
   BookmarkPlus,
   Compass,
@@ -129,6 +130,7 @@ export function LabStudio({
   }, [animatingFold, setFoldAngle]);
 
   const togglePlayFold = () => {
+    sfx.fold();
     if (animatingFold) {
       setAnimatingFold(false);
       return;

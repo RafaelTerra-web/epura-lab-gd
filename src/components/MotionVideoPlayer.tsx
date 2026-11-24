@@ -9,6 +9,7 @@ import {
 } from "@/lib/video-episodes";
 import { LipSyncMascot, MouthFrame } from "./LipSyncMascot";
 import { GDPoint, GDSegment } from "@/lib/gd-math";
+import { sfx } from "@/lib/sfx";
 import {
   Captions,
   Compass,
@@ -19,6 +20,7 @@ import {
   RotateCcw,
   SkipBack,
   SkipForward,
+  Sparkles,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -1002,6 +1004,10 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
   const [showCaptions, setShowCaptions] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Netflix-style Up-Next countdown at the end of each episode
+  const [upNextVisible, setUpNextVisible] = useState(false);
+  const [upNextProgress, setUpNextProgress] = useState(0); // 0 -> 1 over 6 seconds
+
   // Smoothed real-time lip-sync state (ZERO jitter!)
   const [mouth, setMouth] = useState<MouthFrame>("closed");
   const [energy, setEnergy] = useState(0);
@@ -1160,6 +1166,8 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
   const togglePlay = async () => {
     const audio = audioRef.current;
     if (!audio) return;
+    sfx.tick();
+    setUpNextVisible(false);
     ensureAudioAnalyser();
     if (audioCtxRef.current?.state === "suspended") {
       await audioCtxRef.current.resume().catch(() => {});
@@ -1180,6 +1188,9 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
 
   const selectEpisode = async (idx: number, autoStart = true) => {
     const clamped = (idx + VIDEO_EPISODES.length) % VIDEO_EPISODES.length;
+    sfx.click();
+    setUpNextVisible(false);
+    setUpNextProgress(0);
     setEpIndex(clamped);
     setCurrentTime(0);
     setIsPlaying(false);
@@ -1203,9 +1214,37 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
     }, 60);
   };
 
+  // Netflix-style 6-second auto-advance animation loop when episode ends
+  useEffect(() => {
+    if (!upNextVisible) {
+      setUpNextProgress(0);
+      return;
+    }
+    const DURATION_MS = 6000;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / DURATION_MS);
+      setUpNextProgress(p);
+      if (p >= 1) {
+        if (epIndex < VIDEO_EPISODES.length - 1) {
+          void selectEpisode(epIndex + 1, true);
+        } else {
+          setUpNextVisible(false);
+        }
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upNextVisible, epIndex]);
+
   const seekToSeconds = (sec: number) => {
     const audio = audioRef.current;
     if (!audio) return;
+    setUpNextVisible(false);
     const maxD = Number.isFinite(audio.duration) ? audio.duration : effectiveDuration;
     audio.currentTime = Math.max(0, Math.min(maxD, sec));
     setCurrentTime(audio.currentTime);
@@ -1223,6 +1262,66 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
     }
   };
 
+  // Contextual editorial picture-in-scene card matching what the professor is citing right now!
+  const sceneVisualCard = (() => {
+    if (baseEp.id === "ep01-monge") {
+      if (sceneIndex === 0) {
+        return {
+          src: "/illustrations/gaspard-monge.png",
+          title: "Gaspard Monge (1746–1818)",
+          sub: "Pai da Geometria Descritiva",
+        };
+      }
+      if (sceneIndex === 1) {
+        return {
+          src: "/illustrations/fly-room-3d.png",
+          title: "A Mosca na Sala",
+          sub: "Projeção ortogonal em π e π'",
+        };
+      }
+      if (sceneIndex === 2) {
+        return {
+          src: "/illustrations/gaspard-monge.png",
+          title: "Método Mongeano",
+          sub: "2 planos a 90°",
+        };
+      }
+    }
+    if (baseEp.id === "ep02-coordenadas" && sceneIndex === 1) {
+      return {
+        src: "/illustrations/uerj-atelier.png",
+        title: "Traçado Técnico",
+        sub: "Lapiseira 0.5 HB na LT",
+      };
+    }
+    if (baseEp.id === "ep04-rebatimento" && sceneIndex === 0) {
+      return {
+        src: "/illustrations/uerj-atelier.png",
+        title: "Folha A4 / A3 UERJ",
+        sub: "Do 3D para o plano",
+      };
+    }
+    if (baseEp.id === "ep06-uerj" && sceneIndex === 0) {
+      return {
+        src: "/illustrations/uerj-atelier.png",
+        title: "Prancheta · Aula 1",
+        sub: "Príncipe Júnior & UERJ",
+      };
+    }
+    if (baseEp.id === "ep07-yup-zup" && (sceneIndex === 1 || sceneIndex === 2)) {
+      return {
+        src: "/illustrations/cg-vs-cad.png",
+        title: "Monitor vs Prancheta",
+        sub: "Y-Up (Games) ⇄ Z-Up (CAD)",
+      };
+    }
+    return null;
+  })();
+
+  const nextEpisode =
+    epIndex < VIDEO_EPISODES.length - 1 ? VIDEO_EPISODES[epIndex + 1] : null;
+  const nextEpDur = nextEpisode ? timings[nextEpisode.id]?.duration : undefined;
+
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start animate-fade-up">
       {/* LEFT: 16:9 CINEMATIC MOTION VIDEO PLAYER */}
@@ -1235,9 +1334,16 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
             ref={audioRef}
             src={timingEntry?.audioSrc ?? baseEp.audioSrc}
             preload="metadata"
-            onEnded={() => setIsPlaying(false)}
+            onEnded={() => {
+              setIsPlaying(false);
+              setUpNextVisible(true);
+              sfx.success();
+            }}
             onPause={() => setIsPlaying(false)}
-            onPlay={() => setIsPlaying(true)}
+            onPlay={() => {
+              setIsPlaying(true);
+              setUpNextVisible(false);
+            }}
           />
 
           {/* 16:9 Motion Stage */}
@@ -1265,6 +1371,29 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
               </div>
             </div>
 
+            {/* CONTEXTUAL AUTHOR / ILLUSTRATION PICTURE-CARD (Top-Right inside Stage) */}
+            {sceneVisualCard && !upNextVisible && (
+              <div
+                key={`${baseEp.id}-${sceneIndex}`}
+                className="pointer-events-none hidden sm:flex flex-col w-28 md:w-32 rounded-2xl overflow-hidden border border-white/25 bg-slate-950/85 shadow-2xl backdrop-blur-md absolute top-3 right-3 z-10 animate-fade-up"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={sceneVisualCard.src}
+                  alt={sceneVisualCard.title}
+                  className="w-full h-20 md:h-24 object-cover"
+                />
+                <div className="px-2 py-1.5 text-left">
+                  <div className="text-[10px] font-extrabold text-amber-300 leading-tight truncate">
+                    {sceneVisualCard.title}
+                  </div>
+                  <div className="text-[9px] text-slate-300 leading-tight truncate">
+                    {sceneVisualCard.sub}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* DESKTOP PiP Lip-Sync Mascot (100% STEADY FRAME, SMOOTH LIP-SYNC!) */}
             <div
               onClick={(e) => e.stopPropagation()}
@@ -1280,7 +1409,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
             </div>
 
             {/* DESKTOP Closed Captions */}
-            {showCaptions && (
+            {showCaptions && !upNextVisible && (
               <div className="hidden sm:flex pointer-events-none absolute bottom-3 left-3 right-36 justify-center">
                 <div className="px-3.5 py-2 rounded-xl bg-slate-950/88 border border-white/15 text-slate-100 text-xs font-semibold leading-snug max-w-xl shadow-lg backdrop-blur-md">
                   {activeScene.subtitle}
@@ -1288,8 +1417,100 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
               </div>
             )}
 
-            {/* Big Play Overlay when paused */}
-            {!isPlaying && (
+            {/* NETFLIX-STYLE "PRÓXIMO EPISÓDIO" AUTO-FILL OVERLAY */}
+            {upNextVisible && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute inset-0 z-20 bg-slate-950/82 backdrop-blur-md flex items-center justify-center p-4 animate-fade-up"
+              >
+                {nextEpisode ? (
+                  <div className="w-full max-w-md rounded-2xl border border-white/20 bg-slate-900/95 p-4 sm:p-5 shadow-2xl space-y-3.5 text-white">
+                    <div className="flex items-center justify-between text-[11px] font-mono font-bold text-amber-300">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        PRÓXIMO EPISÓDIO EM{" "}
+                        {Math.max(1, Math.ceil((1 - upNextProgress) * 6))}S
+                      </span>
+                      <span className="text-slate-400">
+                        {nextEpDur ? formatTime(nextEpDur) : nextEpisode.durationHint}
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-mono font-bold text-sky-400">
+                        {nextEpisode.number} · {nextEpisode.tag}
+                      </div>
+                      <h4 className="font-display text-lg sm:text-xl font-bold leading-snug mt-0.5">
+                        {nextEpisode.title}
+                      </h4>
+                      <p className="text-xs text-slate-300 mt-1 line-clamp-2">
+                        {nextEpisode.subtitle}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      {/* Netflix Filling Progress Button */}
+                      <button
+                        type="button"
+                        onClick={() => void selectEpisode(epIndex + 1, true)}
+                        className="relative flex-1 overflow-hidden rounded-xl bg-slate-700 hover:bg-slate-600 text-white py-2.5 px-4 text-xs font-extrabold transition"
+                      >
+                        <span
+                          className="absolute inset-y-0 left-0 bg-ph transition-none"
+                          style={{ width: `${Math.round(upNextProgress * 100)}%` }}
+                        />
+                        <span className="relative z-10 inline-flex items-center justify-center gap-1.5">
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          Assistir Agora
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          sfx.tick();
+                          setUpNextVisible(false);
+                        }}
+                        className="px-3.5 py-2.5 rounded-xl border border-white/20 bg-white/5 hover:bg-white/15 text-xs font-bold text-slate-200 transition"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full max-w-md rounded-2xl border border-emerald-400/35 bg-slate-900/95 p-5 shadow-2xl space-y-3 text-center text-white">
+                    <div className="text-xs font-mono font-extrabold text-emerald-300 uppercase">
+                      ✦ Temporada 1 Concluída!
+                    </div>
+                    <h4 className="font-display text-xl font-bold">
+                      Você completou todas as {VIDEO_EPISODES.length} aulas!
+                    </h4>
+                    <p className="text-xs text-slate-300">
+                      Agora leve esse conhecimento para a prancheta 3D interativa ou resolva os desafios da UERJ.
+                    </p>
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => onOpenInLab(baseEp.labPreset)}
+                        className="px-4 py-2 rounded-xl bg-ph hover:bg-ph-dark text-white text-xs font-bold"
+                      >
+                        Abrir Lab 3D
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void selectEpisode(0, true)}
+                        className="px-3.5 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/15 text-xs font-bold"
+                      >
+                        Rever EP. 01
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Big Play Overlay when paused (hidden when Up-Next card is shown) */}
+            {!isPlaying && !upNextVisible && (
               <div className="absolute inset-0 flex items-center justify-center bg-slate-950/35 transition">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-ph/95 hover:bg-ph text-white flex items-center justify-center shadow-2xl ring-4 ring-white/25 transition-transform hover:scale-105">
                   <Play className="w-7 h-7 sm:w-9 sm:h-9 ml-1 fill-current" />
@@ -1354,7 +1575,10 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                   <button
                     key={sc.id}
                     type="button"
-                    onClick={() => seekToSeconds(sc.startSec + 0.05)}
+                    onClick={() => {
+                      sfx.tick();
+                      seekToSeconds(sc.startSec + 0.05);
+                    }}
                     className={`shrink-0 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold transition ${
                       idx === sceneIndex
                         ? "bg-sky-500/25 text-sky-300 border border-sky-400/50"

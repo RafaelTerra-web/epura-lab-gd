@@ -31,18 +31,22 @@ export function LipSyncMascot({
 }: LipSyncMascotProps) {
   const [blinking, setBlinking] = useState(false);
 
-  // Natural periodic eye blink every ~3.8s when mouth is relaxed
+  // Natural periodic eye blink ONLY while video is actively playing (stays still when paused!)
   useEffect(() => {
+    if (!isPlaying) {
+      setBlinking(false);
+      return;
+    }
     let blinkTimeout: ReturnType<typeof setTimeout> | null = null;
     const interval = setInterval(() => {
       setBlinking(true);
       blinkTimeout = setTimeout(() => setBlinking(false), 145);
-    }, 3800);
+    }, 3600);
     return () => {
       clearInterval(interval);
       if (blinkTimeout) clearTimeout(blinkTimeout);
     };
-  }, []);
+  }, [isPlaying]);
 
   const activeSprite: "closed" | "small" | "mid" | "open" | "blink" =
     blinking && mouth === "closed" ? "blink" : mouth;

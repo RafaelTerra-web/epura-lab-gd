@@ -1,5 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 
+function cleanGeminiTtsPcm(pcmBuffer: Buffer, sampleRate = 24000): Buffer {
+  const totalSamples = Math.floor(pcmBuffer.length / 2);
+  if (totalSamples < sampleRate * 0.25) return pcmBuffer;
+
+  const win = Math.floor(0.02 * sampleRate);
+  const checkStart = Math.max(0, totalSamples - Math.floor(0.95 * sampleRate));
+  const windows: Array<{ s: number; rms: number }> = [];
+
+  for (let s = checkStart; s + win <= totalSamples; s += win) {
+    let sumSq = 0;
+    for (let i = s; i < s + win; i++) {
+      const v = pcmBuffer.readInt16LE(i * 2) / 32768;
+      sumSq += v * v;
+    }
+    windows.push({ s, rms: Math.sqrt(sumSq / win) });
+  }
+
+  let cutSample = totalSamples;
+  for (let i = windows.length - 1; i >= 3; i--) {
+    const tFromEnd = (totalSamples - windows[i].s) / sampleRate;
+    if (tFromEnd <= 0.5 && windows[i].rms > 0.05) {
+      let j = i - 1;
+      while (j >= 0 && windows[j].rms > 0.018) j--;
+      const gapEnd = j;
+      while (j >= 0 && windows[j].rms <= 0.018) j--;
+      if (gapEnd - j >= 2) {
+        cutSample = Math.min(
+          totalSamples,
+          windows[j + 1].s + Math.floor(0.06 * sampleRate)
+        );
+        break;
+      }
+    }
+  }
+
+  const out = Buffer.from(pcmBuffer.subarray(0, cutSample * 2));
+  const nSamples = Math.floor(out.length / 2);
+  const fadeIn = Math.min(nSamples, Math.floor(0.01 * sampleRate));
+  for (let i = 0; i < fadeIn; i++) {
+    out.writeInt16LE(Math.round(out.readInt16LE(i * 2) * (i / fadeIn)), i * 2);
+  }
+  const fadeOut = Math.min(nSamples, Math.floor(0.03 * sampleRate));
+  for (let i = 0; i < fadeOut; i++) {
+    const idx = nSamples - fadeOut + i;
+    const g = 0.5 * (1 + Math.cos((Math.PI * i) / fadeOut));
+    out.writeInt16LE(Math.round(out.readInt16LE(idx * 2) * g), idx * 2);
+  }
+  return out;
+}
+
 function pcm16ToWav(pcmBuffer: Buffer, sampleRate = 24000, channels = 1): Buffer {
   const byteRate = sampleRate * channels * 2;
   const blockAlign = channels * 2;
@@ -146,7 +196,8 @@ export async function POST(req: NextRequest) {
       ) {
         const rateMatch = mime.match(/rate=(\d+)/i);
         const rate = rateMatch ? Number(rateMatch[1]) : 24000;
-        outBuffer = pcm16ToWav(rawBytes, rate, 1);
+        const cleanPcm = cleanGeminiTtsPcm(rawBytes, rate);
+        outBuffer = pcm16ToWav(cleanPcm, rate, 1);
         outMime = "audio/wav";
       }
 

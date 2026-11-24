@@ -18,6 +18,7 @@ import { Epura2D } from "./Epura2D";
 import { Scene3D } from "./Scene3D";
 import { ProfessorAvatar } from "./ProfessorAvatar";
 import { TtsModelTier, VoiceState } from "@/lib/voice";
+import { sfx } from "@/lib/sfx";
 import {
   ArrowRight,
   Award,
@@ -199,6 +200,8 @@ export function PracticeArena({
     if (result) return;
     setSelectedChoice(choiceId);
     const correct = choiceId === exercise.correctChoiceId;
+    if (correct) sfx.success();
+    else sfx.tick();
     setResult({
       correct,
       message: correct ? "Perfeito! Visão espacial afiada." : "Quase! Veja o porquê abaixo:",
@@ -212,6 +215,8 @@ export function PracticeArena({
     const pvOk = placedPv.x === p.x && placedPv.z === p.z;
     const phOk = placedPh.x === p.x && placedPh.y === p.y;
     const correct = pvOk && phOk;
+    if (correct) sfx.success();
+    else sfx.tick();
 
     let message = "Impecável! Tanto a cota quanto o afastamento (rebatido!) estão exatos na linha de chamada.";
     if (!correct) {
@@ -248,6 +253,8 @@ export function PracticeArena({
     if (result) return;
     const p = exercise.point;
     const correct = guessX === p.x && guessY === p.y && guessZ === p.z;
+    if (correct) sfx.success();
+    else sfx.tick();
     let message = `Na mosca! ${formatPointCoords(p.label, p.x, p.y, p.z)} lido com 100% de precisão.`;
     if (!correct) {
       const issues: string[] = [];

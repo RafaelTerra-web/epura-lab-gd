@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { GDPoint, NotationMode } from "@/lib/gd-math";
 import { getMasteryRank, UserProgress } from "@/lib/storage";
 import { ProfessorAvatar } from "./ProfessorAvatar";
+import { sfx } from "@/lib/sfx";
 import { VoiceState } from "@/lib/voice";
 import {
   Download,
@@ -515,6 +516,34 @@ export function TutorDrawer({
               />
             </div>
 
+            {/* Subtle Studio Sound Effects (SFX) Toggle */}
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-100/70 dark:bg-blueprint-950 p-3.5">
+              <div>
+                <div className="text-xs font-extrabold text-ink-900 dark:text-white">
+                  Efeitos Sonoros Sutis
+                </div>
+                <div className="text-[11px] text-ink-500 dark:text-slate-400">
+                  Cliques leves de prancheta e som de acerto
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = progress.preferences.soundEffects === false;
+                  sfx.setEnabled(next);
+                  if (next) sfx.click();
+                  onUpdatePrefs({ soundEffects: next });
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+                  progress.preferences.soundEffects !== false
+                    ? "bg-lt text-white border-lt"
+                    : "bg-paper-50 dark:bg-blueprint-900 border-paper-300 dark:border-blueprint-700 text-ink-500"
+                }`}
+              >
+                {progress.preferences.soundEffects !== false ? "Ligado" : "Desligado"}
+              </button>
+            </div>
+
             {/* Gemini 3.8 TTS Model Selector & Key */}
             <div className="space-y-3 rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-100/70 dark:bg-blueprint-950 p-3.5">
               <div className="flex items-center justify-between gap-2">
@@ -563,7 +592,7 @@ export function TutorDrawer({
               </div>
 
               <p className="text-[11px] text-ink-500 dark:text-slate-400 leading-relaxed">
-                Usa <code className="font-mono">{progress.preferences.ttsModelTier}</code> (incluindo diálogo multi-voz Prof. Monge + Profa. Épura). Se os créditos no AI Studio estiverem zerados, alterna automaticamente para a voz pt-BR nativa.
+                Usa <code className="font-mono">{progress.preferences.ttsModelTier}</code> (voz masculina Charon do Prof. Monge). Se os créditos no AI Studio estiverem zerados, alterna automaticamente para a voz pt-BR nativa.
               </p>
               <input
                 type="password"

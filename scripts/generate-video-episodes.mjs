@@ -360,6 +360,49 @@ const EPISODES = [
   },
 ];
 
+function cleanGeminiTtsPcm(pcm, sampleRate = 24000) {
+  const totalSamples = Math.floor(pcm.length / 2);
+  if (totalSamples < sampleRate * 0.25) return pcm;
+  const win = Math.floor(0.02 * sampleRate);
+  const checkStart = Math.max(0, totalSamples - Math.floor(0.95 * sampleRate));
+  const windows = [];
+  for (let s = checkStart; s + win <= totalSamples; s += win) {
+    let sumSq = 0;
+    for (let i = s; i < s + win; i++) {
+      const v = pcm.readInt16LE(i * 2) / 32768;
+      sumSq += v * v;
+    }
+    windows.push({ s, rms: Math.sqrt(sumSq / win) });
+  }
+  let cutSample = totalSamples;
+  for (let i = windows.length - 1; i >= 3; i--) {
+    const tFromEnd = (totalSamples - windows[i].s) / sampleRate;
+    if (tFromEnd <= 0.5 && windows[i].rms > 0.05) {
+      let j = i - 1;
+      while (j >= 0 && windows[j].rms > 0.018) j--;
+      const gapEnd = j;
+      while (j >= 0 && windows[j].rms <= 0.018) j--;
+      if (gapEnd - j >= 2) {
+        cutSample = Math.min(totalSamples, windows[j + 1].s + Math.floor(0.06 * sampleRate));
+        break;
+      }
+    }
+  }
+  const out = Buffer.from(pcm.subarray(0, cutSample * 2));
+  const nSamples = Math.floor(out.length / 2);
+  const fadeIn = Math.min(nSamples, Math.floor(0.01 * sampleRate));
+  for (let i = 0; i < fadeIn; i++) {
+    out.writeInt16LE(Math.round(out.readInt16LE(i * 2) * (i / fadeIn)), i * 2);
+  }
+  const fadeOut = Math.min(nSamples, Math.floor(0.03 * sampleRate));
+  for (let i = 0; i < fadeOut; i++) {
+    const idx = nSamples - fadeOut + i;
+    const g = 0.5 * (1 + Math.cos((Math.PI * i) / fadeOut));
+    out.writeInt16LE(Math.round(out.readInt16LE(idx * 2) * g), idx * 2);
+  }
+  return out;
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchScenePcm(apiKey, text, model) {
@@ -402,7 +445,7 @@ async function fetchScenePcm(apiKey, text, model) {
     )?.inlineData;
     if (!inline?.data) throw new Error("Empty audio payload");
     const raw = Buffer.from(inline.data, "base64");
-    return stripWavHeaderIfNeeded(raw);
+    return cleanGeminiTtsPcm(stripWavHeaderIfNeeded(raw));
   }
   throw new Error("Exceeded retry attempts after HTTP 429/503");
 }
