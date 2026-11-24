@@ -196,7 +196,7 @@ async function main() {
           })
       : [
           {
-            text: `Fale em português do Brasil com entonação calorosa, expressiva e didática de professor universitário:\n\n${item.text}`,
+            text: item.text,
           },
         ];
 

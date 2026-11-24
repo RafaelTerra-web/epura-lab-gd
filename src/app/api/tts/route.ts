@@ -22,6 +22,22 @@ function pcm16ToWav(pcmBuffer: Buffer, sampleRate = 24000, channels = 1): Buffer
 
 type TtsTier = "gemini-3.8-flash-tts" | "gemini-3.8-flash-lite-tts";
 
+function sanitizeForSpeech(input: string): string {
+  return input
+    .replace(/β₁₃/g, "primeiro bissetor")
+    .replace(/β₂₄/g, "segundo bissetor")
+    .replace(/π'/g, "pi linha")
+    .replace(/πA/g, "pi anterior")
+    .replace(/πP/g, "pi posterior")
+    .replace(/π/g, "pi")
+    .replace(/≡/g, " coincide com ")
+    .replace(/\b([A-Za-z])'/g, "$1 linha")
+    .replace(/\bLT\b/g, "Linha de Terra")
+    .replace(/−(\d)/g, "menos $1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as {
@@ -91,18 +107,22 @@ export async function POST(req: NextRequest) {
           .map((line) => {
             if (/^profa\.?\s*[eé]pura\s*:/i.test(line)) {
               return {
-                text: line.replace(/^profa\.?\s*[eé]pura\s*:/i, "").trim(),
+                text: sanitizeForSpeech(
+                  line.replace(/^profa\.?\s*[eé]pura\s*:/i, "")
+                ),
                 speechMetadata: { speaker: "Profa. Épura" },
               };
             }
             return {
-              text: line.replace(/^prof\.?\s*monge\s*:/i, "").trim(),
+              text: sanitizeForSpeech(
+                line.replace(/^prof\.?\s*monge\s*:/i, "")
+              ),
               speechMetadata: { speaker: "Prof. Monge" },
             };
           })
       : [
           {
-            text: `Fale em português do Brasil com entonação calorosa, expressiva e didática de professor universitário explicando um desenho ao vivo:\n\n${text}`,
+            text: sanitizeForSpeech(text),
           },
         ];
 
