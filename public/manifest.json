@@ -1,0 +1,10 @@
+{
+  "name": "ÉpuraLab · Geometria Descritiva UERJ",
+  "short_name": "ÉpuraLab GD",
+  "description": "Laboratório interativo 3D e 2D para dominar Épura, Diedros, Linha de Terra e Geometria Descritiva.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF8F3",
+  "theme_color": "#1E56A0",
+  "orientation": "any"
+}
