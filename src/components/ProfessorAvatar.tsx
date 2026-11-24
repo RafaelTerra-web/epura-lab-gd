@@ -4,8 +4,9 @@ import React from "react";
 
 interface ProfessorAvatarProps {
   professor: "monge" | "epura";
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   speaking?: boolean;
+  mood?: "friendly" | "explaining" | "excited" | "thinking";
   className?: string;
 }
 
@@ -13,6 +14,7 @@ export function ProfessorAvatar({
   professor,
   size = "md",
   speaking = false,
+  mood = "friendly",
   className = "",
 }: ProfessorAvatarProps) {
   const dims =
@@ -20,25 +22,33 @@ export function ProfessorAvatar({
       ? "w-10 h-10"
       : size === "lg"
         ? "w-16 h-16"
-        : "w-12 h-12";
+        : size === "xl"
+          ? "w-20 h-20"
+          : "w-12 h-12";
 
   const ringColor =
     professor === "monge"
-      ? "ring-ph/40 border-ph/40"
-      : "ring-pv/40 border-pv/40";
+      ? "ring-ph/40 border-ph/45"
+      : "ring-pv/40 border-pv/45";
+
+  const browLift = mood === "excited" ? -2 : mood === "thinking" ? 1 : 0;
 
   return (
-    <div className={`relative inline-flex shrink-0 ${dims} ${className}`}>
+    <div
+      className={`relative inline-flex shrink-0 ${dims} ${
+        speaking ? "animate-avatar-talk" : ""
+      } ${className}`}
+    >
       {speaking && (
         <span
-          className={`absolute -inset-1 rounded-full animate-ping opacity-35 ${
+          className={`absolute -inset-1.5 rounded-full animate-ping opacity-30 ${
             professor === "monge" ? "bg-ph" : "bg-pv"
           }`}
         />
       )}
       <div
-        className={`relative w-full h-full rounded-full overflow-hidden border-2 shadow-sm bg-paper-100 ${ringColor} ${
-          speaking ? "ring-4" : ""
+        className={`relative w-full h-full rounded-full overflow-hidden border-2 shadow-sm bg-paper-100 transition-transform duration-300 ${ringColor} ${
+          speaking ? "ring-4 scale-[1.03]" : "hover:scale-[1.03]"
         }`}
       >
         {professor === "monge" ? (
@@ -49,21 +59,25 @@ export function ProfessorAvatar({
             aria-label="Prof. Monge"
           >
             <defs>
-              <linearGradient id="mongeBg" x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id="mongeBg2" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor="#FDFCF8" />
-                <stop offset="100%" stopColor="#E7F0FA" />
+                <stop offset="100%" stopColor="#DCE9F9" />
               </linearGradient>
             </defs>
-            <rect width="120" height="120" fill="url(#mongeBg)" />
-            {/* Architectural faint grid & projection diagonal */}
-            <g opacity="0.22" stroke="#1E56A0" strokeWidth="1">
+            <rect width="120" height="120" fill="url(#mongeBg2)" />
+            {/* Architectural drafting grid & projection arc */}
+            <g opacity="0.24" stroke="#1E56A0" strokeWidth="1">
               <line x1="0" y1="30" x2="120" y2="30" />
               <line x1="0" y1="60" x2="120" y2="60" />
               <line x1="0" y1="90" x2="120" y2="90" />
               <line x1="30" y1="0" x2="30" y2="120" />
               <line x1="60" y1="0" x2="60" y2="120" />
               <line x1="90" y1="0" x2="90" y2="120" />
-              <line x1="8" y1="108" x2="112" y2="12" strokeDasharray="3 3" />
+              <path
+                d="M12 106 A90 90 0 0 1 108 14"
+                fill="none"
+                strokeDasharray="3 3"
+              />
             </g>
             {/* Shoulders - Tailored Cobalt Studio Overshirt */}
             <path
@@ -95,7 +109,7 @@ export function ProfessorAvatar({
               strokeWidth="2"
               strokeLinecap="round"
               fill="none"
-              opacity="0.7"
+              opacity="0.75"
             />
             {/* Warm beard */}
             <path
@@ -104,7 +118,7 @@ export function ProfessorAvatar({
             />
             {/* Eyebrows */}
             <path
-              d="M44 43 Q50 40 55 43 M65 43 Q70 40 76 43"
+              d={`M44 ${43 + browLift} Q50 ${40 + browLift} 55 ${43 + browLift} M65 ${43 + browLift} Q70 ${40 + browLift} 76 ${43 + browLift}`}
               stroke="#3F2E21"
               strokeWidth="2"
               strokeLinecap="round"
@@ -120,7 +134,7 @@ export function ProfessorAvatar({
               <circle cx="70" cy="52" r="7.5" />
               <line x1="57.5" y1="52" x2="62.5" y2="52" />
             </g>
-            {/* Glint on glasses */}
+            {/* Glint */}
             <line
               x1="46"
               y1="48"
@@ -129,7 +143,7 @@ export function ProfessorAvatar({
               stroke="#FFFFFF"
               strokeWidth="1.5"
               strokeLinecap="round"
-              opacity="0.8"
+              opacity="0.85"
             />
             <line
               x1="66"
@@ -139,14 +153,22 @@ export function ProfessorAvatar({
               stroke="#FFFFFF"
               strokeWidth="1.5"
               strokeLinecap="round"
-              opacity="0.8"
+              opacity="0.85"
             />
-            {/* Eyes */}
-            <circle cx="50" cy="52" r="2.2" fill="#1C1917" />
-            <circle cx="70" cy="52" r="2.2" fill="#1C1917" />
+            {/* Animated blinking eyes */}
+            <g className="avatar-eyes">
+              <circle cx="50" cy="52" r="2.2" fill="#1C1917" />
+              <circle cx="70" cy="52" r="2.2" fill="#1C1917" />
+            </g>
             {/* Smile / Speaking Mouth */}
             <path
-              d={speaking ? "M53 63 Q60 72 67 63 Z" : "M53 63 Q60 69 67 63"}
+              d={
+                speaking
+                  ? "M53 63 Q60 73 67 63 Z"
+                  : mood === "excited"
+                    ? "M52 62 Q60 71 68 62"
+                    : "M53 63 Q60 69 67 63"
+              }
               fill={speaking ? "#9B2C20" : "none"}
               stroke="#FAF8F3"
               strokeWidth="2.2"
@@ -177,14 +199,14 @@ export function ProfessorAvatar({
             aria-label="Profa. Épura"
           >
             <defs>
-              <linearGradient id="epuraBg" x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id="epuraBg2" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor="#FDFCF8" />
-                <stop offset="100%" stopColor="#FBEAE8" />
+                <stop offset="100%" stopColor="#F9DFDC" />
               </linearGradient>
             </defs>
-            <rect width="120" height="120" fill="url(#epuraBg)" />
+            <rect width="120" height="120" fill="url(#epuraBg2)" />
             {/* Architectural drafting lines & set-square watermark */}
-            <g opacity="0.22" stroke="#C94032" strokeWidth="1">
+            <g opacity="0.24" stroke="#C94032" strokeWidth="1">
               <line x1="0" y1="60" x2="120" y2="60" />
               <line x1="60" y1="0" x2="60" y2="120" />
               <polygon points="10,104 42,104 10,72" fill="none" />
@@ -224,32 +246,54 @@ export function ProfessorAvatar({
             />
             {/* Eyebrows */}
             <path
-              d="M45 46 Q51 43 56 46 M64 46 Q69 43 75 46"
+              d={`M45 ${46 + browLift} Q51 ${43 + browLift} 56 ${46 + browLift} M64 ${46 + browLift} Q69 ${43 + browLift} 75 ${46 + browLift}`}
               stroke="#321D14"
               strokeWidth="1.9"
               strokeLinecap="round"
               fill="none"
             />
-            {/* Bright expressive eyes */}
-            <circle cx="51" cy="53" r="2.6" fill="#1C1917" />
-            <circle cx="69" cy="53" r="2.6" fill="#1C1917" />
-            <circle cx="52" cy="52" r="0.9" fill="#FFFFFF" />
-            <circle cx="70" cy="52" r="0.9" fill="#FFFFFF" />
+            {/* Animated blinking eyes */}
+            <g className="avatar-eyes">
+              <circle cx="51" cy="53" r="2.6" fill="#1C1917" />
+              <circle cx="69" cy="53" r="2.6" fill="#1C1917" />
+              <circle cx="52" cy="52" r="0.9" fill="#FFFFFF" />
+              <circle cx="70" cy="52" r="0.9" fill="#FFFFFF" />
+            </g>
             {/* Warm blush */}
-            <ellipse cx="44" cy="59" rx="3.8" ry="2.2" fill="#C94032" opacity="0.22" />
-            <ellipse cx="76" cy="59" rx="3.8" ry="2.2" fill="#C94032" opacity="0.22" />
+            <ellipse
+              cx="44"
+              cy="59"
+              rx="3.8"
+              ry="2.2"
+              fill="#C94032"
+              opacity="0.22"
+            />
+            <ellipse
+              cx="76"
+              cy="59"
+              rx="3.8"
+              ry="2.2"
+              fill="#C94032"
+              opacity="0.22"
+            />
             {/* Bright smile / speaking mouth */}
             <path
-              d={speaking ? "M52 63 Q60 73 68 63 Z" : "M52 63 Q60 70 68 63"}
+              d={
+                speaking
+                  ? "M52 63 Q60 73 68 63 Z"
+                  : mood === "excited"
+                    ? "M51 62 Q60 72 69 62"
+                    : "M52 63 Q60 70 68 63"
+              }
               fill={speaking ? "#FFFFFF" : "none"}
               stroke="#7C2D12"
               strokeWidth="2.2"
               strokeLinecap="round"
             />
-            {/* Mini acrylic 45° drafting triangle held near collar */}
+            {/* Mini acrylic 45° drafting triangle */}
             <polygon
               points="78,116 99,116 99,95"
-              fill="rgba(30,86,160,0.25)"
+              fill="rgba(30,86,160,0.26)"
               stroke="#1E56A0"
               strokeWidth="1.8"
             />
@@ -264,13 +308,13 @@ export function ProfessorAvatar({
       </div>
       {speaking && (
         <span
-          className={`absolute -bottom-0.5 -right-0.5 flex items-center gap-[2px] px-1.5 py-0.5 rounded-full text-white shadow ${
+          className={`absolute -bottom-0.5 -right-0.5 flex items-end gap-[2px] h-4 px-1.5 py-0.5 rounded-full text-white shadow ${
             professor === "monge" ? "bg-ph" : "bg-pv"
           }`}
         >
-          <span className="w-[2px] h-2 bg-white rounded-full animate-pulse" />
-          <span className="w-[2px] h-3 bg-white rounded-full animate-bounce" />
-          <span className="w-[2px] h-2 bg-white rounded-full animate-pulse" />
+          <span className="w-[2.5px] bg-white rounded-full animate-eq-1" />
+          <span className="w-[2.5px] bg-white rounded-full animate-eq-2" />
+          <span className="w-[2.5px] bg-white rounded-full animate-eq-3" />
         </span>
       )}
     </div>

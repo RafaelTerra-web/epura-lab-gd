@@ -349,7 +349,14 @@ export function EpuraLabApp() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSection("lessons")}
+                className="px-3 py-1.5 rounded-xl bg-ph hover:bg-ph-dark text-white text-xs font-bold transition"
+              >
+                Aula Animada: O que é o quê?
+              </button>
               <button
                 type="button"
                 onClick={() => setSection("practice")}
@@ -397,6 +404,7 @@ export function EpuraLabApp() {
             voice={voice}
             voiceRate={progress.preferences.voiceRate}
             customApiKey={progress.preferences.customGeminiKey}
+            ttsModelTier={progress.preferences.ttsModelTier}
             onSaveSnapshot={handleSaveSnapshot}
             activePresetId={activePresetId}
             onLoadPreset={handleLoadPreset}
@@ -405,12 +413,14 @@ export function EpuraLabApp() {
 
         {section === "lessons" && (
           <LessonsView
+            dark={dark}
             completedLessons={progress.completedLessons}
             onToggleComplete={handleToggleLesson}
             onOpenInLab={handleOpenInLab}
             voice={voice}
             voiceRate={progress.preferences.voiceRate}
             customApiKey={progress.preferences.customGeminiKey}
+            ttsModelTier={progress.preferences.ttsModelTier}
           />
         )}
 
@@ -427,6 +437,7 @@ export function EpuraLabApp() {
             voice={voice}
             voiceRate={progress.preferences.voiceRate}
             customApiKey={progress.preferences.customGeminiKey}
+            ttsModelTier={progress.preferences.ttsModelTier}
           />
         )}
 
@@ -436,6 +447,7 @@ export function EpuraLabApp() {
             voice={voice}
             voiceRate={progress.preferences.voiceRate}
             customApiKey={progress.preferences.customGeminiKey}
+            ttsModelTier={progress.preferences.ttsModelTier}
           />
         )}
       </main>

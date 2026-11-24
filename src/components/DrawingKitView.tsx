@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { DRAWING_KIT_ITEMS, SET_SQUARE_ANGLES } from "@/lib/curriculum";
 import { ProfessorAvatar } from "./ProfessorAvatar";
-import { VoiceState } from "@/lib/voice";
+import { TtsModelTier, VoiceState } from "@/lib/voice";
 import { Pencil, Ruler, Volume2, VolumeX } from "lucide-react";
 
 interface DrawingKitViewProps {
@@ -11,6 +11,7 @@ interface DrawingKitViewProps {
   voice: VoiceState;
   voiceRate: number;
   customApiKey?: string;
+  ttsModelTier: TtsModelTier;
 }
 
 const GRAPHITES = [
@@ -45,6 +46,7 @@ export function DrawingKitView({
   voice,
   voiceRate,
   customApiKey,
+  ttsModelTier,
 }: DrawingKitViewProps) {
   const [angleIdx, setAngleIdx] = useState(4); // 75° default (45° + 30°)
   const [graphiteIdx, setGraphiteIdx] = useState(1); // HB 0.5mm
@@ -79,7 +81,14 @@ export function DrawingKitView({
         <button
           type="button"
           onClick={() =>
-            voice.speak(speakId, kitScript, "epura", voiceRate, customApiKey)
+            voice.speak(
+              speakId,
+              kitScript,
+              "epura",
+              voiceRate,
+              customApiKey,
+              ttsModelTier
+            )
           }
           className={`shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition ${
             isSpeaking

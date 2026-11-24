@@ -1,4 +1,5 @@
 import { GDPoint, NotationMode } from "./gd-math";
+import { TtsModelTier } from "./voice";
 
 export interface UserProgress {
   xp: number;
@@ -26,6 +27,7 @@ export interface UserProgress {
     showXYZ: boolean;
     theme: "atelier" | "blueprint";
     voiceRate: number;
+    ttsModelTier: TtsModelTier;
     customGeminiKey?: string;
   };
   updatedAt: string;
@@ -54,6 +56,7 @@ export const DEFAULT_PROGRESS: UserProgress = {
     showXYZ: true,
     theme: "atelier",
     voiceRate: 1.0,
+    ttsModelTier: "gemini-3.8-flash-tts",
   },
   updatedAt: new Date().toISOString(),
 };

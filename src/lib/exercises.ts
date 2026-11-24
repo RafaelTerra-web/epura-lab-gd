@@ -5,7 +5,8 @@ export type ExerciseMode =
   | "draw_epura"
   | "read_epura"
   | "special_cases"
-  | "coord_order";
+  | "coord_order"
+  | "cg_vs_gd";
 
 export interface GeneratedExercise {
   id: string;
@@ -168,6 +169,41 @@ export function generateExercise(
         { id: "LT", label: "Sobre a Linha de Terra (LT)", sub: "afast. = 0 e cota = 0" },
       ],
       correctChoiceId: t.correct,
+    };
+  }
+
+  if (mode === "cg_vs_gd") {
+    const x = randNonZero(-4, 4);
+    let y = randNonZero(-5, 5);
+    let z = randNonZero(-5, 5);
+    while (y === z) z = randNonZero(-5, 5);
+    while (x === y || x === z) {
+      y = randNonZero(-5, 5);
+      if (y === z) z = randNonZero(-5, 5);
+      break;
+    }
+    const correctVec = `Vector3(${formatSigned(x)}, ${formatSigned(z)}, ${formatSigned(y)})`;
+    const wrongSameOrder = `Vector3(${formatSigned(x)}, ${formatSigned(y)}, ${formatSigned(z)})`;
+    const wrongNegY = `Vector3(${formatSigned(x)}, ${formatSigned(z)}, ${formatSigned(-y)})`;
+    const wrongSwapXZ = `Vector3(${formatSigned(z)}, ${formatSigned(y)}, ${formatSigned(x)})`;
+    const opts = [
+      { id: "correct", label: correctVec, sub: "Altura (Cota Z) vira Y; Afast. (Y) vira Z" },
+      { id: "same", label: wrongSameOrder, sub: "Mantendo a ordem sem trocar Y ↔ Z" },
+      { id: "negy", label: wrongNegY, sub: "Invertendo o sinal da profundidade" },
+      { id: "xz", label: wrongSwapXZ, sub: "Trocando Abscissa (X) com Cota (Z)" },
+    ].sort(() => Math.random() - 0.5);
+
+    return {
+      id,
+      mode: "cg_vs_gd",
+      topicKey: "ordem_xyz",
+      difficulty: 2,
+      point: { label, x, y, z },
+      prompt: `Em Geometria Descritiva (Z-Up) temos (${label})(${formatSigned(x)}; ${formatSigned(y)}; ${formatSigned(z)}). Como esse MESMO ponto espacial é escrito em Three.js / Unity (Y-Up)?`,
+      hint: `Em GD (Z-Up): X = Abscissa, Y = Afastamento (frente/trás), Z = Cota (altura). Em Three.js/Unity (Y-Up): Y é altura e Z é profundidade — então Y e Z trocam de lugar!`,
+      explanation: `Perfeito! Em GD a altura (Cota) é Z = ${formatSigned(z)} e a profundidade (Afastamento) é Y = ${formatSigned(y)}. Ao traduzir para engines Y-Up (Three.js/Unity), a altura passa para o 2º slot (Y) e a profundidade vai para o 3º slot (Z): ${correctVec}!`,
+      choices: opts,
+      correctChoiceId: "correct",
     };
   }
 

@@ -230,7 +230,8 @@ export function TutorDrawer({
                           m.text,
                           "monge",
                           progress.preferences.voiceRate,
-                          progress.preferences.customGeminiKey
+                          progress.preferences.customGeminiKey,
+                          progress.preferences.ttsModelTier
                         )
                       }
                       className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-ph dark:text-sky-400 hover:underline"
@@ -514,14 +515,55 @@ export function TutorDrawer({
               />
             </div>
 
-            {/* Optional Gemini API key override */}
-            <div className="space-y-2 rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-100/70 dark:bg-blueprint-950 p-3.5">
-              <div className="text-xs font-extrabold flex items-center gap-1.5 text-ink-900 dark:text-white">
-                <KeyRound className="w-3.5 h-3.5 text-ph" />
-                Gemini API Key (Opcional · Voz Neural TTS)
+            {/* Gemini 3.8 TTS Model Selector & Key */}
+            <div className="space-y-3 rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-100/70 dark:bg-blueprint-950 p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-extrabold flex items-center gap-1.5 text-ink-900 dark:text-white">
+                  <KeyRound className="w-3.5 h-3.5 text-ph" />
+                  Gemini 3.8 TTS (Voz Neural)
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-ph-light text-ph dark:bg-sky-950 dark:text-sky-300">
+                  {voice.engine === "gemini-3.8"
+                    ? "Gemini 3.8 ativo"
+                    : "Fallback pt-BR"}
+                </span>
               </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    {
+                      id: "gemini-3.8-flash-tts" as const,
+                      label: "3.8 Flash TTS",
+                      sub: "Alta expressividade",
+                    },
+                    {
+                      id: "gemini-3.8-flash-lite-tts" as const,
+                      label: "3.8 Flash-Lite",
+                      sub: "Baixa latência",
+                    },
+                  ] as const
+                ).map((tier) => (
+                  <button
+                    key={tier.id}
+                    type="button"
+                    onClick={() => onUpdatePrefs({ ttsModelTier: tier.id })}
+                    className={`p-2 rounded-xl border text-left transition ${
+                      progress.preferences.ttsModelTier === tier.id
+                        ? "border-ph bg-ph-light text-ph dark:bg-sky-950 dark:text-sky-300"
+                        : "border-paper-300 dark:border-blueprint-700"
+                    }`}
+                  >
+                    <div className="text-[11px] font-mono font-extrabold">
+                      {tier.label}
+                    </div>
+                    <div className="text-[10px] opacity-80">{tier.sub}</div>
+                  </button>
+                ))}
+              </div>
+
               <p className="text-[11px] text-ink-500 dark:text-slate-400 leading-relaxed">
-                Por padrão o servidor usa a chave configurada em ambiente e, caso os créditos do AI Studio estejam esgotados, alterna automaticamente para a voz pt-BR nativa do seu dispositivo.
+                Usa <code className="font-mono">{progress.preferences.ttsModelTier}</code> (incluindo diálogo multi-voz Prof. Monge + Profa. Épura). Se os créditos no AI Studio estiverem zerados, alterna automaticamente para a voz pt-BR nativa.
               </p>
               <input
                 type="password"
@@ -529,7 +571,7 @@ export function TutorDrawer({
                 onChange={(e) =>
                   onUpdatePrefs({ customGeminiKey: e.target.value })
                 }
-                placeholder="Cole outra chave Gemini se quiser sobrescrever"
+                placeholder="Cole sua Gemini API Key (AI Studio) aqui"
                 className="w-full px-3 py-2 rounded-xl bg-paper-50 dark:bg-blueprint-900 border border-paper-300 dark:border-blueprint-700 text-xs font-mono outline-none focus:border-ph"
               />
             </div>

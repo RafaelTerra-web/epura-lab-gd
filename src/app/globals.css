@@ -41,3 +41,137 @@
 .safe-pb {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
+
+/* ---- MOTION DESIGN KEYFRAMES ---- */
+
+@keyframes drawStroke {
+  from {
+    stroke-dashoffset: 260;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dashFlow {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatGentle {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pulseRadar {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+@keyframes eqBar {
+  0%,
+  100% {
+    height: 3px;
+  }
+  50% {
+    height: 11px;
+  }
+}
+
+@keyframes avatarTalk {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  35% {
+    transform: translateY(-1.5px) rotate(-1.5deg);
+  }
+  70% {
+    transform: translateY(-1px) rotate(1.5deg);
+  }
+}
+
+@keyframes eyeBlink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.12);
+  }
+}
+
+.animate-draw-stroke {
+  stroke-dasharray: 260;
+  stroke-dashoffset: 0;
+  animation: drawStroke 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-dash-flow {
+  animation: dashFlow 1.2s linear infinite;
+}
+
+.animate-fade-up {
+  animation: fadeSlideUp 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-float-gentle {
+  animation: floatGentle 3.2s ease-in-out infinite;
+}
+
+.animate-radar {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulseRadar 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.animate-eq-1 {
+  animation: eqBar 0.55s ease-in-out infinite;
+}
+.animate-eq-2 {
+  animation: eqBar 0.42s ease-in-out 0.12s infinite;
+}
+.animate-eq-3 {
+  animation: eqBar 0.62s ease-in-out 0.24s infinite;
+}
+
+.animate-avatar-talk {
+  animation: avatarTalk 0.9s ease-in-out infinite;
+}
+
+.avatar-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: eyeBlink 5.2s ease-in-out infinite;
+}

@@ -17,7 +17,7 @@ import {
 import { Scene3D } from "./Scene3D";
 import { Epura2D } from "./Epura2D";
 import { ProfessorAvatar } from "./ProfessorAvatar";
-import { VoiceState } from "@/lib/voice";
+import { TtsModelTier, VoiceState } from "@/lib/voice";
 import {
   BookmarkPlus,
   Compass,
@@ -50,6 +50,7 @@ interface LabStudioProps {
   voice: VoiceState;
   voiceRate: number;
   customApiKey?: string;
+  ttsModelTier: TtsModelTier;
   onSaveSnapshot: (name: string, pts: GDPoint[]) => void;
   activePresetId: string | null;
   onLoadPreset: (preset: ScenePreset) => void;
@@ -72,6 +73,7 @@ export function LabStudio({
   voice,
   voiceRate,
   customApiKey,
+  ttsModelTier,
   onSaveSnapshot,
   activePresetId,
   onLoadPreset,
@@ -513,7 +515,9 @@ export function LabStudio({
                   Prof. Monge · Narrador
                 </div>
                 <div className="text-[11px] text-ink-500 dark:text-slate-400">
-                  Ouça a leitura completa da cena atual
+                  {voice.engine === "gemini-3.8"
+                    ? `✦ ${voice.modelUsed}`
+                    : "Gemini 3.8 TTS · ouça a leitura da cena"}
                 </div>
               </div>
               <button
@@ -524,7 +528,8 @@ export function LabStudio({
                     buildCurrentNarration(),
                     "monge",
                     voiceRate,
-                    customApiKey
+                    customApiKey,
+                    ttsModelTier
                   )
                 }
                 className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition ${
@@ -589,11 +594,11 @@ export function LabStudio({
 
             {selectedPoint && selectedInfo && labels && (
               <>
-                {/* Mongean Coordinate Formula Display */}
+                {/* Mongean Coordinate Formula Display + Live CG Y-Up Bridge */}
                 <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-paper-100 dark:bg-blueprint-950 border border-paper-300/80 dark:border-blueprint-800">
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-slate-400">
-                      Ordem: (Abscissa ; Afastamento ; Cota)
+                      GD (Z-Up): (Abscissa ; Afastamento ; Cota)
                     </div>
                     <div className="font-mono text-base font-extrabold text-ink-900 dark:text-white mt-0.5">
                       {formatPointCoords(
@@ -603,6 +608,16 @@ export function LabStudio({
                         selectedPoint.z
                       )}
                     </div>
+                    {showXYZ && (
+                      <div className="text-[10.5px] font-mono text-ink-500 dark:text-slate-400 mt-0.5">
+                        3D CG (Y-Up):{" "}
+                        <span className="font-bold text-ink-700 dark:text-slate-200">
+                          Vector3({formatSigned(selectedPoint.x)},{" "}
+                          <span className="text-pv">{formatSigned(selectedPoint.z)}</span>,{" "}
+                          <span className="text-ph">{formatSigned(selectedPoint.y)}</span>)
+                        </span>
+                      </div>
+                    )}
                   </div>
                   {points.length > 1 && (
                     <button

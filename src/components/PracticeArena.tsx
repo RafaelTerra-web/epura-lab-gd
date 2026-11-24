@@ -17,7 +17,7 @@ import {
 import { Epura2D } from "./Epura2D";
 import { Scene3D } from "./Scene3D";
 import { ProfessorAvatar } from "./ProfessorAvatar";
-import { VoiceState } from "@/lib/voice";
+import { TtsModelTier, VoiceState } from "@/lib/voice";
 import {
   ArrowRight,
   Award,
@@ -55,6 +55,7 @@ interface PracticeArenaProps {
   voice: VoiceState;
   voiceRate: number;
   customApiKey?: string;
+  ttsModelTier: TtsModelTier;
 }
 
 type PracticeTab =
@@ -63,7 +64,8 @@ type PracticeTab =
   | "read_epura"
   | "identify_diedro"
   | "special_cases"
-  | "coord_order";
+  | "coord_order"
+  | "cg_vs_gd";
 
 const UERJ_EXERCISES = [
   {
@@ -142,6 +144,7 @@ export function PracticeArena({
   voice,
   voiceRate,
   customApiKey,
+  ttsModelTier,
 }: PracticeArenaProps) {
   const [tab, setTab] = useState<PracticeTab>("uerj_sheet");
   const [difficulty, setDifficulty] = useState<1 | 2>(1);
@@ -293,6 +296,7 @@ export function PracticeArena({
               { id: "identify_diedro", label: "Qual Diedro?" },
               { id: "special_cases", label: "Bissetores & Planos" },
               { id: "coord_order", label: "Ordem (x;y;z)" },
+              { id: "cg_vs_gd", label: "Y-Up vs Z-Up" },
             ] as const
           ).map((item) => (
             <button
@@ -410,7 +414,8 @@ export function PracticeArena({
                       uerjSpec.narration,
                       "epura",
                       voiceRate,
-                      customApiKey
+                      customApiKey,
+                      ttsModelTier
                     )
                   }
                   className={`inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition ${
@@ -818,7 +823,8 @@ export function PracticeArena({
                         exercise.explanation,
                         "epura",
                         voiceRate,
-                        customApiKey
+                        customApiKey,
+                        ttsModelTier
                       )
                     }
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-paper-50 dark:bg-blueprint-800 border border-paper-300 dark:border-blueprint-700 text-xs font-bold text-ink-800 dark:text-slate-200"

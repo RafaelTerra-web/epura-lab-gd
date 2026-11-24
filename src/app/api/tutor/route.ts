@@ -4,6 +4,17 @@ import { classifyPoint, formatPointCoords } from "@/lib/gd-math";
 function buildLocalTutorAnswer(question: string, contextPoints?: Array<{ label: string; x: number; y: number; z: number }>) {
   const q = question.toLowerCase();
 
+  if (
+    q.includes("y-up") ||
+    q.includes("z-up") ||
+    q.includes("unity") ||
+    q.includes("three") ||
+    q.includes("computa") ||
+    q.includes("blender") ||
+    q.includes("altura")
+  ) {
+    return "Sim! Na computação gráfica de jogos/WebGL (Three.js, Unity, OpenGL) a altura costuma ser Y (sistema Y-Up) e Z é profundidade. Já academicamente em Geometria Descritiva, Arquitetura, Engenharia e Blender/CAD usa-se Z-Up: X é a Abscissa, Y é o Afastamento (profundidade) e Z é a Cota (altura)! Para traduzir um ponto (x; y; z) de GD para Three.js/Unity, basta trocar Y com Z: Vector3(x, z, y)!";
+  }
   if (q.includes("xyz") || q.includes("ordem") || q.includes("confund")) {
     return "Na convenção brasileira (UERJ / Monge), a ordem é sempre alfabética: (Abscissa; Afastamento; Cota) = (x; y; z). A única 'pegadinha' na épura 2D é que o Plano Horizontal rebate 90° para baixo: por isso, o afastamento positivo (+y) vai para BAIXO da Linha de Terra, enquanto a cota positiva (+z) continua para CIMA!";
   }
