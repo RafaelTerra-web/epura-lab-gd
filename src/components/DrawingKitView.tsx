@@ -66,7 +66,7 @@ export function DrawingKitView({
     <div className="space-y-6">
       {/* Intro Banner */}
       <div className="rounded-3xl border border-paper-300 dark:border-blueprint-700 bg-paper-50 dark:bg-blueprint-900 p-5 shadow-draft flex flex-col sm:flex-row sm:items-center gap-4">
-        <ProfessorAvatar professor="epura" size="lg" speaking={isSpeaking} />
+        <ProfessorAvatar professor="monge" size="lg" speaking={isSpeaking} />
         <div className="flex-1 space-y-1">
           <div className="text-[11px] font-extrabold uppercase tracking-wider text-pv">
             01 · Materiais · Baseado no Slide da sua Aula 1 (UERJ)
@@ -84,7 +84,7 @@ export function DrawingKitView({
             voice.speak(
               speakId,
               kitScript,
-              "epura",
+              "monge",
               voiceRate,
               customApiKey,
               ttsModelTier

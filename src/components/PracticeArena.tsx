@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ExerciseMode,
   GeneratedExercise,
@@ -272,6 +272,38 @@ export function PracticeArena({
     onRecordAnswer("ler_epura", correct, correct ? 25 : 6);
   };
 
+  useEffect(() => {
+    if (result || (tab !== "draw_epura" && tab !== "read_epura")) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key !== "Enter" ||
+        event.defaultPrevented ||
+        event.repeat ||
+        event.isComposing ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        (event.target instanceof Element &&
+          event.target.closest("button, input, select, textarea, a, [contenteditable], [role=dialog]"))
+      ) {
+        return;
+      }
+
+      if (tab === "draw_epura") {
+        if (!placedPv || !placedPh) return;
+        checkDrawEpura();
+      } else {
+        checkReadEpura();
+      }
+      event.preventDefault();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
   const uerjSpec = useMemo(
     () => UERJ_EXERCISES.find((e) => e.id === activeUerj)!,
     [activeUerj]
@@ -371,7 +403,7 @@ export function PracticeArena({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-4 items-start">
-            {/* Left: Slide Checklist + Answers + Profa. Epura voice */}
+            {/* Left: Slide Checklist + Answers + Prof. Monge voice */}
             <div className="rounded-3xl border border-paper-300 dark:border-blueprint-700 bg-paper-50 dark:bg-blueprint-900 p-5 shadow-draft space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -398,16 +430,16 @@ export function PracticeArena({
                 </button>
               </div>
 
-              {/* Profa. Épura Audio Walkthrough */}
+              {/* Prof. Monge Audio Walkthrough */}
               <div className="flex items-center gap-3 p-3 rounded-2xl bg-paper-100 dark:bg-blueprint-950 border border-paper-300/80 dark:border-blueprint-800">
                 <ProfessorAvatar
-                  professor="epura"
+                  professor="monge"
                   size="sm"
                   speaking={voice.speakingId === `uerj-${uerjSpec.id}`}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold text-ink-900 dark:text-white">
-                    Profa. Épura · Correção Guiada
+                    Prof. Monge · Correção Guiada
                   </div>
                   <div className="text-[11px] text-ink-500 dark:text-slate-400">
                     Confira cada item da sua folha A4/A3
@@ -419,7 +451,7 @@ export function PracticeArena({
                     voice.speak(
                       `uerj-${uerjSpec.id}`,
                       uerjSpec.narration,
-                      "epura",
+                      "monge",
                       voiceRate,
                       customApiKey,
                       ttsModelTier
@@ -828,7 +860,7 @@ export function PracticeArena({
                       voice.speak(
                         `ex-${exercise.id}`,
                         exercise.explanation,
-                        "epura",
+                        "monge",
                         voiceRate,
                         customApiKey,
                         ttsModelTier
@@ -887,7 +919,7 @@ export function PracticeArena({
               </>
             ) : (
               <div className="rounded-3xl border border-dashed border-paper-300 dark:border-blueprint-700 bg-paper-100/70 dark:bg-blueprint-900/50 p-6 text-center space-y-4">
-                <ProfessorAvatar professor="epura" size="lg" className="mx-auto" />
+                <ProfessorAvatar professor="monge" size="lg" className="mx-auto" />
                 <div className="space-y-1.5">
                   <div className="text-sm font-extrabold text-ink-900 dark:text-white flex items-center justify-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-pv" />

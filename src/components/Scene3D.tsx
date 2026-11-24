@@ -346,8 +346,13 @@ export function Scene3D({
     };
 
     const onContextMenu = (e: MouseEvent) => e.preventDefault();
+    const onDblClick = (e: MouseEvent) => {
+      e.preventDefault();
+      applyCameraPreset("iso", true);
+    };
 
     const onPointerDown = (e: PointerEvent) => {
+      e.preventDefault();
       dom.setPointerCapture(e.pointerId);
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const wantsPan =
@@ -423,6 +428,7 @@ export function Scene3D({
     };
 
     dom.addEventListener("contextmenu", onContextMenu);
+    dom.addEventListener("dblclick", onDblClick);
     dom.addEventListener("pointerdown", onPointerDown);
     dom.addEventListener("pointermove", onPointerMove);
     dom.addEventListener("pointerup", onPointerUp);
@@ -470,6 +476,7 @@ export function Scene3D({
       cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
       dom.removeEventListener("contextmenu", onContextMenu);
+      dom.removeEventListener("dblclick", onDblClick);
       dom.removeEventListener("pointerdown", onPointerDown);
       dom.removeEventListener("pointermove", onPointerMove);
       dom.removeEventListener("pointerup", onPointerUp);
@@ -1162,7 +1169,12 @@ export function Scene3D({
           : "bg-paper-50 border-paper-300"
       } ${className}`}
     >
-      <div ref={mountRef} className="w-full h-full min-h-[280px] cursor-grab active:cursor-grabbing" />
+      <div
+        ref={mountRef}
+        className={`w-full h-full min-h-[280px] active:cursor-grabbing ${
+          interactionMode === "pan" ? "cursor-move" : "cursor-grab"
+        }`}
+      />
 
       {/* Top overlay bar: Status badge + Camera Viewpoint Pills (no overlap on narrow mobile) */}
       <div className="pointer-events-none absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5">

@@ -12,6 +12,7 @@ import { GDPoint, GDSegment } from "@/lib/gd-math";
 import { sfx } from "@/lib/sfx";
 import {
   Captions,
+  CheckCircle2,
   Compass,
   Maximize2,
   Minimize2,
@@ -26,6 +27,8 @@ import {
 } from "lucide-react";
 
 interface MotionVideoPlayerProps {
+  watchedEpisodes?: string[];
+  onEpisodeWatched?: (episodeId: string) => void;
   onOpenInLab: (payload: {
     points: GDPoint[];
     segments: GDSegment[];
@@ -45,6 +48,11 @@ function formatTime(sec: number): string {
 function easeOutCubic(t: number): number {
   const c = Math.max(0, Math.min(1, t));
   return 1 - Math.pow(1 - c, 3);
+}
+
+function smoothStep(edge0: number, edge1: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
 }
 
 /**
@@ -303,6 +311,40 @@ function MotionCanvas({
             strokeWidth="1"
           />
         </pattern>
+
+        {/* Documentary Cinema Masks so artwork blends seamlessly into the video frame */}
+        <linearGradient id="fadeRightGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.96" />
+          <stop offset="56%" stopColor="#FFFFFF" stopOpacity="0.92" />
+          <stop offset="84%" stopColor="#FFFFFF" stopOpacity="0.28" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+        </linearGradient>
+        <mask id="fadeRightMask" maskContentUnits="objectBoundingBox">
+          <rect x="0" y="0" width="1" height="1" fill="url(#fadeRightGrad)" />
+        </mask>
+
+        <radialGradient id="radialFeatherGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+          <stop offset="58%" stopColor="#FFFFFF" stopOpacity="0.95" />
+          <stop offset="80%" stopColor="#FFFFFF" stopOpacity="0.38" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
+        <mask id="radialFeatherMask" maskContentUnits="objectBoundingBox">
+          <rect x="0" y="0" width="1" height="1" fill="url(#radialFeatherGrad)" />
+        </mask>
+
+        <linearGradient id="cinemaVignette" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#070D19" stopOpacity="0.62" />
+          <stop offset="55%" stopColor="#09101E" stopOpacity="0.72" />
+          <stop offset="100%" stopColor="#070D19" stopOpacity="0.90" />
+        </linearGradient>
+
+        <clipPath id="cgMonitorClip">
+          <rect x="30" y="74" width="372" height="320" rx="26" />
+        </clipPath>
+        <clipPath id="gdTableClip">
+          <rect x="56" y="56" width="340" height="348" rx="26" />
+        </clipPath>
       </defs>
 
       <rect width="800" height="450" fill="url(#studioGlowV2)" />
@@ -321,116 +363,299 @@ function MotionCanvas({
         {/* =================== EPISODE 01: MONGE =================== */}
         {episode.id === "ep01-monge" && (
           <>
-            {sceneId === "intro" && (
-              <g opacity={e}>
-                <rect
-                  x="96"
-                  y="95"
-                  width="530"
-                  height="230"
-                  rx="24"
-                  fill="rgba(56,189,248,0.08)"
-                  stroke="#38BDF8"
-                  strokeWidth="1.8"
-                />
-                <text x="134" y="146" fontSize="15" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
-                  EPISÓDIO 01 · GEOMETRIA DESCRITIVA · UERJ
-                </text>
-                <text x="134" y="204" fontSize="39" fontWeight="800" fill="#F8FAFC" fontFamily="var(--font-display), serif">
-                  Do Espaço 3D para a
-                </text>
-                <text x="134" y="252" fontSize="39" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-display), serif">
-                  Folha Plana 2D
-                </text>
-                <line
-                  x1="134"
-                  y1="278"
-                  x2={134 + 380 * e}
-                  y2="278"
-                  stroke="#2DD4BF"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                />
-                <text x="134" y="306" fontSize="14" fill="#CBD5E1">
-                  Precisão exata para reconstruir qualquer ponto no espaço!
-                </text>
-              </g>
-            )}
+            {sceneId === "intro" && (() => {
+              const kbScale = 1.03 + localT * 0.08;
+              const kbX = -localT * 18;
+              return (
+                <g opacity={e}>
+                  {/* Integrated Full-Bleed Ken Burns Drafting Atelier B-Roll */}
+                  <g
+                    transform={`translate(${400 + kbX} 225) scale(${kbScale.toFixed(4)}) translate(-400 -225)`}
+                    opacity={0.34 * e}
+                  >
+                    <image
+                      href="/illustrations/uerj-atelier.png"
+                      x="0"
+                      y="-175"
+                      width="800"
+                      height="800"
+                      preserveAspectRatio="xMidYMid slice"
+                    />
+                  </g>
+                  <rect width="800" height="450" fill="url(#cinemaVignette)" />
 
-            {sceneId === "ambiguous-shadow" && (
-              <g opacity={e}>
-                {/* Room floor π only */}
-                <polygon
-                  points="110,300 480,350 620,270 250,225"
-                  fill="rgba(56,189,248,0.16)"
-                  stroke="#38BDF8"
-                  strokeWidth="2.2"
-                />
-                <text x="515" y="316" fontSize="15" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
-                  π (Plano Horizontal)
-                </text>
-                {/* Vertical rays from above */}
-                <line x1="360" y1="68" x2="360" y2="288" stroke="#FDE68A" strokeWidth="2.5" strokeDasharray="7 5" />
-                <polygon points="360,280 353,266 367,266" fill="#FDE68A" />
-                {/* Shared ambiguous shadow */}
-                <circle cx="360" cy="288" r="11" fill="#38BDF8" />
-                <text x="380" y="294" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                  Sombra A (idêntica!)
-                </text>
-                {/* Low fly (1m) vs High fly (3m) */}
-                <circle cx="360" cy={218 - Math.sin(localT * 6) * 8} r="11" fill="#F87171" />
-                <text x="382" y={222 - Math.sin(localT * 6) * 8} fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                  Mosca baixa (1m)
-                </text>
-                <circle cx="360" cy={112 + Math.sin(localT * 6) * 8} r="11" fill="#F59E0B" />
-                <text x="382" y={116 + Math.sin(localT * 6) * 8} fontSize="15" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
-                  Mosca alta (3m)
-                </text>
-                <rect x="108" y="68" width="218" height="46" rx="12" fill="rgba(239,68,68,0.22)" stroke="#F87171" />
-                <text x="217" y="96" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FECACA" fontFamily="var(--font-mono), monospace">
-                  1 PLANO PERDE A ALTURA!
-                </text>
-              </g>
-            )}
+                  {/* Editorial Kinetic Title Overlay */}
+                  <rect
+                    x="74"
+                    y="102"
+                    width="548"
+                    height="232"
+                    rx="24"
+                    fill="rgba(9,16,30,0.68)"
+                    stroke="rgba(56,189,248,0.45)"
+                    strokeWidth="1.6"
+                  />
+                  <line
+                    x1="108"
+                    y1="136"
+                    x2={108 + 54 * e}
+                    y2="136"
+                    stroke="#F59E0B"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                  />
+                  <text x="172" y="141" fontSize="13.5" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
+                    EPISÓDIO 01 · GEOMETRIA DESCRITIVA · UERJ
+                  </text>
+                  <text x="108" y="204" fontSize="40" fontWeight="800" fill="#F8FAFC" fontFamily="var(--font-display), serif">
+                    Do Espaço 3D para a
+                  </text>
+                  <text x="108" y="252" fontSize="40" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-display), serif">
+                    Folha Plana 2D
+                  </text>
+                  <line
+                    x1="108"
+                    y1="278"
+                    x2={108 + 410 * e}
+                    y2="278"
+                    stroke="#2DD4BF"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
+                  <text x="108" y="308" fontSize="14.5" fill="#E2E8F0">
+                    Precisão exata para reconstruir qualquer ponto no espaço!
+                  </text>
+                </g>
+              );
+            })()}
 
-            {sceneId === "two-planes" && (
-              <g opacity={e}>
-                {/* Vertical Wall π' sliding in */}
-                <polygon
-                  points={`230,${65 + (1 - e) * 35} 570,${110 + (1 - e) * 35} 570,270 230,225`}
-                  fill="rgba(248,113,113,0.16)"
-                  stroke="#F87171"
-                  strokeWidth="2.2"
-                />
-                <text x="246" y="102" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                  π&apos; (Plano Vertical)
-                </text>
-                {/* Horizontal Floor π */}
-                <polygon
-                  points="230,225 570,270 440,355 100,310"
-                  fill="rgba(56,189,248,0.16)"
-                  stroke="#38BDF8"
-                  strokeWidth="2.2"
-                />
-                <text x="415" y="344" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                  π (Plano Horizontal)
-                </text>
-                {/* 90° Right-angle badge */}
-                <rect x="498" y="216" width="54" height="32" rx="8" fill="#0F172A" stroke="#2DD4BF" strokeWidth="2" />
-                <text x="525" y="237" textAnchor="middle" fontSize="14" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
-                  90°
-                </text>
-                {/* Orthogonal projecting rays */}
-                <line x1="335" y1="168" x2="405" y2="132" stroke="#38BDF8" strokeWidth="3" strokeDasharray="6 4" />
-                <line x1="335" y1="168" x2="335" y2="288" stroke="#F87171" strokeWidth="3" strokeDasharray="6 4" />
-                <circle cx="335" cy="168" r="12" fill="#FDE68A" />
-                <text x="292" y="164" fontSize="18" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
-                <circle cx="405" cy="132" r="9" fill="#F87171" />
-                <text x="422" y="137" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (Vertical)</text>
-                <circle cx="335" cy="288" r="9" fill="#38BDF8" />
-                <text x="218" y="296" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (Horizontal)</text>
-              </g>
-            )}
+            {sceneId === "ambiguous-shadow" && (() => {
+              // Beat A (0..0.38): Seamless integrated Fly-in-Room 3D documentary plate + callouts
+              // Beat B (0.34..1.0): Smooth cross-dissolve into crisp 1m vs 3m height ambiguity proof
+              const cutProgress = smoothStep(0.32, 0.42, localT);
+              const beatAOp = e * (1 - cutProgress);
+              const beatBOp = e * cutProgress;
+              const imgZoom = 1.0 + localT * 0.09;
+              return (
+                <g>
+                  {/* Integrated Fly-in-Room Artwork (melts seamlessly into #09101E via radialFeatherMask!) */}
+                  <g
+                    opacity={e * (1 - cutProgress * 0.84)}
+                    transform={`translate(${435 - cutProgress * 185} 215) scale(${imgZoom.toFixed(4)}) translate(-435 -215)`}
+                  >
+                    <image
+                      href="/illustrations/fly-room-3d.png"
+                      x="220"
+                      y="2"
+                      width="430"
+                      height="430"
+                      mask="url(#radialFeatherMask)"
+                    />
+                  </g>
+
+                  {/* BEAT A: Editorial Callouts directly over the Fly-in-Room scene */}
+                  {beatAOp > 0.01 && (
+                    <g opacity={beatAOp}>
+                      <text x="58" y="138" fontSize="13" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
+                        EXPERIÊNCIA MENTAL
+                      </text>
+                      <text x="58" y="182" fontSize="34" fontWeight="800" fill="#F8FAFC" fontFamily="var(--font-display), serif">
+                        Imagine uma
+                      </text>
+                      <text x="58" y="222" fontSize="34" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-display), serif">
+                        Mosca na Sala
+                      </text>
+                      <line
+                        x1="58"
+                        y1="240"
+                        x2={58 + 185 * e}
+                        y2="240"
+                        stroke="#2DD4BF"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                      />
+                      <text x="58" y="268" fontSize="13.5" fill="#CBD5E1">
+                        Iluminada lá de cima, ela projeta
+                      </text>
+                      <text x="58" y="288" fontSize="13.5" fill="#CBD5E1">
+                        uma sombra vertical no chão (π).
+                      </text>
+
+                      {/* Animated callout arrow pointing straight to the glowing fly in the artwork */}
+                      <circle
+                        cx="435"
+                        cy="206"
+                        r={20 + Math.sin(localT * 10) * 3}
+                        fill="none"
+                        stroke="#FDE68A"
+                        strokeWidth="2.4"
+                        strokeDasharray="6 4"
+                      />
+                      <polyline
+                        points="458,194 522,148 634,148"
+                        fill="none"
+                        stroke="#FDE68A"
+                        strokeWidth="2.2"
+                      />
+                      <text x="526" y="140" fontSize="13.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                        Mosca (A) no 3D
+                      </text>
+
+                      {/* Callout pointing straight to the floor shadow */}
+                      <polyline
+                        points="435,288 518,288 628,288"
+                        fill="none"
+                        stroke="#38BDF8"
+                        strokeWidth="2.2"
+                        strokeDasharray="5 4"
+                      />
+                      <circle cx="435" cy="288" r="6" fill="#38BDF8" />
+                      <text x="522" y="280" fontSize="13" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                        Sombra no chão π
+                      </text>
+                    </g>
+                  )}
+
+                  {/* BEAT B: Analytical 1m vs 3m Height Ambiguity Proof */}
+                  {beatBOp > 0.01 && (
+                    <g opacity={beatBOp}>
+                      <polygon
+                        points="110,300 480,350 620,270 250,225"
+                        fill="rgba(56,189,248,0.16)"
+                        stroke="#38BDF8"
+                        strokeWidth="2.2"
+                      />
+                      <text x="515" y="316" fontSize="15" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
+                        π (Plano Horizontal)
+                      </text>
+                      <line x1="360" y1="68" x2="360" y2="288" stroke="#FDE68A" strokeWidth="2.5" strokeDasharray="7 5" />
+                      <polygon points="360,280 353,266 367,266" fill="#FDE68A" />
+                      <circle cx="360" cy="288" r="11" fill="#38BDF8" />
+                      <text x="380" y="294" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                        Sombra A (idêntica!)
+                      </text>
+                      <circle cx="360" cy={218 - Math.sin(localT * 10) * 8} r="11" fill="#F87171" />
+                      <text x="382" y={222 - Math.sin(localT * 10) * 8} fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                        Mosca baixa (1m)
+                      </text>
+                      <circle cx="360" cy={112 + Math.sin(localT * 10) * 8} r="11" fill="#F59E0B" />
+                      <text x="382" y={116 + Math.sin(localT * 10) * 8} fontSize="15" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                        Mosca alta (3m)
+                      </text>
+                      <rect x="98" y="68" width="228" height="46" rx="12" fill="rgba(239,68,68,0.24)" stroke="#F87171" strokeWidth="2" />
+                      <text x="212" y="96" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FECACA" fontFamily="var(--font-mono), monospace">
+                        1 PLANO PERDE A ALTURA!
+                      </text>
+                    </g>
+                  )}
+                </g>
+              );
+            })()}
+
+            {sceneId === "two-planes" && (() => {
+              // Beat A (0..0.34): Full-height Documentary Portrait Cut of Gaspard Monge!
+              // Beat B (0.30..1.0): Smooth cross-dissolve into the 90° Mongean 2-plane diagram!
+              const cutProgress = smoothStep(0.28, 0.38, localT);
+              const portraitOp = e * (1 - cutProgress * 0.88);
+              const bioOp = e * (1 - cutProgress);
+              const diagOp = e * cutProgress;
+              const kbScale = 1.0 + localT * 0.08;
+              return (
+                <g>
+                  {/* Full-height Seamless Feathered Portrait of Gaspard Monge */}
+                  <g
+                    opacity={portraitOp}
+                    transform={`translate(215 225) scale(${kbScale.toFixed(4)}) translate(-215 -225)`}
+                  >
+                    <image
+                      href="/illustrations/gaspard-monge.png"
+                      x="-20"
+                      y="-10"
+                      width="470"
+                      height="470"
+                      preserveAspectRatio="xMidYMid slice"
+                      mask="url(#fadeRightMask)"
+                    />
+                  </g>
+
+                  {/* BEAT A: Museum Documentary Editorial Bio Card integrated right next to Monge */}
+                  {bioOp > 0.01 && (
+                    <g opacity={bioOp}>
+                      <line
+                        x1="408"
+                        y1="118"
+                        x2={408 + 70 * e}
+                        y2="118"
+                        stroke="#F59E0B"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                      />
+                      <text x="408" y="148" fontSize="13.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                        FRANÇA · 1746 – 1818
+                      </text>
+                      <text x="408" y="202" fontSize="42" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
+                        Gaspard Monge
+                      </text>
+                      <text x="408" y="236" fontSize="17" fontWeight="700" fill="#38BDF8">
+                        Pai da Geometria Descritiva (1799)
+                      </text>
+                      <rect
+                        x="408"
+                        y="260"
+                        width="229"
+                        height="78"
+                        rx="16"
+                        fill="rgba(15,23,42,0.82)"
+                        stroke="rgba(253,230,138,0.4)"
+                        strokeWidth="1.5"
+                      />
+                      <text x="426" y="290" fontSize="13.5" fontWeight="700" fill="#F8FAFC" fontFamily="var(--font-mono), monospace">
+                        2 planos a 90° (π e π&apos;)
+                      </text>
+                      <text x="426" y="318" fontSize="13" fill="#CBD5E1">
+                        Chão + parede localizam o ponto.
+                      </text>
+                    </g>
+                  )}
+
+                  {/* BEAT B: 2-Plane 90° Orthogonal Projection Construction */}
+                  {diagOp > 0.01 && (
+                    <g opacity={diagOp}>
+                      <polygon
+                        points={`230,${65 + (1 - diagOp) * 26} 570,${110 + (1 - diagOp) * 26} 570,270 230,225`}
+                        fill="rgba(248,113,113,0.16)"
+                        stroke="#F87171"
+                        strokeWidth="2.2"
+                      />
+                      <text x="246" y="102" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                        π&apos; (Plano Vertical)
+                      </text>
+                      <polygon
+                        points="230,225 570,270 440,355 100,310"
+                        fill="rgba(56,189,248,0.16)"
+                        stroke="#38BDF8"
+                        strokeWidth="2.2"
+                      />
+                      <text x="415" y="344" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                        π (Plano Horizontal)
+                      </text>
+                      <rect x="498" y="216" width="54" height="32" rx="8" fill="#0F172A" stroke="#2DD4BF" strokeWidth="2" />
+                      <text x="525" y="237" textAnchor="middle" fontSize="14" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                        90°
+                      </text>
+                      <line x1="335" y1="168" x2="405" y2="132" stroke="#38BDF8" strokeWidth="3" strokeDasharray="6 4" />
+                      <line x1="335" y1="168" x2="335" y2="288" stroke="#F87171" strokeWidth="3" strokeDasharray="6 4" />
+                      <circle cx="335" cy="168" r="12" fill="#FDE68A" />
+                      <text x="292" y="164" fontSize="18" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
+                      <circle cx="405" cy="132" r="9" fill="#F87171" />
+                      <text x="422" y="137" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (Vertical)</text>
+                      <circle cx="335" cy="288" r="9" fill="#38BDF8" />
+                      <text x="218" y="296" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (Horizontal)</text>
+                    </g>
+                  )}
+                </g>
+              );
+            })()}
 
             {sceneId === "lt-and-notation" && (
               <g opacity={e}>
@@ -465,7 +690,17 @@ function MotionCanvas({
 
             {sceneId === "takeaway" && (
               <g opacity={e}>
-                <rect x="98" y="96" width="530" height="230" rx="24" fill="rgba(45,212,191,0.1)" stroke="#2DD4BF" strokeWidth="2.4" />
+                <g opacity={0.28 * e}>
+                  <image
+                    href="/illustrations/fly-room-3d.png"
+                    x="-40"
+                    y="40"
+                    width="340"
+                    height="340"
+                    mask="url(#radialFeatherMask)"
+                  />
+                </g>
+                <rect x="98" y="96" width="530" height="230" rx="24" fill="rgba(9,16,30,0.78)" stroke="#2DD4BF" strokeWidth="2.4" />
                 <text x="363" y="148" textAnchor="middle" fontSize="15" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
                   RESUMO DO EPISÓDIO 01 ✓
                 </text>
@@ -508,33 +743,50 @@ function MotionCanvas({
               </g>
             )}
 
-            {sceneId === "abscissa" && (
-              <g opacity={e}>
-                <text x="360" y="88" textAnchor="middle" fontSize="18" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
-                  1ª COORDENADA · ABSCISSA (X = +2)
-                </text>
-                {/* Ruler LT */}
-                <line x1="100" y1="215" x2="620" y2="215" stroke="#2DD4BF" strokeWidth="4" />
-                {[-3, -2, -1, 0, 1, 2, 3].map((v) => (
-                  <g key={v}>
-                    <line x1={360 + v * 68} y1="205" x2={360 + v * 68} y2="225" stroke="#2DD4BF" strokeWidth={v === 0 ? 3.5 : 2} />
-                    <text x={360 + v * 68} y="246" textAnchor="middle" fontSize="14" fontWeight="800" fill={v === 2 ? "#FDE68A" : "#94A3B8"} fontFamily="var(--font-mono), monospace">
-                      {v > 0 ? `+${v}` : v}
-                    </text>
-                  </g>
-                ))}
-                {/* Animated arrow from 0 to +2 */}
-                <line x1="360" y1="215" x2={360 + 136 * e} y2="215" stroke="#F59E0B" strokeWidth="8" strokeLinecap="round" />
-                {/* Vertical Linha de Chamada */}
-                <line x1="496" y1={215 - 110 * e} x2="496" y2={215 + 115 * e} stroke="#FDE68A" strokeWidth="2.5" strokeDasharray="6 5" />
-                <text x="510" y="130" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
-                  Linha de Chamada (0.5 HB)
-                </text>
-                <text x="360" y="346" textAnchor="middle" fontSize="14" fill="#CBD5E1">
-                  Positivo (+) anda para a DIREITA · Negativo (−) anda para a ESQUERDA
-                </text>
-              </g>
-            )}
+            {sceneId === "abscissa" && (() => {
+              // Subtle B-roll reveal of UERJ drafting desk right as he mentions "lapiseira 0.5"
+              const deskReveal = smoothStep(0.54, 0.72, localT);
+              return (
+                <g opacity={e}>
+                  {deskReveal > 0.01 && (
+                    <g opacity={0.24 * deskReveal}>
+                      <image
+                        href="/illustrations/uerj-atelier.png"
+                        x="0"
+                        y="-175"
+                        width="800"
+                        height="800"
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                      <rect width="800" height="450" fill="url(#cinemaVignette)" />
+                    </g>
+                  )}
+                  <text x="360" y="88" textAnchor="middle" fontSize="18" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                    1ª COORDENADA · ABSCISSA (X = +2)
+                  </text>
+                  {/* Ruler LT */}
+                  <line x1="100" y1="215" x2="620" y2="215" stroke="#2DD4BF" strokeWidth="4" />
+                  {[-3, -2, -1, 0, 1, 2, 3].map((v) => (
+                    <g key={v}>
+                      <line x1={360 + v * 68} y1="205" x2={360 + v * 68} y2="225" stroke="#2DD4BF" strokeWidth={v === 0 ? 3.5 : 2} />
+                      <text x={360 + v * 68} y="246" textAnchor="middle" fontSize="14" fontWeight="800" fill={v === 2 ? "#FDE68A" : "#94A3B8"} fontFamily="var(--font-mono), monospace">
+                        {v > 0 ? `+${v}` : v}
+                      </text>
+                    </g>
+                  ))}
+                  {/* Animated arrow from 0 to +2 */}
+                  <line x1="360" y1="215" x2={360 + 136 * e} y2="215" stroke="#F59E0B" strokeWidth="8" strokeLinecap="round" />
+                  {/* Vertical Linha de Chamada */}
+                  <line x1="496" y1={215 - 110 * e} x2="496" y2={215 + 115 * e} stroke="#FDE68A" strokeWidth="2.5" strokeDasharray="6 5" />
+                  <text x="510" y="130" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                    Linha de Chamada (0.5 HB)
+                  </text>
+                  <text x="360" y="346" textAnchor="middle" fontSize="14" fill="#CBD5E1">
+                    Positivo (+) anda para a DIREITA · Negativo (−) anda para a ESQUERDA
+                  </text>
+                </g>
+              );
+            })()}
 
             {sceneId === "afastamento" && (
               <g opacity={e}>
@@ -679,6 +931,42 @@ function MotionCanvas({
 
           return (
             <g opacity={e}>
+              {/* Integrated Ken Burns Drafting Sheet + Feathered Gaspard Monge cameo during intro */}
+              {sceneId === "intro" && (() => {
+                const mongeReveal = smoothStep(0.42, 0.58, localT);
+                const kbScale = 1.02 + localT * 0.07;
+                return (
+                  <g>
+                    <g
+                      opacity={0.22 * e}
+                      transform={`translate(400 225) scale(${kbScale.toFixed(4)}) translate(-400 -225)`}
+                    >
+                      <image
+                        href="/illustrations/uerj-atelier.png"
+                        x="0"
+                        y="-175"
+                        width="800"
+                        height="800"
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                    </g>
+                    <rect width="800" height="450" fill="url(#cinemaVignette)" />
+                    {mongeReveal > 0.01 && (
+                      <g opacity={0.52 * mongeReveal}>
+                        <image
+                          href="/illustrations/gaspard-monge.png"
+                          x="-55"
+                          y="15"
+                          width="310"
+                          height="440"
+                          preserveAspectRatio="xMidYMid slice"
+                          mask="url(#fadeRightMask)"
+                        />
+                      </g>
+                    )}
+                  </g>
+                );
+              })()}
               <text x="340" y="62" textAnchor="middle" fontSize="17" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
                 {sceneId === "intro"
                   ? "NO ESPAÇO: π E π' FORMAM 90°"
@@ -821,23 +1109,40 @@ function MotionCanvas({
         {/* =================== EPISODE 06: UERJ EX. 1 & EX. 2 =================== */}
         {episode.id === "ep06-uerj" && (
           <g opacity={e}>
-            {sceneId === "intro" && (
-              <>
-                <rect x="96" y="96" width="530" height="230" rx="24" fill="rgba(251,113,133,0.1)" stroke="#FB7185" strokeWidth="2" />
-                <text x="361" y="148" textAnchor="middle" fontSize="15" fontWeight="800" fill="#FB7185" fontFamily="var(--font-mono), monospace">
-                  SLIDE DA AULA 1 · UERJ
-                </text>
-                <text x="361" y="200" textAnchor="middle" fontSize="34" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
-                  Resolução dos Exercícios 1 e 2
-                </text>
-                <text x="361" y="252" textAnchor="middle" fontSize="14" fontWeight="700" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
-                  Ex. 1: (A)(+2; +5; +3) e (B)(−2; −5; −3)
-                </text>
-                <text x="361" y="282" textAnchor="middle" fontSize="14" fontWeight="700" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                  Ex. 2: (A)(+1;+2;+3) · (B)(+2;+3;+4) · (C)(+3;+4;+5)
-                </text>
-              </>
-            )}
+            {sceneId === "intro" && (() => {
+              const kbScale = 1.03 + localT * 0.07;
+              return (
+                <>
+                  <g
+                    opacity={0.32 * e}
+                    transform={`translate(400 225) scale(${kbScale.toFixed(4)}) translate(-400 -225)`}
+                  >
+                    <image
+                      href="/illustrations/uerj-atelier.png"
+                      x="0"
+                      y="-175"
+                      width="800"
+                      height="800"
+                      preserveAspectRatio="xMidYMid slice"
+                    />
+                  </g>
+                  <rect width="800" height="450" fill="url(#cinemaVignette)" />
+                  <rect x="84" y="96" width="546" height="234" rx="24" fill="rgba(9,16,30,0.72)" stroke="#FB7185" strokeWidth="2" />
+                  <text x="357" y="146" textAnchor="middle" fontSize="15" fontWeight="800" fill="#FB7185" fontFamily="var(--font-mono), monospace">
+                    SLIDE DA AULA 1 · UERJ
+                  </text>
+                  <text x="357" y="200" textAnchor="middle" fontSize="34" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
+                    Resolução dos Exercícios 1 e 2
+                  </text>
+                  <text x="357" y="252" textAnchor="middle" fontSize="14.5" fontWeight="700" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                    Ex. 1: (A)(+2; +5; +3) e (B)(−2; −5; −3)
+                  </text>
+                  <text x="357" y="284" textAnchor="middle" fontSize="14.5" fontWeight="700" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                    Ex. 2: (A)(+1;+2;+3) · (B)(+2;+3;+4) · (C)(+3;+4;+5)
+                  </text>
+                </>
+              );
+            })()}
 
             {(sceneId === "ex1-points" || sceneId === "ex1-line") && (
               <>
@@ -914,7 +1219,18 @@ function MotionCanvas({
           <g opacity={e}>
             {sceneId === "intro" && (
               <>
-                <rect x="92" y="88" width="230" height="252" rx="20" fill="rgba(248,113,113,0.14)" stroke="#F87171" strokeWidth="2.2" />
+                <g opacity={0.22 * e}>
+                  <image
+                    href="/illustrations/cg-vs-cad.png"
+                    x="0"
+                    y="-175"
+                    width="800"
+                    height="800"
+                    preserveAspectRatio="xMidYMid slice"
+                  />
+                </g>
+                <rect width="800" height="450" fill="url(#cinemaVignette)" />
+                <rect x="92" y="88" width="230" height="252" rx="20" fill="rgba(15,23,42,0.82)" stroke="#F87171" strokeWidth="2.2" />
                 <text x="207" y="124" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">GAMES &amp; WEBGL (Y-UP)</text>
                 <text x="207" y="148" textAnchor="middle" fontSize="12" fill="#CBD5E1">Unity · Three.js · OpenGL</text>
                 <text x="207" y="232" textAnchor="middle" fontSize="34" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">Y = Altura ↑</text>
@@ -922,48 +1238,109 @@ function MotionCanvas({
                 <circle cx="358" cy="214" r="30" fill="#F59E0B" />
                 <text x="358" y="220" textAnchor="middle" fontSize="16" fontWeight="800" fill="#1C1917" fontFamily="var(--font-mono), monospace">Y ⇄ Z</text>
 
-                <rect x="394" y="88" width="230" height="252" rx="20" fill="rgba(56,189,248,0.15)" stroke="#38BDF8" strokeWidth="2.2" />
+                <rect x="394" y="88" width="230" height="252" rx="20" fill="rgba(15,23,42,0.82)" stroke="#38BDF8" strokeWidth="2.2" />
                 <text x="509" y="124" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">UERJ / GD / CAD (Z-UP)</text>
                 <text x="509" y="148" textAnchor="middle" fontSize="12" fill="#CBD5E1">Monge · Blender · Engenharia</text>
                 <text x="509" y="232" textAnchor="middle" fontSize="34" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">Z = Cota ↑</text>
               </>
             )}
 
-            {sceneId === "cg-origin" && (
-              <>
-                <text x="360" y="74" textAnchor="middle" fontSize="17" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                  POR QUE JOGOS &amp; WEBGL SÃO Y-UP? (A TELA DO MONITOR!)
-                </text>
-                {/* Monitor Frame */}
-                <rect x="190" y="106" width="340" height="200" rx="16" fill="rgba(15,23,42,0.9)" stroke="#94A3B8" strokeWidth="3" />
-                <line x1="250" y1="268" x2="470" y2="268" stroke="#2DD4BF" strokeWidth="4" />
-                <text x="480" y="274" fontSize="15" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">+X</text>
-                <line x1="250" y1="268" x2="250" y2="145" stroke="#F87171" strokeWidth="4.5" />
-                <text x="250" y="132" textAnchor="middle" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">+Y (Altura da Tela!)</text>
-                {/* Z popping out */}
-                <line x1="250" y1="268" x2={250 - 70 * e} y2={268 + 65 * e} stroke="#38BDF8" strokeWidth="4.5" />
-                <text x={250 - 70 * e - 10} y={268 + 65 * e + 20} fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                  +Z (Profundidade!)
-                </text>
-              </>
-            )}
+            {sceneId === "cg-origin" && (() => {
+              const kbScale = 1.0 + localT * 0.08;
+              return (
+                <>
+                  {/* Integrated Documentary Zoom on the 3D Monitor half of cg-vs-cad.png! */}
+                  <g clipPath="url(#cgMonitorClip)">
+                    <g
+                      transform={`translate(222 245) scale(${kbScale.toFixed(4)}) translate(-222 -245)`}
+                      opacity={0.94 * e}
+                    >
+                      <image
+                        href="/illustrations/cg-vs-cad.png"
+                        x="25"
+                        y="-150"
+                        width="760"
+                        height="760"
+                      />
+                    </g>
+                    {/* Live animated RGB axes projected straight onto the monitor */}
+                    <line x1="128" y1="308" x2={128 + 160 * e} y2="308" stroke="#2DD4BF" strokeWidth="4" strokeLinecap="round" />
+                    <text x="296" y="314" fontSize="14" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">+X</text>
+                    <line x1="128" y1="308" x2="128" y2={308 - 118 * e} stroke="#F87171" strokeWidth="4.5" strokeLinecap="round" />
+                    <text x="128" y="176" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">+Y Altura</text>
+                    <line x1="128" y1="308" x2={128 - 46 * e} y2={308 + 44 * e} stroke="#38BDF8" strokeWidth="4.5" strokeLinecap="round" />
+                    <text x="64" y="370" fontSize="13" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">+Z Prof.</text>
+                  </g>
 
-            {sceneId === "gd-origin" && (
-              <>
-                <text x="360" y="74" textAnchor="middle" fontSize="17" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                  POR QUE GD, ARQUITETURA &amp; BLENDER SÃO Z-UP? (A PLANTA BAIXA!)
-                </text>
-                {/* Drafting Table XY Floorplan */}
-                <polygon points="150,275 430,335 585,255 305,198" fill="rgba(56,189,248,0.18)" stroke="#38BDF8" strokeWidth="2.5" />
-                <text x="455" y="292" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">Chão = Plano XY</text>
-                {/* Rising Z wall extrusion */}
-                <line x1="340" y1="266" x2="340" y2={266 - 145 * e} stroke="#F87171" strokeWidth="6" strokeLinecap="round" />
-                <polygon points={`340,${260 - 145 * e} 330,${276 - 145 * e} 350,${276 - 145 * e}`} fill="#F87171" />
-                <text x="362" y={272 - 145 * e} fontSize="18" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                  +Z COTA (Paredes sobem!)
-                </text>
-              </>
-            )}
+                  {/* Right Integrated Motion Typography */}
+                  <line x1="428" y1="106" x2={428 + 64 * e} y2="106" stroke="#F87171" strokeWidth="4" strokeLinecap="round" />
+                  <text x="428" y="134" fontSize="13" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                    MUNDO MONITOR · GAMES &amp; WEBGL
+                  </text>
+                  <text x="428" y="182" fontSize="34" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
+                    Padrão Y-Up
+                  </text>
+                  <text x="428" y="218" fontSize="14" fill="#E2E8F0">
+                    Monitores 2D já usavam X e Y na tela.
+                  </text>
+                  <text x="428" y="242" fontSize="14" fill="#E2E8F0">
+                    No 3D, empurraram Z p/ profundidade!
+                  </text>
+                  <rect x="428" y="264" width="218" height="40" rx="12" fill="rgba(248,113,113,0.16)" stroke="#F87171" strokeWidth="1.5" />
+                  <text x="537" y="289" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FECACA" fontFamily="var(--font-mono), monospace">
+                    Unity · Three.js · OpenGL
+                  </text>
+                </>
+              );
+            })()}
+
+            {sceneId === "gd-origin" && (() => {
+              const kbScale = 1.0 + localT * 0.08;
+              return (
+                <>
+                  {/* Integrated Documentary Zoom on the Z-Up Drafting Table & Rising Building half! */}
+                  <g clipPath="url(#gdTableClip)">
+                    <g
+                      transform={`translate(215 235) scale(${kbScale.toFixed(4)}) translate(-215 -235)`}
+                      opacity={0.96 * e}
+                    >
+                      <image
+                        href="/illustrations/cg-vs-cad.png"
+                        x="-260"
+                        y="-80"
+                        width="640"
+                        height="640"
+                      />
+                    </g>
+                    {/* Live animated +Z Altitude Vector rising next to the building */}
+                    <line x1="112" y1="305" x2="112" y2={305 - 175 * e} stroke="#F87171" strokeWidth="5.5" strokeLinecap="round" />
+                    <polygon points={`112,${295 - 175 * e} 102,${312 - 175 * e} 122,${312 - 175 * e}`} fill="#F87171" />
+                    <text x="128" y={310 - 175 * e} fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                      +Z COTA ↑
+                    </text>
+                  </g>
+
+                  {/* Right Integrated Motion Typography */}
+                  <line x1="428" y1="106" x2={428 + 64 * e} y2="106" stroke="#38BDF8" strokeWidth="4" strokeLinecap="round" />
+                  <text x="428" y="134" fontSize="13" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                    MUNDO PRANCHETA · UERJ &amp; CAD
+                  </text>
+                  <text x="428" y="182" fontSize="34" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
+                    Padrão Z-Up
+                  </text>
+                  <text x="428" y="218" fontSize="14" fill="#E2E8F0">
+                    A planta baixa no chão usa X e Y (π).
+                  </text>
+                  <text x="428" y="242" fontSize="14" fill="#E2E8F0">
+                    Ao subir paredes, a altura vira Z!
+                  </text>
+                  <rect x="428" y="264" width="222" height="40" rx="12" fill="rgba(56,189,248,0.16)" stroke="#38BDF8" strokeWidth="1.5" />
+                  <text x="539" y="289" textAnchor="middle" fontSize="13" fontWeight="800" fill="#BAE6FD" fontFamily="var(--font-mono), monospace">
+                    Monge · Blender · AutoCAD
+                  </text>
+                </>
+              );
+            })()}
 
             {sceneId === "translator" && (
               <>
@@ -992,12 +1369,16 @@ function MotionCanvas({
   );
 }
 
-export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
+export function MotionVideoPlayer({
+  watchedEpisodes = [],
+  onEpisodeWatched,
+  onOpenInLab,
+}: MotionVideoPlayerProps) {
   const [epIndex, setEpIndex] = useState(0);
   const [timings, setTimings] = useState<EpisodeTimingsMap>({});
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(95);
+  const [duration, setDuration] = useState<number | null>(null);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [volume, setVolume] = useState(0.95);
   const [isMuted, setIsMuted] = useState(false);
@@ -1034,10 +1415,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
   const baseEp = VIDEO_EPISODES[epIndex];
   const timingEntry = timings[baseEp.id];
   const scenes: VideoSceneCue[] = timingEntry?.scenes ?? baseEp.scenes;
-  const effectiveDuration =
-    Number.isFinite(duration) && duration > 0
-      ? duration
-      : timingEntry?.duration ?? 95;
+  const effectiveDuration = duration ?? timingEntry?.duration ?? 95;
   const progress =
     effectiveDuration > 0 ? Math.min(1, currentTime / effectiveDuration) : 0;
 
@@ -1192,6 +1570,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
     setUpNextVisible(false);
     setUpNextProgress(0);
     setEpIndex(clamped);
+    setDuration(null);
     setCurrentTime(0);
     setIsPlaying(false);
     setTimeout(async () => {
@@ -1199,6 +1578,8 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
       if (!audio) return;
       audio.load();
       audio.playbackRate = playbackRate;
+      audio.volume = isMuted ? 0 : volume;
+      audio.muted = isMuted;
       if (autoStart) {
         ensureAudioAnalyser();
         if (audioCtxRef.current?.state === "suspended") {
@@ -1216,7 +1597,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
 
   // Netflix-style 6-second auto-advance animation loop when episode ends
   useEffect(() => {
-    if (!upNextVisible) {
+    if (!upNextVisible || epIndex === VIDEO_EPISODES.length - 1) {
       setUpNextProgress(0);
       return;
     }
@@ -1227,11 +1608,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
       const p = Math.min(1, (now - start) / DURATION_MS);
       setUpNextProgress(p);
       if (p >= 1) {
-        if (epIndex < VIDEO_EPISODES.length - 1) {
-          void selectEpisode(epIndex + 1, true);
-        } else {
-          setUpNextVisible(false);
-        }
+        void selectEpisode(epIndex + 1, true);
         return;
       }
       raf = requestAnimationFrame(tick);
@@ -1250,77 +1627,63 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
     setCurrentTime(audio.currentTime);
   };
 
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === stageRef.current);
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+  }, []);
+
   const toggleFullscreen = async () => {
     const el = stageRef.current;
     if (!el) return;
-    if (!document.fullscreenElement) {
-      await el.requestFullscreen?.().catch(() => {});
-      setIsFullscreen(true);
-    } else {
+    if (document.fullscreenElement === el) {
       await document.exitFullscreen?.().catch(() => {});
-      setIsFullscreen(false);
+    } else {
+      await el.requestFullscreen?.().catch(() => {});
     }
   };
 
-  // Contextual editorial picture-in-scene card matching what the professor is citing right now!
-  const sceneVisualCard = (() => {
-    if (baseEp.id === "ep01-monge") {
-      if (sceneIndex === 0) {
-        return {
-          src: "/illustrations/gaspard-monge.png",
-          title: "Gaspard Monge (1746–1818)",
-          sub: "Pai da Geometria Descritiva",
-        };
+  // Pro Video Keyboard Shortcuts: Space (play/pause), ←/→ (±5s), M (mute), F (fullscreen)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target instanceof Element ? e.target : null;
+      if (
+        e.defaultPrevented ||
+        e.isComposing ||
+        e.altKey ||
+        e.ctrlKey ||
+        e.metaKey ||
+        target?.closest("input, textarea, select, [contenteditable], [role=dialog]")
+      ) {
+        return;
       }
-      if (sceneIndex === 1) {
-        return {
-          src: "/illustrations/fly-room-3d.png",
-          title: "A Mosca na Sala",
-          sub: "Projeção ortogonal em π e π'",
-        };
+      if (e.code === "Space") {
+        if (target?.closest("button, a")) return;
+        e.preventDefault();
+        if (!e.repeat) void togglePlay();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        seekToSeconds((audioRef.current?.currentTime ?? 0) - 5);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        seekToSeconds((audioRef.current?.currentTime ?? 0) + 5);
+      } else if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        setIsMuted((m) => !m);
+      } else if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        if (!e.repeat) void toggleFullscreen();
       }
-      if (sceneIndex === 2) {
-        return {
-          src: "/illustrations/gaspard-monge.png",
-          title: "Método Mongeano",
-          sub: "2 planos a 90°",
-        };
-      }
-    }
-    if (baseEp.id === "ep02-coordenadas" && sceneIndex === 1) {
-      return {
-        src: "/illustrations/uerj-atelier.png",
-        title: "Traçado Técnico",
-        sub: "Lapiseira 0.5 HB na LT",
-      };
-    }
-    if (baseEp.id === "ep04-rebatimento" && sceneIndex === 0) {
-      return {
-        src: "/illustrations/uerj-atelier.png",
-        title: "Folha A4 / A3 UERJ",
-        sub: "Do 3D para o plano",
-      };
-    }
-    if (baseEp.id === "ep06-uerj" && sceneIndex === 0) {
-      return {
-        src: "/illustrations/uerj-atelier.png",
-        title: "Prancheta · Aula 1",
-        sub: "Príncipe Júnior & UERJ",
-      };
-    }
-    if (baseEp.id === "ep07-yup-zup" && (sceneIndex === 1 || sceneIndex === 2)) {
-      return {
-        src: "/illustrations/cg-vs-cad.png",
-        title: "Monitor vs Prancheta",
-        sub: "Y-Up (Games) ⇄ Z-Up (CAD)",
-      };
-    }
-    return null;
-  })();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveDuration, epIndex]);
 
   const nextEpisode =
     epIndex < VIDEO_EPISODES.length - 1 ? VIDEO_EPISODES[epIndex + 1] : null;
   const nextEpDur = nextEpisode ? timings[nextEpisode.id]?.duration : undefined;
+  const finishedSeason = VIDEO_EPISODES.every((episode) => watchedEpisodes.includes(episode.id));
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start animate-fade-up">
@@ -1337,6 +1700,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
             onEnded={() => {
               setIsPlaying(false);
               setUpNextVisible(true);
+              onEpisodeWatched?.(baseEp.id);
               sfx.success();
             }}
             onPause={() => setIsPlaying(false)}
@@ -1349,7 +1713,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
           {/* 16:9 Motion Stage */}
           <div
             onClick={() => void togglePlay()}
-            className="relative aspect-video w-full cursor-pointer overflow-hidden"
+            className="relative aspect-video w-full cursor-pointer overflow-hidden select-none"
           >
             <MotionCanvas
               episode={baseEp}
@@ -1370,29 +1734,6 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                 </span>
               </div>
             </div>
-
-            {/* CONTEXTUAL AUTHOR / ILLUSTRATION PICTURE-CARD (Top-Right inside Stage) */}
-            {sceneVisualCard && !upNextVisible && (
-              <div
-                key={`${baseEp.id}-${sceneIndex}`}
-                className="pointer-events-none hidden sm:flex flex-col w-28 md:w-32 rounded-2xl overflow-hidden border border-white/25 bg-slate-950/85 shadow-2xl backdrop-blur-md absolute top-3 right-3 z-10 animate-fade-up"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={sceneVisualCard.src}
-                  alt={sceneVisualCard.title}
-                  className="w-full h-20 md:h-24 object-cover"
-                />
-                <div className="px-2 py-1.5 text-left">
-                  <div className="text-[10px] font-extrabold text-amber-300 leading-tight truncate">
-                    {sceneVisualCard.title}
-                  </div>
-                  <div className="text-[9px] text-slate-300 leading-tight truncate">
-                    {sceneVisualCard.sub}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* DESKTOP PiP Lip-Sync Mascot (100% STEADY FRAME, SMOOTH LIP-SYNC!) */}
             <div
@@ -1480,13 +1821,15 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                 ) : (
                   <div className="w-full max-w-md rounded-2xl border border-emerald-400/35 bg-slate-900/95 p-5 shadow-2xl space-y-3 text-center text-white">
                     <div className="text-xs font-mono font-extrabold text-emerald-300 uppercase">
-                      ✦ Temporada 1 Concluída!
+                      {finishedSeason ? "Temporada 1 concluída" : "Último episódio da temporada"}
                     </div>
                     <h4 className="font-display text-xl font-bold">
-                      Você completou todas as {VIDEO_EPISODES.length} aulas!
+                      {finishedSeason
+                        ? `Você completou todas as ${VIDEO_EPISODES.length} aulas!`
+                        : "Agora é hora de praticar"}
                     </h4>
                     <p className="text-xs text-slate-300">
-                      Agora leve esse conhecimento para a prancheta 3D interativa ou resolva os desafios da UERJ.
+                      Explore a cena no Lab 3D ou reveja o primeiro episódio.
                     </p>
                     <div className="flex items-center justify-center gap-2 pt-1">
                       <button
@@ -1699,7 +2042,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                   type="button"
                   onClick={() => void toggleFullscreen()}
                   className="p-1.5 rounded-lg hover:bg-white/10 text-slate-300"
-                  aria-label="Tela cheia"
+                  aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
                 >
                   {isFullscreen ? (
                     <Minimize2 className="w-4 h-4" />
@@ -1741,14 +2084,15 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
           <div className="text-xs font-extrabold uppercase tracking-wider text-ink-500 dark:text-slate-400">
             Temporada 1 · {VIDEO_EPISODES.length} Aulas
           </div>
-          <span className="font-mono text-[10px] font-bold text-lt">
-            Motion HD
+          <span className="font-mono text-[10px] font-bold text-lt dark:text-teal-300">
+            {watchedEpisodes.length}/{VIDEO_EPISODES.length} vistos
           </span>
         </div>
 
         <div className="space-y-1.5">
           {VIDEO_EPISODES.map((ep, idx) => {
             const active = idx === epIndex;
+            const watched = watchedEpisodes.includes(ep.id);
             const epDur = timings[ep.id]?.duration;
             return (
               <button
@@ -1765,10 +2109,18 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                   className={`mt-0.5 w-7 h-7 rounded-xl flex items-center justify-center shrink-0 font-mono text-[10px] font-extrabold ${
                     active
                       ? "bg-paper-50/20 text-white dark:bg-blueprint-950/20 dark:text-blueprint-950"
-                      : "bg-paper-200 dark:bg-blueprint-800 text-ink-700 dark:text-slate-300"
+                      : watched
+                        ? "bg-lt/15 text-lt dark:bg-teal-950 dark:text-teal-300"
+                        : "bg-paper-200 dark:bg-blueprint-800 text-ink-700 dark:text-slate-300"
                   }`}
                 >
-                  {active && isPlaying ? "▶" : idx + 1}
+                  {active && isPlaying ? (
+                    "▶"
+                  ) : watched ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : (
+                    idx + 1
+                  )}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-1">
@@ -1792,6 +2144,9 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
               </button>
             );
           })}
+        </div>
+        <div className="hidden sm:block pt-1 px-1 text-[10px] font-mono text-ink-500 dark:text-slate-400">
+          Atalhos: Espaço (play) · ←/→ (±5s) · M (mudo) · F (tela cheia)
         </div>
       </aside>
     </section>

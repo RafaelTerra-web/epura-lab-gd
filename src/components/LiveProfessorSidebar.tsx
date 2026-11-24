@@ -110,7 +110,7 @@ export function LiveProfessorSidebar({
       });
       const data = (await res.json()) as TutorApiResponse;
       const msgId = `live-${Date.now()}`;
-      const prof = data.professor === "epura" ? "epura" : "monge";
+      const prof = "monge" as const;
 
       const tutorEntry: ChatEntry = {
         id: msgId,

@@ -25,6 +25,8 @@ import { GDPoint, GDSegment } from "@/lib/gd-math";
 interface LessonsViewProps {
   dark: boolean;
   completedLessons: string[];
+  watchedEpisodes: string[];
+  onEpisodeWatched: (episodeId: string) => void;
   onToggleComplete: (id: string) => void;
   onOpenInLab: (payload: {
     points: GDPoint[];
@@ -87,6 +89,8 @@ const DIEDRO_MATRIX = [
 export function LessonsView({
   dark,
   completedLessons,
+  watchedEpisodes,
+  onEpisodeWatched,
   onToggleComplete,
   onOpenInLab,
   voice,
@@ -177,7 +181,13 @@ export function LessonsView({
       </div>
 
       {/* SUB-TAB 0: CINEMATIC MOTION-DESIGN VIDEO THEATER WITH REAL-TIME LIP-SYNC MASCOT */}
-      {subTab === "video" && <MotionVideoPlayer onOpenInLab={onOpenInLab} />}
+      {subTab === "video" && (
+        <MotionVideoPlayer
+          watchedEpisodes={watchedEpisodes}
+          onEpisodeWatched={onEpisodeWatched}
+          onOpenInLab={onOpenInLab}
+        />
+      )}
 
       {/* SUB-TAB 1: ANIMATED CONCEPT EXPLORER ("O QUE É O QUÊ?") */}
       {subTab === "anatomy" && (
@@ -201,7 +211,7 @@ export function LessonsView({
           {/* Quick bridge card straight to Y-Up vs Z-Up */}
           <div className="rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-50 dark:bg-blueprint-900 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <ProfessorAvatar professor="epura" size="md" mood="excited" />
+              <ProfessorAvatar professor="monge" size="md" mood="excited" />
               <div>
                 <div className="text-xs font-extrabold text-ink-900 dark:text-white">
                   Vem do 3D da Computação (Unity, Three.js, Games)?
@@ -302,10 +312,7 @@ export function LessonsView({
                           : "text-ink-500 dark:text-slate-400"
                       }`}
                     >
-                      {chap.duration} ·{" "}
-                      {chap.professor === "monge"
-                        ? "Prof. Monge"
-                        : "Profa. Épura"}
+                      {chap.duration} · Prof. Monge
                     </div>
                   </button>
                 );
@@ -351,16 +358,14 @@ export function LessonsView({
               <div className="flex flex-col sm:flex-row sm:items-center gap-3.5 p-3.5 rounded-2xl bg-paper-100 dark:bg-blueprint-950 border border-paper-300/80 dark:border-blueprint-800">
                 <div className="flex items-center gap-3 flex-1">
                   <ProfessorAvatar
-                    professor={active.professor}
+                    professor="monge"
                     size="md"
                     mood={isSpeaking ? "explaining" : "friendly"}
                     speaking={isSpeaking}
                   />
                   <div>
                     <div className="text-xs font-extrabold text-ink-900 dark:text-white">
-                      {active.professor === "monge"
-                        ? "Prof. Monge explica em voz alta"
-                        : "Profa. Épura explica em voz alta"}
+                      Prof. Monge explica em voz alta
                     </div>
                     <div className="text-[11px] text-ink-500 dark:text-slate-400 font-mono">
                       Motor: {ttsModelTier} (com fallback pt-BR)
@@ -373,7 +378,7 @@ export function LessonsView({
                     voice.speak(
                       speakId,
                       active.voiceScript,
-                      active.professor,
+                      "monge",
                       voiceRate,
                       customApiKey,
                       ttsModelTier

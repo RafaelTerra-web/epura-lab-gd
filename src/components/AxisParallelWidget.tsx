@@ -29,9 +29,7 @@ export function AxisParallelWidget({
   const speakId = "parallel-yup-zup";
   const isSpeaking = voice.speakingId === speakId;
 
-  const dialogueScript = `Prof. Monge: Essa sua sacada é brilhante! Na computação gráfica, como Unity, Three.js e OpenGL, a altura costuma ser o eixo Y. Mas na Academia, na Geometria Descritiva da UERJ, na Arquitetura e até no Blender, a altura é o eixo Z, chamada de Cota!
-Profa. Épura: Isso acontece porque no papel da engenharia a gente começa pela planta baixa no chão, com X e Y planos, e depois sobe as paredes na vertical no eixo Z! Já nas telas de computador, X e Y já eram a largura e a altura da tela, então empurraram o Z para a profundidade!
-Prof. Monge: E no fundo, traduzir de um mundo para o outro é moleza: o X continua igual, e você só troca Y com Z! Por isso o ponto A mais dois, mais cinco, mais três da sua aula vira Vector3 dois, três, cinco em Three.js!`;
+  const narrationScript = `Essa sua sacada é brilhante! Na computação gráfica, como Unity, Three.js e OpenGL, a altura costuma ser o eixo Y, porque as telas de computador já usavam X na largura e Y na altura, empurrando o Z para a profundidade. Já na Academia, na Geometria Descritiva da UERJ, na Arquitetura e no Blender, a gente começa pela planta baixa no chão com X e Y e sobe as paredes na vertical no eixo Z, chamado de Cota! E traduzir entre os dois mundos é moleza: o X continua igual e você só troca Y com Z! Por isso o ponto A mais dois, mais cinco, mais três da sua aula vira Vector3 dois, três, cinco em Three.js!`;
 
   const isGD = world === "gd";
 
@@ -53,27 +51,20 @@ Prof. Monge: E no fundo, traduzir de um mundo para o outro é moleza: o X contin
           </p>
         </div>
 
-        {/* 2-Professor Dialogue Audio Button (uses Gemini 3.8 Multi-Speaker TTS!) */}
+        {/* Prof. Monge Audio Explanation Button (Gemini 3.8 Flash TTS · Male Charon) */}
         <div className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-paper-100 dark:bg-blueprint-950 border border-paper-300 dark:border-blueprint-700 shrink-0">
-          <div className="flex -space-x-2">
-            <ProfessorAvatar
-              professor="monge"
-              size="sm"
-              speaking={isSpeaking && voice.activeSpeaker !== "epura"}
-            />
-            <ProfessorAvatar
-              professor="epura"
-              size="sm"
-              speaking={isSpeaking && voice.activeSpeaker === "epura"}
-            />
-          </div>
+          <ProfessorAvatar
+            professor="monge"
+            size="sm"
+            speaking={isSpeaking}
+          />
           <button
             type="button"
             onClick={() =>
               voice.speak(
                 speakId,
-                dialogueScript,
-                "dialogue",
+                narrationScript,
+                "monge",
                 voiceRate,
                 customApiKey,
                 ttsModelTier
@@ -91,7 +82,7 @@ Prof. Monge: E no fundo, traduzir de um mundo para o outro é moleza: o X contin
               </>
             ) : (
               <>
-                <Volume2 className="w-3.5 h-3.5" /> Diálogo em Áudio
+                <Volume2 className="w-3.5 h-3.5" /> Ouvir Prof. Monge
               </>
             )}
           </button>

@@ -1144,16 +1144,14 @@ export function ConceptAnatomyStage({
             {/* Avatar + Voice CTA */}
             <div className="flex items-center gap-3">
               <ProfessorAvatar
-                professor={active.professor}
+                professor="monge"
                 size="lg"
                 mood={isSpeaking ? "explaining" : "friendly"}
                 speaking={isSpeaking}
               />
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-extrabold text-ink-900 dark:text-white">
-                  {active.professor === "monge"
-                    ? "Prof. Monge explica:"
-                    : "Profa. Épura explica:"}
+                  Prof. Monge explica:
                 </div>
                 <div className="text-[11px] font-mono text-ink-500 dark:text-slate-400">
                   {voice.engine === "gemini-3.8"
@@ -1167,7 +1165,7 @@ export function ConceptAnatomyStage({
                   voice.speak(
                     speakId,
                     active.voiceScript,
-                    active.professor,
+                    "monge",
                     voiceRate,
                     customApiKey,
                     ttsModelTier
@@ -1226,7 +1224,7 @@ export function ConceptAnatomyStage({
             <button
               type="button"
               onClick={() => onOpenLabWithPoint(x, y, z)}
-              className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-ph/12 hover:bg-ph/20 text-ph dark:bg-sky-500/15 dark:text-sky-300 text-xs font-extrabold transition"
+              className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-ph/15 hover:bg-ph/25 text-ph dark:bg-sky-500/15 dark:text-sky-300 text-xs font-extrabold transition"
             >
               <Compass className="w-4 h-4" />
               Testar {formatPointCoords("A", x, y, z)} no Lab 3D Completo

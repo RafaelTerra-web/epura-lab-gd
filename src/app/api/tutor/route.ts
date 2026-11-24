@@ -482,7 +482,7 @@ Dúvida do aluno: ${question}`;
               if (parsedJson.answer) {
                 return NextResponse.json({
                   answer: parsedJson.answer,
-                  professor: parsedJson.professor === "epura" ? "epura" : "monge",
+                  professor: "monge",
                   director: parsedJson.director,
                   source: model,
                 } satisfies TutorApiResponse);

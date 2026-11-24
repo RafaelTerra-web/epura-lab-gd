@@ -9,6 +9,7 @@ import {
   ScenePreset,
 } from "@/lib/gd-math";
 import { LabSpotlight, TutorDirectorCommand } from "@/lib/director";
+import { readSharedScene } from "@/lib/scene-link";
 import {
   DEFAULT_PROGRESS,
   getMasteryRank,
@@ -71,12 +72,32 @@ export function EpuraLabApp() {
 
   // Hydrate user progress from localStorage + open live sidebar by default on wide desktop
   useEffect(() => {
-    const loaded = loadProgress();
-    setProgress(loaded);
-    if (typeof window !== "undefined" && window.innerWidth >= 1280) {
-      setLiveChatOpen(true);
-    }
+    const openSharedScene = () => {
+      const scene = readSharedScene(window.location.hash);
+      if (!scene) return;
+      setSection("lab");
+      setActivePresetId(null);
+      setPoints(scene.points);
+      setSegments(scene.segments);
+      setFoldAngle(scene.foldAngle);
+      setShowBisectors(scene.showBisectors);
+      setSpotlight(null);
+      setProgress((prev) => ({
+        ...prev,
+        preferences: {
+          ...prev.preferences,
+          notation: scene.notation,
+          showXYZ: scene.showXYZ,
+        },
+      }));
+    };
+
+    setProgress(loadProgress());
+    openSharedScene();
+    if (window.innerWidth >= 1280) setLiveChatOpen(true);
     setHydrated(true);
+    window.addEventListener("hashchange", openSharedScene);
+    return () => window.removeEventListener("hashchange", openSharedScene);
   }, []);
 
   // Sync dark class & sound effects preference
@@ -91,7 +112,7 @@ export function EpuraLabApp() {
   const updateProgress = (updater: (prev: UserProgress) => UserProgress) => {
     setProgress((prev) => {
       const next = updater(prev);
-      saveProgress(next);
+      if (next !== prev) saveProgress(next);
       return next;
     });
   };
@@ -203,6 +224,17 @@ export function EpuraLabApp() {
           ? prev.completedLessons.filter((l) => l !== id)
           : [...prev.completedLessons, id],
         xp: exists ? prev.xp : prev.xp + 25,
+      };
+    });
+  };
+
+  const handleEpisodeWatched = (id: string) => {
+    updateProgress((prev) => {
+      if (prev.watchedEpisodes.includes(id)) return prev;
+      return {
+        ...prev,
+        watchedEpisodes: [...prev.watchedEpisodes, id],
+        xp: prev.xp + 25,
       };
     });
   };
@@ -505,6 +537,8 @@ export function EpuraLabApp() {
           <LessonsView
             dark={dark}
             completedLessons={progress.completedLessons}
+            watchedEpisodes={progress.watchedEpisodes}
+            onEpisodeWatched={handleEpisodeWatched}
             onToggleComplete={handleToggleLesson}
             onOpenInLab={handleOpenInLab}
             voice={voice}

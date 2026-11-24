@@ -8,6 +8,7 @@ export interface UserProgress {
   totalAnswered: number;
   totalCorrect: number;
   completedLessons: string[];
+  watchedEpisodes: string[];
   uerjChecklist: Record<string, boolean>;
   topicStats: Record<
     string,
@@ -43,6 +44,7 @@ export const DEFAULT_PROGRESS: UserProgress = {
   totalAnswered: 0,
   totalCorrect: 0,
   completedLessons: [],
+  watchedEpisodes: [],
   uerjChecklist: {},
   topicStats: {
     diedros: { attempts: 0, correct: 0 },
@@ -72,6 +74,9 @@ export function loadProgress(): UserProgress {
     return {
       ...DEFAULT_PROGRESS,
       ...parsed,
+      watchedEpisodes: Array.isArray(parsed.watchedEpisodes)
+        ? parsed.watchedEpisodes
+        : [],
       topicStats: {
         ...DEFAULT_PROGRESS.topicStats,
         ...(parsed.topicStats ?? {}),
@@ -97,14 +102,6 @@ export function saveProgress(next: UserProgress): void {
   } catch {
     // ignore quota errors
   }
-  // Optional background sync with server route (non-blocking)
-  fetch("/api/progress", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  }).catch(() => {
-    // offline-first: silent fallback
-  });
 }
 
 export function getMasteryRank(xp: number): {

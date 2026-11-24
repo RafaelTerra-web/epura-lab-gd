@@ -20,6 +20,7 @@ import { ProfessorAvatar } from "./ProfessorAvatar";
 import { TtsModelTier, VoiceState } from "@/lib/voice";
 import { LabSpotlight } from "@/lib/director";
 import { sfx } from "@/lib/sfx";
+import { getSceneLink } from "@/lib/scene-link";
 import {
   BookmarkPlus,
   Compass,
@@ -29,6 +30,7 @@ import {
   Pause,
   Play,
   Plus,
+  Share2,
   Sparkles,
   Trash2,
   Volume2,
@@ -92,6 +94,8 @@ export function LabStudio({
   const [mobileView, setMobileView] = useState<"3d" | "2d" | "split">("3d");
   const [animatingFold, setAnimatingFold] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(null);
   const foldDirRef = useRef<1 | -1>(1);
 
   useEffect(() => {
@@ -249,6 +253,31 @@ export function LabStudio({
     onSaveSnapshot(name, points);
     setSavedFeedback(true);
     setTimeout(() => setSavedFeedback(false), 1800);
+  };
+
+  useEffect(() => {
+    if (!linkCopied) return;
+    const timer = window.setTimeout(() => setLinkCopied(false), 2200);
+    return () => window.clearTimeout(timer);
+  }, [linkCopied]);
+
+  const handleShare = async () => {
+    const link = getSceneLink(window.location.href, {
+      points,
+      segments,
+      foldAngle,
+      notation,
+      showXYZ,
+      showBisectors,
+    });
+    try {
+      await navigator.clipboard.writeText(link);
+      setShareLink(null);
+      setLinkCopied(true);
+    } catch {
+      setLinkCopied(false);
+      setShareLink(link);
+    }
   };
 
   return (
@@ -496,13 +525,34 @@ export function LabStudio({
 
               <button
                 type="button"
+                onClick={handleShare}
+                className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border bg-paper-100 dark:bg-blueprint-800 border-paper-300 dark:border-blueprint-700 text-ink-700 dark:text-slate-200 hover:bg-paper-200 dark:hover:bg-blueprint-700 transition"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span aria-live="polite">{linkCopied ? "Link copiado!" : "Copiar link da cena"}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleSave}
-                className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border bg-paper-100 dark:bg-blueprint-800 border-paper-300 dark:border-blueprint-700 text-ink-700 dark:text-slate-200 hover:bg-paper-200 transition"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border bg-paper-100 dark:bg-blueprint-800 border-paper-300 dark:border-blueprint-700 text-ink-700 dark:text-slate-200 hover:bg-paper-200 transition"
               >
                 <BookmarkPlus className="w-3.5 h-3.5" />
                 {savedFeedback ? "Salvo!" : "Salvar"}
               </button>
             </div>
+            {shareLink && (
+              <label className="block space-y-1 text-xs font-semibold text-ink-700 dark:text-slate-200">
+                Copie o link da cena
+                <input
+                  type="text"
+                  readOnly
+                  value={shareLink}
+                  onFocus={(event) => event.currentTarget.select()}
+                  className="block w-full rounded-lg border border-paper-300 bg-paper-50 px-2.5 py-1.5 font-mono dark:border-blueprint-700 dark:bg-blueprint-950"
+                />
+              </label>
+            )}
           </div>
 
           {/* Line / Multi-point Geometric Insight Banner (UERJ Ex. 1 & Ex. 2 magic!) */}
