@@ -63,6 +63,22 @@ function reactionPhase(at: number | undefined, seconds: number, length = 0.7) {
   return Math.max(0, Math.min(1, (seconds - at) / length));
 }
 
+function beatReaction(beats: NarrationBeat[], target: string, seconds: number, length = 0.85) {
+  const at = beats.find((beat) => beat.target === target)?.at;
+  const phase = reactionPhase(at, seconds, length);
+  const pulse = Math.sin(phase * Math.PI);
+  const wiggle = Math.sin(phase * 4 * Math.PI) * pulse;
+  const scale = 1 + 0.065 * pulse;
+  return { at, phase, pulse, wiggle, scale };
+}
+
+function popTransform(cx: number, cy: number, scale: number, rotateDeg = 0, dx = 0, dy = 0) {
+  if (Math.abs(scale - 1) < 0.001 && Math.abs(rotateDeg) < 0.05 && Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05) {
+    return undefined;
+  }
+  return `translate(${(cx + dx).toFixed(2)} ${(cy + dy).toFixed(2)}) rotate(${rotateDeg.toFixed(2)}) scale(${scale.toFixed(4)}) translate(${-cx} ${-cy})`;
+}
+
 function DiagramLabel({ x, y, width, color, connector, children }: {
   x: number;
   y: number;
@@ -97,6 +113,10 @@ function MongeProjection({ time, seconds, beats }: { time: number; seconds: numb
   const planesPulse = Math.sin(reactionPhase(planesAt, seconds, 0.8) * Math.PI);
   const floorReveal = floorAt === undefined ? planes : smoothStep(floorAt - 0.12, floorAt + 0.45, seconds);
   const floorPulse = Math.sin(reactionPhase(floorAt, seconds, 0.85) * Math.PI);
+  const angleRx = beatReaction(beats, "angle", seconds, 0.8);
+  const pointRx = beatReaction(beats, "point", seconds, 0.85);
+  const horizRx = beatReaction(beats, "horizontal", seconds, 0.85);
+  const vertRx = beatReaction(beats, "vertical", seconds, 0.85);
   const point = reveal("point");
   const horizontal = reveal("horizontal");
   const vertical = reveal("vertical");
@@ -124,28 +144,39 @@ function MongeProjection({ time, seconds, beats }: { time: number; seconds: numb
         )}
         <path d="M218 212 558 252" stroke="#2DD4BF" strokeWidth={3.2 + 1.4 * floorPulse} />
       </g>
-      <path d="M490 244l11-9 14 2" fill="none" stroke="#5EEAD4" strokeWidth="2" />
-      <text x="510" y="225" fontSize="14" fontWeight="800" fill="#99F6E4">90°</text>
-      <DiagramLabel x={36} y={89} width={160} color="#FCA5A5" connector="196,104 208,104 218,112">
-        π&apos; · Plano vertical
-      </DiagramLabel>
-      <g opacity={floorReveal}>
+      <path d="M490 244l11-9 14 2" fill="none" stroke={angleRx.pulse > 0.05 ? "#FDE68A" : "#5EEAD4"} strokeWidth={2 + 1.8 * angleRx.pulse} />
+      <text
+        x="510"
+        y="225"
+        fontSize="14"
+        fontWeight="800"
+        fill={angleRx.pulse > 0.05 ? "#FDE68A" : "#99F6E4"}
+        transform={popTransform(522, 220, angleRx.scale)}
+      >
+        90°
+      </text>
+      <g transform={popTransform(116, 104, 1 + 0.04 * planesPulse)}>
+        <DiagramLabel x={36} y={89} width={160} color="#FCA5A5" connector="196,104 208,104 218,112">
+          π&apos; · Plano vertical
+        </DiagramLabel>
+      </g>
+      <g opacity={floorReveal} transform={popTransform(491, 356, 1 + 0.04 * floorPulse)}>
         <DiagramLabel x={399} y={341} width={184} color="#7DD3FC" connector="485,304 501,329 501,341">
           π · Plano horizontal
         </DiagramLabel>
       </g>
 
-      <g opacity={point}>
-        <circle cx="333" cy="166" r="17" fill="none" stroke="#FDE68A" strokeOpacity="0.47" strokeWidth="1.5" />
-        <circle cx="333" cy="166" r="9.5" fill="#FDE68A" stroke="#FFF7D6" strokeWidth="1.5" />
+      <g opacity={point} transform={popTransform(333, 166, pointRx.scale, 0, pointRx.wiggle * 4, -2 * pointRx.pulse)}>
+        <circle cx="333" cy="166" r={17 + 4 * pointRx.pulse} fill="none" stroke="#FDE68A" strokeOpacity={0.47 + 0.35 * pointRx.pulse} strokeWidth={1.5 + 1.4 * pointRx.pulse} />
+        <circle cx="333" cy="166" r={9.5 + 2.2 * pointRx.pulse} fill="#FDE68A" stroke="#FFF7D6" strokeWidth="1.5" />
         <DiagramLabel x={245} y={131} width={59} color="#FDE68A" connector="304,146 314,146 321,155">(A)</DiagramLabel>
       </g>
       {horizontal > 0 && (
         <g>
-          <path d={"M333 166V" + (166 + 116 * horizontal)} stroke="#7DD3FC" strokeWidth="2.5" strokeDasharray="5 4" />
-          <circle cx="333" cy={166 + 116 * horizontal} r="6" fill="#38BDF8" stroke="#E0F2FE" strokeWidth="1.5" />
+          <path d={"M333 166V" + (166 + 116 * horizontal)} stroke={horizRx.pulse > 0.05 ? "#BAE6FD" : "#7DD3FC"} strokeWidth={2.5 + 1.8 * horizRx.pulse} strokeDasharray="5 4" />
+          <circle cx="333" cy={166 + 116 * horizontal} r={6 + 2.5 * horizRx.pulse} fill="#38BDF8" stroke="#E0F2FE" strokeWidth="1.5" />
           <circle cx="333" cy="282" r={9 + 13 * phLabel} fill="none" stroke="#7DD3FC" strokeOpacity={0.65 * (1 - phLabel)} />
-          <g opacity={phLabel}>
+          <g opacity={phLabel} transform={popTransform(134, 247, 1 + 0.045 * horizRx.pulse)}>
             <DiagramLabel x={61} y={232} width={147} color="#7DD3FC" connector="208,247 246,247 324,279">
               A · Horizontal
             </DiagramLabel>
@@ -154,10 +185,10 @@ function MongeProjection({ time, seconds, beats }: { time: number; seconds: numb
       )}
       {vertical > 0 && (
         <g>
-          <path d={"M333 166L" + (333 + 91 * vertical) + " " + (166 - 26 * vertical)} stroke="#FCA5A5" strokeWidth="2.5" strokeDasharray="5 4" />
-          <circle cx={333 + 91 * vertical} cy={166 - 26 * vertical} r="6" fill="#F87171" stroke="#FEE2E2" strokeWidth="1.5" />
+          <path d={"M333 166L" + (333 + 91 * vertical) + " " + (166 - 26 * vertical)} stroke={vertRx.pulse > 0.05 ? "#FEE2E2" : "#FCA5A5"} strokeWidth={2.5 + 1.8 * vertRx.pulse} strokeDasharray="5 4" />
+          <circle cx={333 + 91 * vertical} cy={166 - 26 * vertical} r={6 + 2.5 * vertRx.pulse} fill="#F87171" stroke="#FEE2E2" strokeWidth="1.5" />
           <circle cx="424" cy="140" r={9 + 13 * pvLabel} fill="none" stroke="#FCA5A5" strokeOpacity={0.65 * (1 - pvLabel)} />
-          <g opacity={pvLabel}>
+          <g opacity={pvLabel} transform={popTransform(609, 167, 1 + 0.045 * vertRx.pulse)}>
             <DiagramLabel x={536} y={152} width={147} color="#FCA5A5" connector="434,141 488,167 536,167">
               A&apos; · Vertical
             </DiagramLabel>
@@ -191,7 +222,7 @@ function MotionCanvas({
   const initialOpacity = sceneId === "intro" ? 0.65 : 0.16;
   const e = initialOpacity + (1 - initialOpacity) * easeOutCubic(sceneSeconds / 2.4);
   const eSlow = smoothStep(0.08, 0.78, localT);
-  const chapterTrace = easeOutCubic(sceneSeconds / 0.75);
+  const cutFlash = (1 - easeOutCubic(sceneSeconds / 0.38)) * 0.14;
   const beats = getNarrationBeats(episode.id, sceneId);
 
   // Helper for reusable animated Diedro profile + live Epura pair
@@ -200,6 +231,14 @@ function MotionCanvas({
     showRuleFooter = false
   ) => {
     const labelReveal = smoothStep(0.45, 1.15, sceneSeconds);
+    const activeTarget =
+      diedro === 1 ? "first" : diedro === 2 ? "second" : diedro === 3 ? "third" : "fourth";
+    const activeRx = beatReaction(beats, activeTarget, sceneSeconds, 0.9);
+    const vertRx = beatReaction(beats, diedro === 4 ? "bothDown" : "vertical", sceneSeconds, 0.85);
+    const horizRx = beatReaction(beats, diedro === 4 ? "bothDown" : "horizontal", sceneSeconds, 0.85);
+    const pairRx = beatReaction(beats, "pair", sceneSeconds, 0.9);
+    const evenRx = beatReaction(beats, "even", sceneSeconds, 0.9);
+    const footerPulse = Math.max(pairRx.pulse, evenRx.pulse);
     const specs = {
       1: {
         dx: 88,
@@ -254,32 +293,38 @@ function MotionCanvas({
           { d: 2, x: 100, y: 74, w: 145, h: 126, col: "#2DD4BF", lbl: "2º D (−;+)" },
           { d: 3, x: 100, y: 200, w: 145, h: 126, col: "#F87171", lbl: "3º D (−;−)" },
           { d: 4, x: 245, y: 200, w: 145, h: 126, col: "#F59E0B", lbl: "4º D (+;−)" },
-        ].map((q) => (
-          <g key={q.d}>
-            <rect
-              x={q.x}
-              y={q.y}
-              width={q.w}
-              height={q.h}
-              rx="12"
-              fill={q.col}
-              fillOpacity={diedro === q.d ? 0.26 : 0.04}
-              stroke={diedro === q.d ? q.col : "rgba(255,255,255,0.12)"}
-              strokeWidth={diedro === q.d ? 2.6 : 1}
-            />
-            <text
-              x={q.x + 72}
-              y={q.y + 28}
-              textAnchor="middle"
-              fontSize="13"
-              fontWeight="800"
-              fill={q.col}
-              fontFamily="var(--font-mono), monospace"
+        ].map((q) => {
+          const isThis = diedro === q.d;
+          return (
+            <g
+              key={q.d}
+              transform={isThis ? popTransform(q.x + q.w / 2, q.y + q.h / 2, 1 + 0.04 * activeRx.pulse) : undefined}
             >
-              {q.lbl}
-            </text>
-          </g>
-        ))}
+              <rect
+                x={q.x}
+                y={q.y}
+                width={q.w}
+                height={q.h}
+                rx="12"
+                fill={q.col}
+                fillOpacity={isThis ? 0.26 + 0.14 * activeRx.pulse : 0.04}
+                stroke={isThis ? q.col : "rgba(255,255,255,0.12)"}
+                strokeWidth={isThis ? 2.6 + 1.8 * activeRx.pulse : 1}
+              />
+              <text
+                x={q.x + 72}
+                y={q.y + 28}
+                textAnchor="middle"
+                fontSize="13"
+                fontWeight="800"
+                fill={q.col}
+                fontFamily="var(--font-mono), monospace"
+              >
+                {q.lbl}
+              </text>
+            </g>
+          );
+        })}
 
         {/* π' and π axes */}
         <line x1="245" y1="62" x2="245" y2="338" stroke="#F87171" strokeWidth="3.5" />
@@ -294,7 +339,7 @@ function MotionCanvas({
           y2={200 + specs.dy}
           stroke="#38BDF8"
           strokeDasharray="5 4"
-          strokeWidth="2"
+          strokeWidth={2 + 1.4 * activeRx.pulse}
         />
         <line
           x1={245 + specs.dx}
@@ -303,28 +348,30 @@ function MotionCanvas({
           y2={200}
           stroke="#F87171"
           strokeDasharray="5 4"
-          strokeWidth="2"
+          strokeWidth={2 + 1.4 * activeRx.pulse}
         />
-        <circle
-          cx={245 + specs.dx}
-          cy={200 + specs.dy}
-          r="11"
-          fill={specs.col}
-          stroke="#FFFFFF"
-          strokeWidth="2"
-        />
-        <text
-          x={245 + specs.dx + (specs.dx > 0 ? 16 : -34)}
-          y={204 + specs.dy}
-          fontSize="15"
-          fontWeight="800"
-          fill="#FFFFFF"
-          fontFamily="var(--font-mono), monospace"
-        >
-          (A)
-        </text>
-        <circle cx="245" cy={200 + specs.dy} r="6.5" fill="#F87171" />
-        <circle cx={245 + specs.dx} cy="200" r="6.5" fill="#38BDF8" />
+        <g transform={popTransform(245 + specs.dx, 200 + specs.dy, activeRx.scale, 0, activeRx.wiggle * 3, -2 * activeRx.pulse)}>
+          <circle
+            cx={245 + specs.dx}
+            cy={200 + specs.dy}
+            r={11 + 2.5 * activeRx.pulse}
+            fill={specs.col}
+            stroke="#FFFFFF"
+            strokeWidth="2"
+          />
+          <text
+            x={245 + specs.dx + (specs.dx > 0 ? 16 : -34)}
+            y={204 + specs.dy}
+            fontSize="15"
+            fontWeight="800"
+            fill="#FFFFFF"
+            fontFamily="var(--font-mono), monospace"
+          >
+            (A)
+          </text>
+        </g>
+        <circle cx="245" cy={200 + specs.dy} r={6.5 + 2 * vertRx.pulse} fill="#F87171" />
+        <circle cx={245 + specs.dx} cy="200" r={6.5 + 2 * horizRx.pulse} fill="#38BDF8" />
 
         {/* Right Card: Exact Épura 2D result */}
         <rect
@@ -335,7 +382,7 @@ function MotionCanvas({
           rx="18"
           fill="rgba(15,23,42,0.85)"
           stroke={specs.col}
-          strokeWidth="2.2"
+          strokeWidth={2.2 + (diedro === 2 ? 1.8 * pairRx.pulse : 0)}
         />
         <text
           x="537"
@@ -361,51 +408,58 @@ function MotionCanvas({
           strokeDasharray="5 4"
           strokeWidth="2"
         />
-        <circle cx="505" cy={200 + specs.pvY * e} r="8" fill="#F87171" />
-        <text
-          x="520"
-          y={205 + specs.pvY * e}
-          opacity={labelReveal}
-          fontSize="12.5"
-          fontWeight="800"
-          fill="#FCA5A5"
-          fontFamily="var(--font-mono), monospace"
-        >
-          {specs.pvTxt}
-        </text>
-        <circle cx="505" cy={200 + specs.phY * e} r="8" fill="#38BDF8" />
-        <text
-          x="520"
-          y={205 + specs.phY * e}
-          opacity={labelReveal}
-          fontSize="12.5"
-          fontWeight="800"
-          fill="#7DD3FC"
-          fontFamily="var(--font-mono), monospace"
-        >
-          {specs.phTxt}
-        </text>
+        <g transform={popTransform(505, 200 + specs.pvY * e, 1 + 0.06 * vertRx.pulse, 0, vertRx.wiggle * 3, 0)}>
+          <circle cx="505" cy={200 + specs.pvY * e} r={8 + 2.5 * vertRx.pulse} fill="#F87171" />
+          <text
+            x="520"
+            y={205 + specs.pvY * e}
+            opacity={labelReveal}
+            fontSize="12.5"
+            fontWeight="800"
+            fill="#FCA5A5"
+            fontFamily="var(--font-mono), monospace"
+          >
+            {specs.pvTxt}
+          </text>
+        </g>
+        <g transform={popTransform(505, 200 + specs.phY * e, 1 + 0.06 * horizRx.pulse, 0, horizRx.wiggle * 3, 0)}>
+          <circle cx="505" cy={200 + specs.phY * e} r={8 + 2.5 * horizRx.pulse} fill="#38BDF8" />
+          <text
+            x="520"
+            y={205 + specs.phY * e}
+            opacity={labelReveal}
+            fontSize="12.5"
+            fontWeight="800"
+            fill="#7DD3FC"
+            fontFamily="var(--font-mono), monospace"
+          >
+            {specs.phTxt}
+          </text>
+        </g>
 
-        <rect
-          x="100"
-          y="344"
-          width="542"
-          height="36"
-          rx="10"
-          fill={showRuleFooter ? "rgba(245,158,11,0.22)" : "rgba(30,41,59,0.85)"}
-          stroke={specs.col}
-        />
-        <text
-          x="371"
-          y="367"
-          textAnchor="middle"
-          fontSize="13.5"
-          fontWeight="800"
-          fill="#FEF3C7"
-          fontFamily="var(--font-mono), monospace"
-        >
-          ✦ {specs.badge}
-        </text>
+        <g transform={popTransform(371, 362, 1 + 0.04 * footerPulse)}>
+          <rect
+            x="100"
+            y="344"
+            width="542"
+            height="36"
+            rx="10"
+            fill={showRuleFooter ? `rgba(245,158,11,${(0.22 + 0.16 * footerPulse).toFixed(2)})` : "rgba(30,41,59,0.85)"}
+            stroke={specs.col}
+            strokeWidth={1.5 + 1.8 * footerPulse}
+          />
+          <text
+            x="371"
+            y="367"
+            textAnchor="middle"
+            fontSize="13.5"
+            fontWeight="800"
+            fill="#FEF3C7"
+            fontFamily="var(--font-mono), monospace"
+          >
+            ✦ {specs.badge}
+          </text>
+        </g>
       </g>
     );
   };
@@ -495,6 +549,9 @@ function MotionCanvas({
             {sceneId === "intro" && (() => {
               const kbScale = 1.03 + localT * 0.08;
               const kbX = -localT * 18;
+              const rx3d = beatReaction(beats, "3d", sceneSeconds, 0.85);
+              const paperRx = beatReaction(beats, "paper", sceneSeconds, 0.9);
+              const recRx = beatReaction(beats, "reconstruct", sceneSeconds, 0.95);
               return (
                 <g opacity={e}>
                   {/* Integrated Full-Bleed Ken Burns Drafting Atelier B-Roll */}
@@ -521,8 +578,8 @@ function MotionCanvas({
                     height="232"
                     rx="24"
                     fill="rgba(9,16,30,0.68)"
-                    stroke="rgba(56,189,248,0.45)"
-                    strokeWidth="1.6"
+                    stroke={recRx.pulse > 0.05 ? "#5EEAD4" : "rgba(56,189,248,0.45)"}
+                    strokeWidth={1.6 + 2.2 * recRx.pulse}
                   />
                   <line
                     x1="108"
@@ -536,22 +593,44 @@ function MotionCanvas({
                   <text x="172" y="141" fontSize="13.5" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
                     EPISÓDIO 01 · GEOMETRIA DESCRITIVA · UERJ
                   </text>
-                  <text x="108" y="204" fontSize="40" fontWeight="800" fill="#F8FAFC" fontFamily="var(--font-display), serif">
+                  <text
+                    x="108"
+                    y="196"
+                    fontSize="40"
+                    fontWeight="800"
+                    fill="#F8FAFC"
+                    fontFamily="var(--font-display), serif"
+                    transform={popTransform(280, 184, 1 + 0.045 * rx3d.pulse, rx3d.wiggle * 1.2)}
+                  >
                     Do Espaço 3D para a
                   </text>
-                  <text x="108" y="252" fontSize="40" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-display), serif">
+                  <text
+                    x="108"
+                    y="256"
+                    fontSize="40"
+                    fontWeight="800"
+                    fill="#FDE68A"
+                    fontFamily="var(--font-display), serif"
+                    transform={popTransform(250, 244, 1 + 0.045 * paperRx.pulse, paperRx.wiggle * 1.4)}
+                  >
                     Folha Plana 2D
                   </text>
                   <line
                     x1="108"
-                    y1="278"
+                    y1="282"
                     x2={108 + 410 * e}
-                    y2="278"
+                    y2="282"
                     stroke="#2DD4BF"
-                    strokeWidth="4"
+                    strokeWidth={4 + 2.2 * paperRx.pulse}
                     strokeLinecap="round"
                   />
-                  <text x="108" y="308" fontSize="14.5" fill="#E2E8F0">
+                  <text
+                    x="108"
+                    y="314"
+                    fontSize="14.5"
+                    fill={recRx.pulse > 0.05 ? "#99F6E4" : "#E2E8F0"}
+                    transform={popTransform(310, 310, 1 + 0.03 * recRx.pulse)}
+                  >
                     Precisão exata para reconstruir qualquer ponto no espaço!
                   </text>
                 </g>
@@ -568,10 +647,15 @@ function MotionCanvas({
               const flySwing = Math.sin(flyPhase * 4 * Math.PI) * Math.sin(flyPhase * Math.PI);
               const flyX = 435 + flySwing * 7;
               const flyY = 206 - Math.sin(flyPhase * Math.PI) * 5;
-              const lowPhase = reactionPhase(beats.find((beat) => beat.target === "lowFly")?.at, sceneSeconds);
-              const highPhase = reactionPhase(beats.find((beat) => beat.target === "highFly")?.at, sceneSeconds);
-              const lowY = 218 - 7 * Math.sin(lowPhase * Math.PI);
-              const highY = 112 - 9 * Math.sin(highPhase * Math.PI);
+              const raysRx = beatReaction(beats, "rays", sceneSeconds, 0.9);
+              const shadowRx = beatReaction(beats, "shadow", sceneSeconds, 0.9);
+              const lowRx = beatReaction(beats, "lowFly", sceneSeconds, 0.85);
+              const highRx = beatReaction(beats, "highFly", sceneSeconds, 0.85);
+              const sameRx = beatReaction(beats, "sameShadow", sceneSeconds, 0.9);
+              const lowX = 360 + lowRx.wiggle * 5;
+              const lowY = 218 - 7 * lowRx.pulse;
+              const highX = 360 + highRx.wiggle * 5;
+              const highY = 112 - 9 * highRx.pulse;
               const imgZoom = 1.0 + localT * 0.09;
               return (
                 <g>
@@ -599,7 +683,15 @@ function MotionCanvas({
                       <text x="58" y="182" fontSize="34" fontWeight="800" fill="#F8FAFC" fontFamily="var(--font-display), serif">
                         Imagine uma
                       </text>
-                      <text x="58" y="222" fontSize="34" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-display), serif">
+                      <text
+                        x="58"
+                        y="222"
+                        fontSize="34"
+                        fontWeight="800"
+                        fill="#FDE68A"
+                        fontFamily="var(--font-display), serif"
+                        transform={popTransform(170, 214, 1 + 0.045 * Math.sin(flyPhase * Math.PI))}
+                      >
                         Mosca na Sala
                       </text>
                       <line
@@ -617,6 +709,13 @@ function MotionCanvas({
                       <text x="58" y="288" fontSize="13.5" fill="#CBD5E1">
                         uma sombra vertical no chão (π).
                       </text>
+
+                      {/* Vertical light rays shimmer when prof mentions "raios verticais" */}
+                      <g opacity={0.18 + 0.65 * raysRx.pulse}>
+                        <line x1="418" y1="88" x2="418" y2="278" stroke="#FDE68A" strokeWidth={1.6 + 1.5 * raysRx.pulse} strokeDasharray="5 5" />
+                        <line x1="435" y1="76" x2="435" y2="288" stroke="#FDE68A" strokeWidth={2 + 2 * raysRx.pulse} strokeDasharray="6 4" />
+                        <line x1="452" y1="92" x2="452" y2="276" stroke="#FDE68A" strokeWidth={1.6 + 1.5 * raysRx.pulse} strokeDasharray="5 5" />
+                      </g>
 
                       {/* Animated callout arrow pointing straight to the glowing fly in the artwork */}
                       <circle
@@ -643,12 +742,20 @@ function MotionCanvas({
                       <polyline
                         points="435,288 518,288 628,288"
                         fill="none"
-                        stroke="#38BDF8"
-                        strokeWidth="2.2"
+                        stroke={shadowRx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"}
+                        strokeWidth={2.2 + 2.2 * shadowRx.pulse}
                         strokeDasharray="5 4"
                       />
-                      <circle cx="435" cy="288" r="6" fill="#38BDF8" />
-                      <text x="522" y="280" fontSize="13" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                      <circle cx="435" cy="288" r={6 + 3.5 * shadowRx.pulse} fill="#38BDF8" />
+                      <text
+                        x="522"
+                        y="280"
+                        fontSize="13"
+                        fontWeight="800"
+                        fill="#7DD3FC"
+                        fontFamily="var(--font-mono), monospace"
+                        transform={popTransform(575, 276, 1 + 0.05 * shadowRx.pulse)}
+                      >
                         Sombra no chão π
                       </text>
                     </g>
@@ -666,22 +773,26 @@ function MotionCanvas({
                       <DiagramLabel x={454} y={351} width={183} color="#7DD3FC" connector="527,324 547,340 547,351">π · Plano horizontal</DiagramLabel>
                       <line x1="360" y1="68" x2="360" y2="288" stroke="#FDE68A" strokeWidth="2.5" strokeDasharray="7 5" />
                       <polygon points="360,280 353,266 367,266" fill="#FDE68A" />
-                      <circle cx="360" cy="288" r="11" fill="#38BDF8" />
-                      <text x="380" y="294" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                        Sombra A (idêntica!)
-                      </text>
-                      <circle cx="360" cy={lowY} r="11" fill="#F87171" />
-                      <text x="382" y={lowY + 4} fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                      <g transform={popTransform(430, 288, 1 + 0.05 * sameRx.pulse)}>
+                        <circle cx="360" cy="288" r={11 + 4 * sameRx.pulse} fill="#38BDF8" />
+                        <text x="380" y="294" fontSize="16" fontWeight="800" fill={sameRx.pulse > 0.05 ? "#BAE6FD" : "#7DD3FC"} fontFamily="var(--font-mono), monospace">
+                          Sombra A (idêntica!)
+                        </text>
+                      </g>
+                      <circle cx={lowX} cy={lowY} r={11 + 3 * lowRx.pulse} fill="#F87171" />
+                      <text x={lowX + 22} y={lowY + 4} fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
                         Mosca baixa (1m)
                       </text>
-                      <circle cx="360" cy={highY} r="11" fill="#F59E0B" />
-                      <text x="382" y={highY + 4} fontSize="15" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                      <circle cx={highX} cy={highY} r={11 + 3 * highRx.pulse} fill="#F59E0B" />
+                      <text x={highX + 22} y={highY + 4} fontSize="15" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
                         Mosca alta (3m)
                       </text>
-                      <rect x="98" y="68" width="228" height="46" rx="12" fill="rgba(239,68,68,0.24)" stroke="#F87171" strokeWidth="2" />
-                      <text x="212" y="96" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FECACA" fontFamily="var(--font-mono), monospace">
-                        1 PLANO PERDE A ALTURA!
-                      </text>
+                      <g transform={popTransform(212, 91, 1 + 0.05 * sameRx.pulse, sameRx.wiggle * 2.2, sameRx.wiggle * 4, 0)}>
+                        <rect x="98" y="68" width="228" height="46" rx="12" fill="rgba(239,68,68,0.24)" stroke="#F87171" strokeWidth={2 + 1.8 * sameRx.pulse} />
+                        <text x="212" y="96" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FECACA" fontFamily="var(--font-mono), monospace">
+                          1 PLANO PERDE A ALTURA!
+                        </text>
+                      </g>
                     </g>
                   )}
                 </g>
@@ -696,6 +807,7 @@ function MotionCanvas({
                 : smoothStep(planeMention - 0.38, planeMention + 0.12, sceneSeconds);
               const portraitOp = e * (1 - cutProgress);
               const kbScale = 1.0 + localT * 0.08;
+              const mongeRx = beatReaction(beats, "monge", sceneSeconds, 0.9);
               return (
                 <g>
                   {/* Full-height Seamless Feathered Portrait of Gaspard Monge */}
@@ -720,16 +832,24 @@ function MotionCanvas({
                       <line
                         x1="408"
                         y1="118"
-                        x2={408 + 70 * e}
+                        x2={408 + 70 * e + 28 * mongeRx.pulse}
                         y2="118"
                         stroke="#F59E0B"
-                        strokeWidth="4"
+                        strokeWidth={4 + 2 * mongeRx.pulse}
                         strokeLinecap="round"
                       />
                       <text x="408" y="148" fontSize="13.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
                         FRANÇA · 1746 – 1818
                       </text>
-                      <text x="408" y="202" fontSize="42" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
+                      <text
+                        x="408"
+                        y="202"
+                        fontSize="42"
+                        fontWeight="800"
+                        fill="#FFFFFF"
+                        fontFamily="var(--font-display), serif"
+                        transform={popTransform(520, 190, 1 + 0.04 * mongeRx.pulse)}
+                      >
                         Gaspard Monge
                       </text>
                       <text x="408" y="236" fontSize="17" fontWeight="700" fill="#38BDF8">
@@ -759,95 +879,185 @@ function MotionCanvas({
               );
             })()}
 
-            {sceneId === "lt-and-notation" && (
-              <g opacity={e}>
-                {/* Bold Glowing Linha de Terra */}
-                <line x1="100" y1="142" x2="620" y2="142" stroke="#2DD4BF" strokeWidth="6" strokeLinecap="round" />
-                <line x1="104" y1="152" x2="142" y2="152" stroke="#2DD4BF" strokeWidth="3" />
-                <line x1="578" y1="152" x2="616" y2="152" stroke="#2DD4BF" strokeWidth="3" />
-                <text x="360" y="114" textAnchor="middle" fontSize="22" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
-                  LINHA DE TERRA (LT) — O &ldquo;RODAPÉ&rdquo;
-                </text>
-                {/* 3 Notation Cards */}
-                {[
-                  { x: 92, col: "#FDE68A", sym: "(A)", name: "Ponto no Espaço", sub: "Sempre entre parênteses" },
-                  { x: 274, col: "#38BDF8", sym: "A", name: "Proj. Horizontal", sub: "No chão π (sem linha)" },
-                  { x: 456, col: "#F87171", sym: "A'", name: "Proj. Vertical", sub: "Na parede π' (com apóstrofo)" },
-                ].map((c, idx) => (
-                  <g key={idx}>
-                    <rect x={c.x} y="196" width="166" height="148" rx="18" fill="rgba(15,23,42,0.85)" stroke={c.col} strokeWidth="2.2" />
-                    <text x={c.x + 83} y="246" textAnchor="middle" fontSize="36" fontWeight="800" fill={c.col} fontFamily="var(--font-mono), monospace">
-                      {c.sym}
-                    </text>
-                    <text x={c.x + 83} y="286" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FFFFFF">
-                      {c.name}
-                    </text>
-                    <text x={c.x + 83} y="312" textAnchor="middle" fontSize="11.5" fill="#CBD5E1">
-                      {c.sub}
+            {sceneId === "lt-and-notation" && (() => {
+              const ltRx = beatReaction(beats, "groundLine", sceneSeconds, 0.9);
+              const cardTargets = ["spaceNotation", "horizontalNotation", "verticalNotation"] as const;
+              return (
+                <g opacity={e}>
+                  {/* Bold Glowing Linha de Terra */}
+                  <g transform={popTransform(360, 142, 1 + 0.03 * ltRx.pulse)}>
+                    <line x1="100" y1="142" x2="620" y2="142" stroke={ltRx.pulse > 0.05 ? "#99F6E4" : "#2DD4BF"} strokeWidth={6 + 3.5 * ltRx.pulse} strokeLinecap="round" />
+                    <line x1="104" y1="152" x2="142" y2="152" stroke="#2DD4BF" strokeWidth={3 + 1.5 * ltRx.pulse} />
+                    <line x1="578" y1="152" x2="616" y2="152" stroke="#2DD4BF" strokeWidth={3 + 1.5 * ltRx.pulse} />
+                    <text x="360" y="114" textAnchor="middle" fontSize="22" fontWeight="800" fill={ltRx.pulse > 0.05 ? "#99F6E4" : "#2DD4BF"} fontFamily="var(--font-mono), monospace">
+                      LINHA DE TERRA (LT) — O &ldquo;RODAPÉ&rdquo;
                     </text>
                   </g>
-                ))}
-              </g>
-            )}
-
-            {sceneId === "takeaway" && (
-              <g opacity={e}>
-                <g opacity={0.28 * e}>
-                  <image
-                    href="/illustrations/fly-room-3d.png"
-                    x="-40"
-                    y="40"
-                    width="340"
-                    height="340"
-                    mask="url(#radialFeatherMask)"
-                  />
+                  {/* 3 Notation Cards */}
+                  {[
+                    { x: 92, col: "#FDE68A", sym: "(A)", name: "Ponto no Espaço", sub: "Sempre entre parênteses" },
+                    { x: 274, col: "#38BDF8", sym: "A", name: "Proj. Horizontal", sub: "No chão π (sem linha)" },
+                    { x: 456, col: "#F87171", sym: "A'", name: "Proj. Vertical", sub: "Na parede π' (com apóstrofo)" },
+                  ].map((c, idx) => {
+                    const rx = beatReaction(beats, cardTargets[idx], sceneSeconds, 0.85);
+                    return (
+                      <g
+                        key={idx}
+                        transform={popTransform(c.x + 83, 270, rx.scale, rx.wiggle * 2.2, 0, -4 * rx.pulse)}
+                      >
+                        <rect
+                          x={c.x}
+                          y="196"
+                          width="166"
+                          height="148"
+                          rx="18"
+                          fill={`rgba(15,23,42,${(0.85 + 0.1 * rx.pulse).toFixed(2)})`}
+                          stroke={c.col}
+                          strokeWidth={2.2 + 2.2 * rx.pulse}
+                        />
+                        <text x={c.x + 83} y="246" textAnchor="middle" fontSize="36" fontWeight="800" fill={c.col} fontFamily="var(--font-mono), monospace">
+                          {c.sym}
+                        </text>
+                        <text x={c.x + 83} y="286" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FFFFFF">
+                          {c.name}
+                        </text>
+                        <text x={c.x + 83} y="312" textAnchor="middle" fontSize="11.5" fill="#CBD5E1">
+                          {c.sub}
+                        </text>
+                      </g>
+                    );
+                  })}
                 </g>
-                <rect x="98" y="96" width="530" height="230" rx="24" fill="rgba(9,16,30,0.78)" stroke="#2DD4BF" strokeWidth="2.4" />
-                <text x="363" y="148" textAnchor="middle" fontSize="15" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
-                  RESUMO DO EPISÓDIO 01 ✓
-                </text>
-                <text x="363" y="210" textAnchor="middle" fontSize="32" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-mono), monospace">
-                  1 Ponto <tspan fill="#FDE68A">(A)</tspan> ⇄ 2 Projeções
-                </text>
-                <text x="363" y="256" textAnchor="middle" fontSize="22" fontWeight="800" fill="#CBD5E1" fontFamily="var(--font-mono), monospace">
-                  <tspan fill="#38BDF8">A</tspan> (avanço/lado) + <tspan fill="#F87171">A&apos;</tspan> (altura)
-                </text>
-                <text x="363" y="298" textAnchor="middle" fontSize="15" fontWeight="700" fill="#99F6E4">
-                  Posição 100% única e reconstruível no espaço 3D!
-                </text>
-              </g>
-            )}
+              );
+            })()}
+
+            {sceneId === "takeaway" && (() => {
+              const pairRx = beatReaction(beats, "pair", sceneSeconds, 0.9);
+              const projARx = beatReaction(beats, "projA", sceneSeconds, 0.9);
+              const projA2Rx = beatReaction(beats, "projA2", sceneSeconds, 0.9);
+              const uniqRx = beatReaction(beats, "unique", sceneSeconds, 0.95);
+              return (
+                <g opacity={e}>
+                  <g opacity={0.28 * e}>
+                    <image
+                      href="/illustrations/fly-room-3d.png"
+                      x="-40"
+                      y="40"
+                      width="340"
+                      height="340"
+                      mask="url(#radialFeatherMask)"
+                    />
+                  </g>
+                  <g transform={popTransform(363, 211, 1 + 0.03 * pairRx.pulse)}>
+                    <rect
+                      x="98"
+                      y="96"
+                      width="530"
+                      height="230"
+                      rx="24"
+                      fill="rgba(9,16,30,0.78)"
+                      stroke={uniqRx.pulse > 0.05 ? "#5EEAD4" : "#2DD4BF"}
+                      strokeWidth={2.4 + 2.4 * Math.max(pairRx.pulse, uniqRx.pulse)}
+                    />
+                    <text x="363" y="148" textAnchor="middle" fontSize="15" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                      RESUMO DO EPISÓDIO 01 ✓
+                    </text>
+                    <text
+                      x="363"
+                      y="210"
+                      textAnchor="middle"
+                      fontSize="32"
+                      fontWeight="800"
+                      fill="#FFFFFF"
+                      fontFamily="var(--font-mono), monospace"
+                      transform={popTransform(363, 202, 1 + 0.04 * pairRx.pulse)}
+                    >
+                      1 Ponto <tspan fill="#FDE68A">(A)</tspan> ⇄ 2 Projeções
+                    </text>
+                    <text
+                      x="363"
+                      y="256"
+                      textAnchor="middle"
+                      fontSize="22"
+                      fontWeight="800"
+                      fill="#CBD5E1"
+                      fontFamily="var(--font-mono), monospace"
+                      transform={popTransform(363, 250, 1 + 0.05 * Math.max(projARx.pulse, projA2Rx.pulse), (projARx.wiggle - projA2Rx.wiggle) * 1.4)}
+                    >
+                      <tspan fill={projARx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"}>A</tspan> (avanço/lado) + <tspan fill={projA2Rx.pulse > 0.05 ? "#FEE2E2" : "#F87171"}>A&apos;</tspan> (altura)
+                    </text>
+                    <text
+                      x="363"
+                      y="298"
+                      textAnchor="middle"
+                      fontSize="15"
+                      fontWeight="700"
+                      fill={uniqRx.pulse > 0.05 ? "#FDE68A" : "#99F6E4"}
+                      transform={popTransform(363, 294, 1 + 0.045 * uniqRx.pulse)}
+                    >
+                      Posição 100% única e reconstruível no espaço 3D!
+                    </text>
+                  </g>
+                </g>
+              );
+            })()}
           </>
         )}
 
         {/* =================== EPISODE 02: COORDENADAS =================== */}
         {episode.id === "ep02-coordenadas" && (
           <>
-            {sceneId === "intro" && (
-              <g opacity={e}>
-                <text x="360" y="102" textAnchor="middle" fontSize="15" fontWeight="800" fill="#94A3B8" fontFamily="var(--font-mono), monospace">
-                  CONVENÇÃO BRASILEIRA (UERJ) · ORDEM ALFABÉTICA
-                </text>
-                <text x="360" y="166" textAnchor="middle" fontSize="48" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-mono), monospace">
-                  (A)(<tspan fill="#2DD4BF">+2</tspan>; <tspan fill="#38BDF8">+5</tspan>; <tspan fill="#F87171">+3</tspan>)
-                </text>
-                {[
-                  { x: 88, col: "#2DD4BF", k: "AB · 1º (X)", t: "Abscissa" },
-                  { x: 274, col: "#38BDF8", k: "AF · 2º (Y)", t: "Afastamento" },
-                  { x: 460, col: "#F87171", k: "CO · 3º (Z)", t: "Cota" },
-                ].map((b, i) => (
-                  <g key={i}>
-                    <rect x={b.x} y="210" width="172" height="106" rx="16" fill="rgba(15,23,42,0.85)" stroke={b.col} strokeWidth="2.2" />
-                    <text x={b.x + 86} y="250" textAnchor="middle" fontSize="15" fontWeight="800" fill={b.col} fontFamily="var(--font-mono), monospace">{b.k}</text>
-                    <text x={b.x + 86} y="286" textAnchor="middle" fontSize="20" fontWeight="800" fill="#FFFFFF">{b.t}</text>
-                  </g>
-                ))}
-              </g>
-            )}
+            {sceneId === "intro" && (() => {
+              const c2 = beatReaction(beats, "coord2", sceneSeconds, 0.75);
+              const c5 = beatReaction(beats, "coord5", sceneSeconds, 0.75);
+              const c3 = beatReaction(beats, "coord3", sceneSeconds, 0.75);
+              const cardTargets = ["abscissa", "afastamento", "cota"] as const;
+              const formulaPulse = Math.max(c2.pulse, c5.pulse, c3.pulse);
+              return (
+                <g opacity={e}>
+                  <text x="360" y="102" textAnchor="middle" fontSize="15" fontWeight="800" fill="#94A3B8" fontFamily="var(--font-mono), monospace">
+                    CONVENÇÃO BRASILEIRA (UERJ) · ORDEM ALFABÉTICA
+                  </text>
+                  <text
+                    x="360"
+                    y="166"
+                    textAnchor="middle"
+                    fontSize="48"
+                    fontWeight="800"
+                    fill="#FFFFFF"
+                    fontFamily="var(--font-mono), monospace"
+                    transform={popTransform(360, 152, 1 + 0.045 * formulaPulse)}
+                  >
+                    (A)(<tspan fill={c2.pulse > 0.05 ? "#99F6E4" : "#2DD4BF"}>+2</tspan>; <tspan fill={c5.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"}>+5</tspan>; <tspan fill={c3.pulse > 0.05 ? "#FEE2E2" : "#F87171"}>+3</tspan>)
+                  </text>
+                  {[
+                    { x: 88, col: "#2DD4BF", k: "AB · 1º (X)", t: "Abscissa" },
+                    { x: 274, col: "#38BDF8", k: "AF · 2º (Y)", t: "Afastamento" },
+                    { x: 460, col: "#F87171", k: "CO · 3º (Z)", t: "Cota" },
+                  ].map((b, i) => {
+                    const rx = beatReaction(beats, cardTargets[i], sceneSeconds, 0.85);
+                    return (
+                      <g
+                        key={i}
+                        transform={popTransform(b.x + 86, 263, rx.scale, rx.wiggle * 2.1, 0, -4 * rx.pulse)}
+                      >
+                        <rect x={b.x} y="210" width="172" height="106" rx="16" fill="rgba(15,23,42,0.88)" stroke={b.col} strokeWidth={2.2 + 2.2 * rx.pulse} />
+                        <text x={b.x + 86} y="250" textAnchor="middle" fontSize="15" fontWeight="800" fill={b.col} fontFamily="var(--font-mono), monospace">{b.k}</text>
+                        <text x={b.x + 86} y="286" textAnchor="middle" fontSize="20" fontWeight="800" fill="#FFFFFF">{b.t}</text>
+                      </g>
+                    );
+                  })}
+                </g>
+              );
+            })()}
 
             {sceneId === "abscissa" && (() => {
               // Subtle B-roll reveal of UERJ drafting desk right as he mentions "lapiseira 0.5"
               const deskReveal = smoothStep(0.54, 0.72, localT);
+              const originRx = beatReaction(beats, "origin", sceneSeconds, 0.85);
+              const posRx = beatReaction(beats, "positive", sceneSeconds, 0.85);
+              const negRx = beatReaction(beats, "negative", sceneSeconds, 0.85);
+              const callRx = beatReaction(beats, "callLine", sceneSeconds, 0.9);
               return (
                 <g opacity={e}>
                   {deskReveal > 0.01 && (
@@ -868,21 +1078,40 @@ function MotionCanvas({
                   </text>
                   {/* Ruler LT */}
                   <line x1="100" y1="215" x2="620" y2="215" stroke="#2DD4BF" strokeWidth="4" />
-                  {[-3, -2, -1, 0, 1, 2, 3].map((v) => (
-                    <g key={v}>
-                      <line x1={360 + v * 68} y1="205" x2={360 + v * 68} y2="225" stroke="#2DD4BF" strokeWidth={v === 0 ? 3.5 : 2} />
-                      <text x={360 + v * 68} y="246" textAnchor="middle" fontSize="14" fontWeight="800" fill={v === 2 ? "#FDE68A" : "#94A3B8"} fontFamily="var(--font-mono), monospace">
-                        {v > 0 ? `+${v}` : v}
-                      </text>
-                    </g>
-                  ))}
+                  {[-3, -2, -1, 0, 1, 2, 3].map((v) => {
+                    const rxPulse = v === 0 ? originRx.pulse : v === 2 ? posRx.pulse : v === -2 ? negRx.pulse : 0;
+                    const cxTick = 360 + v * 68;
+                    return (
+                      <g key={v} transform={popTransform(cxTick, 224, 1 + 0.07 * rxPulse)}>
+                        <line x1={cxTick} y1="205" x2={cxTick} y2="225" stroke={rxPulse > 0.05 ? "#FDE68A" : "#2DD4BF"} strokeWidth={(v === 0 ? 3.5 : 2) + 2 * rxPulse} />
+                        <text
+                          x={cxTick}
+                          y="246"
+                          textAnchor="middle"
+                          fontSize="14"
+                          fontWeight="800"
+                          fill={v === 2 || rxPulse > 0.05 ? "#FDE68A" : "#94A3B8"}
+                          fontFamily="var(--font-mono), monospace"
+                        >
+                          {v > 0 ? `+${v}` : v}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  {/* Negative direction shimmer */}
+                  {negRx.pulse > 0.05 && (
+                    <line x1="360" y1="215" x2={360 - 136 * negRx.pulse} y2="215" stroke="#38BDF8" strokeWidth={7 * negRx.pulse} strokeLinecap="round" opacity={0.85} />
+                  )}
                   {/* Animated arrow from 0 to +2 */}
-                  <line x1="360" y1="215" x2={360 + 136 * e} y2="215" stroke="#F59E0B" strokeWidth="8" strokeLinecap="round" />
+                  <line x1="360" y1="215" x2={360 + 136 * e} y2="215" stroke={posRx.pulse > 0.05 ? "#FDE68A" : "#F59E0B"} strokeWidth={8 + 3 * posRx.pulse} strokeLinecap="round" />
+                  <circle cx="360" cy="215" r={4 + 5 * originRx.pulse} fill="#FDE68A" opacity={originRx.pulse} />
                   {/* Vertical Linha de Chamada */}
-                  <line x1="496" y1={215 - 110 * e} x2="496" y2={215 + 115 * e} stroke="#FDE68A" strokeWidth="2.5" strokeDasharray="6 5" />
-                  <text x="510" y="130" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
-                    Linha de Chamada (0.5 HB)
-                  </text>
+                  <g transform={popTransform(496, 215, 1 + 0.03 * callRx.pulse, 0, callRx.wiggle * 3, 0)}>
+                    <line x1="496" y1={215 - 110 * e} x2="496" y2={215 + 115 * e} stroke={callRx.pulse > 0.05 ? "#FFF7D6" : "#FDE68A"} strokeWidth={2.5 + 2 * callRx.pulse} strokeDasharray="6 5" />
+                    <text x="510" y="130" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                      Linha de Chamada (0.5 HB)
+                    </text>
+                  </g>
                   <text x="360" y="346" textAnchor="middle" fontSize="14" fill="#CBD5E1">
                     Positivo (+) anda para a DIREITA · Negativo (−) anda para a ESQUERDA
                   </text>
@@ -890,110 +1119,162 @@ function MotionCanvas({
               );
             })()}
 
-            {sceneId === "afastamento" && (
-              <g opacity={e}>
-                <text x="360" y="76" textAnchor="middle" fontSize="18" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
-                  2ª COORDENADA · AFASTAMENTO (Y = +5)
-                </text>
-                {/* Wall π' fixed on left */}
-                <rect x="195" y="110" width="18" height="225" rx="4" fill="#F87171" />
-                <text x="180" y="226" textAnchor="end" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                  Parede π&apos;
-                </text>
-                {/* Floor line */}
-                <line x1="120" y1="255" x2="600" y2="255" stroke="#38BDF8" strokeWidth="3" />
-                {/* Elastic distance arrow stretching +5 forward */}
-                <line x1="213" y1="185" x2={213 + 250 * e} y2="185" stroke="#38BDF8" strokeWidth="6" strokeLinecap="round" />
-                <circle cx={213 + 250 * e} cy="185" r="12" fill="#FDE68A" />
-                <text x={213 + 250 * e + 18} y="190" fontSize="17" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
-                <line x1={213 + 250 * e} y1="185" x2={213 + 250 * e} y2="255" stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
-                <circle cx={213 + 250 * e} cy="255" r="9" fill="#38BDF8" />
-                <text x={213 + 250 * e} y="284" textAnchor="middle" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                  Projeção A (afast. +5)
-                </text>
-                <text x="338" y="168" textAnchor="middle" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                  ← Distância até π&apos; = +5 →
-                </text>
-              </g>
-            )}
+            {sceneId === "afastamento" && (() => {
+              const wallRx = beatReaction(beats, "wall", sceneSeconds, 0.85);
+              const plus5Rx = beatReaction(beats, "plus5", sceneSeconds, 0.9);
+              const horizRx = beatReaction(beats, "horizontal", sceneSeconds, 0.9);
+              const ax = 213 + 250 * e + plus5Rx.wiggle * 4;
+              const ay = 185 - 3 * plus5Rx.pulse;
+              return (
+                <g opacity={e}>
+                  <text x="360" y="76" textAnchor="middle" fontSize="18" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
+                    2ª COORDENADA · AFASTAMENTO (Y = +5)
+                  </text>
+                  {/* Wall π' fixed on left */}
+                  <g transform={popTransform(204, 222, 1 + 0.035 * wallRx.pulse)}>
+                    <rect x="195" y="110" width="18" height="225" rx="4" fill="#F87171" stroke={wallRx.pulse > 0.05 ? "#FEE2E2" : "none"} strokeWidth={2 * wallRx.pulse} />
+                    <text x="180" y="226" textAnchor="end" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                      Parede π&apos;
+                    </text>
+                  </g>
+                  {/* Floor line */}
+                  <line x1="120" y1="255" x2="600" y2="255" stroke="#38BDF8" strokeWidth="3" />
+                  {/* Elastic distance arrow stretching +5 forward */}
+                  <line x1="213" y1="185" x2={ax} y2="185" stroke={plus5Rx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"} strokeWidth={6 + 2.5 * plus5Rx.pulse} strokeLinecap="round" />
+                  <circle cx={ax} cy={ay} r={12 + 3 * plus5Rx.pulse} fill="#FDE68A" />
+                  <text x={ax + 18} y={ay + 5} fontSize="17" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
+                  <line x1={ax} y1={ay} x2={ax} y2="255" stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
+                  <g transform={popTransform(213 + 250 * e, 255, horizRx.scale)}>
+                    <circle cx={ax} cy="255" r={9 + 3.5 * horizRx.pulse} fill={horizRx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"} />
+                    <text x={ax} y="284" textAnchor="middle" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                      Projeção A (afast. +5)
+                    </text>
+                  </g>
+                  <text x="338" y="168" textAnchor="middle" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                    ← Distância até π&apos; = +5 →
+                  </text>
+                </g>
+              );
+            })()}
 
-            {sceneId === "cota" && (
-              <g opacity={e}>
-                <text x="360" y="76" textAnchor="middle" fontSize="18" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">
-                  3ª COORDENADA · COTA (Z = +3)
-                </text>
-                {/* Floor π */}
-                <rect x="130" y="275" width="460" height="16" rx="4" fill="#38BDF8" />
-                <text x="580" y="314" textAnchor="end" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                  Chão π (Cota = 0)
-                </text>
-                {/* Wall line */}
-                <line x1="250" y1="100" x2="250" y2="355" stroke="#F87171" strokeWidth="3" />
-                {/* Altitude vector rising +3 */}
-                <line x1="410" y1="275" x2="410" y2={275 - 140 * e} stroke="#F87171" strokeWidth="6" strokeLinecap="round" />
-                <circle cx="410" cy={275 - 140 * e} r="12" fill="#FDE68A" />
-                <text x="428" y={280 - 140 * e} fontSize="17" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
-                <line x1="410" y1={275 - 140 * e} x2="250" y2={275 - 140 * e} stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
-                <circle cx="250" cy={275 - 140 * e} r="9" fill="#F87171" />
-                <text x="234" y={280 - 140 * e} textAnchor="end" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                  A&apos; (cota +3)
-                </text>
-                <text x="430" y="218" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                  ↑ ALTURA = +3
-                </text>
-              </g>
-            )}
+            {sceneId === "cota" && (() => {
+              const altRx = beatReaction(beats, "altitude", sceneSeconds, 0.85);
+              const plus3Rx = beatReaction(beats, "plus3", sceneSeconds, 0.9);
+              const vertRx = beatReaction(beats, "vertical", sceneSeconds, 0.9);
+              const ptX = 410 + plus3Rx.wiggle * 4;
+              const ptY = 275 - 140 * e - 3 * plus3Rx.pulse;
+              return (
+                <g opacity={e}>
+                  <text x="360" y="76" textAnchor="middle" fontSize="18" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">
+                    3ª COORDENADA · COTA (Z = +3)
+                  </text>
+                  {/* Floor π */}
+                  <rect x="130" y="275" width="460" height="16" rx="4" fill="#38BDF8" />
+                  <text x="580" y="314" textAnchor="end" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                    Chão π (Cota = 0)
+                  </text>
+                  {/* Wall line */}
+                  <line x1="250" y1="100" x2="250" y2="355" stroke="#F87171" strokeWidth="3" />
+                  {/* Altitude vector rising +3 */}
+                  <line x1="410" y1="275" x2="410" y2={ptY} stroke={altRx.pulse > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={6 + 2.8 * altRx.pulse} strokeLinecap="round" />
+                  <circle cx={ptX} cy={ptY} r={12 + 3 * plus3Rx.pulse} fill="#FDE68A" />
+                  <text x={ptX + 18} y={ptY + 5} fontSize="17" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
+                  <line x1={ptX} y1={ptY} x2="250" y2={ptY} stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
+                  <g transform={popTransform(215, ptY, vertRx.scale)}>
+                    <circle cx="250" cy={ptY} r={9 + 3.5 * vertRx.pulse} fill={vertRx.pulse > 0.05 ? "#FEE2E2" : "#F87171"} />
+                    <text x="234" y={ptY + 5} textAnchor="end" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                      A&apos; (cota +3)
+                    </text>
+                  </g>
+                  <text
+                    x="430"
+                    y="218"
+                    fontSize="16"
+                    fontWeight="800"
+                    fill="#FCA5A5"
+                    fontFamily="var(--font-mono), monospace"
+                    transform={popTransform(480, 212, 1 + 0.05 * altRx.pulse)}
+                  >
+                    ↑ ALTURA = +3
+                  </text>
+                </g>
+              );
+            })()}
 
-            {sceneId === "trap-y" && (
-              <g opacity={e}>
-                <rect x="98" y="54" width="524" height="40" rx="11" fill="rgba(245,158,11,0.22)" stroke="#F59E0B" />
-                <text x="360" y="79" textAnchor="middle" fontSize="14.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
-                  ⚡ A PEGADINHA #1: NA ÉPURA, +Y (AFASTAMENTO) DESCE!
-                </text>
-                <line x1="100" y1="215" x2="610" y2="215" stroke="#2DD4BF" strokeWidth="4" />
-                <text x="618" y="220" fontSize="16" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">LT</text>
-                <line x1="360" y1="115" x2="360" y2="352" stroke="#94A3B8" strokeDasharray="6 5" strokeWidth="2" />
-                {/* Cota +3 UP */}
-                <line x1="360" y1="215" x2="360" y2={215 - 88 * e} stroke="#F87171" strokeWidth="5.5" />
-                <circle cx="360" cy={215 - 88 * e} r="10" fill="#F87171" />
-                <text x="380" y={220 - 88 * e} fontSize="17" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                  A&apos; · Cota +3 SOBE ↑
-                </text>
-                {/* Afastamento +5 DOWN */}
-                <line x1="360" y1="215" x2="360" y2={215 + 125 * e} stroke="#38BDF8" strokeWidth="5.5" />
-                <circle cx="360" cy={215 + 125 * e} r="10" fill="#38BDF8" />
-                <text x="380" y={220 + 125 * e} fontSize="17" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                  A · Afast. +5 DESCE ↓
-                </text>
-              </g>
-            )}
+            {sceneId === "trap-y" && (() => {
+              const trapRx = beatReaction(beats, "trap", sceneSeconds, 0.9);
+              const foldRx = beatReaction(beats, "fold", sceneSeconds, 0.85);
+              const upRx = beatReaction(beats, "goUp", sceneSeconds, 0.85);
+              const downRx = beatReaction(beats, "goDown", sceneSeconds, 0.85);
+              const rUpRx = beatReaction(beats, "recapUp", sceneSeconds, 0.85);
+              const rDownRx = beatReaction(beats, "recapDown", sceneSeconds, 0.85);
+              const upPulse = Math.max(upRx.pulse, rUpRx.pulse);
+              const downPulse = Math.max(downRx.pulse, rDownRx.pulse);
+              return (
+                <g opacity={e}>
+                  <g transform={popTransform(360, 74, 1 + 0.045 * trapRx.pulse, trapRx.wiggle * 1.8, trapRx.wiggle * 4, 0)}>
+                    <rect x="98" y="54" width="524" height="40" rx="11" fill={`rgba(245,158,11,${(0.22 + 0.16 * trapRx.pulse).toFixed(2)})`} stroke="#F59E0B" strokeWidth={1.6 + 2 * trapRx.pulse} />
+                    <text x="360" y="79" textAnchor="middle" fontSize="14.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                      ⚡ A PEGADINHA #1: NA ÉPURA, +Y (AFASTAMENTO) DESCE!
+                    </text>
+                  </g>
+                  <line x1="100" y1="215" x2="610" y2="215" stroke={foldRx.pulse > 0.05 ? "#99F6E4" : "#2DD4BF"} strokeWidth={4 + 2.8 * foldRx.pulse} />
+                  <text x="618" y="220" fontSize="16" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">LT</text>
+                  <line x1="360" y1="115" x2="360" y2="352" stroke="#94A3B8" strokeDasharray="6 5" strokeWidth="2" />
+                  {/* Cota +3 UP */}
+                  <g transform={popTransform(420, 215 - 88 * e, 1 + 0.055 * upPulse, 0, 0, -4 * upPulse)}>
+                    <line x1="360" y1="215" x2="360" y2={215 - 88 * e} stroke="#F87171" strokeWidth={5.5 + 2.2 * upPulse} />
+                    <circle cx="360" cy={215 - 88 * e} r={10 + 3 * upPulse} fill="#F87171" />
+                    <text x="380" y={220 - 88 * e} fontSize="17" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                      A&apos; · Cota +3 SOBE ↑
+                    </text>
+                  </g>
+                  {/* Afastamento +5 DOWN */}
+                  <g transform={popTransform(420, 215 + 125 * e, 1 + 0.055 * downPulse, 0, downRx.wiggle * 3, 4 * downPulse)}>
+                    <line x1="360" y1="215" x2="360" y2={215 + 125 * e} stroke="#38BDF8" strokeWidth={5.5 + 2.2 * downPulse} />
+                    <circle cx="360" cy={215 + 125 * e} r={10 + 3 * downPulse} fill="#38BDF8" />
+                    <text x="380" y={220 + 125 * e} fontSize="17" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                      A · Afast. +5 DESCE ↓
+                    </text>
+                  </g>
+                </g>
+              );
+            })()}
           </>
         )}
 
         {/* =================== EPISODE 03: 4 DIEDROS =================== */}
         {episode.id === "ep03-diedros" && (
           <>
-            {sceneId === "intro" && (
-              <g opacity={e}>
-                <text x="360" y="66" textAnchor="middle" fontSize="17" fontWeight="800" fill="#F59E0B" fontFamily="var(--font-mono), monospace">
-                  OS 4 DIEDROS · SENTIDO ANTI-HORÁRIO ↺
-                </text>
-                <line x1="360" y1="92" x2="360" y2="368" stroke="#F87171" strokeWidth="4" />
-                <line x1="150" y1="230" x2="570" y2="230" stroke="#38BDF8" strokeWidth="4" />
-                {/* Counter-clockwise arc arrow */}
-                <path
-                  d="M 440 185 A 95 95 0 1 0 438 275"
-                  fill="none"
-                  stroke="#F59E0B"
-                  strokeWidth="3.5"
-                  strokeDasharray="8 5"
-                />
-                <text x="462" y="152" fontSize="22" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">1º D</text>
-                <text x="205" y="152" fontSize="22" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">2º D</text>
-                <text x="205" y="316" fontSize="22" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">3º D</text>
-                <text x="462" y="316" fontSize="22" fontWeight="800" fill="#F59E0B" fontFamily="var(--font-mono), monospace">4º D</text>
-              </g>
-            )}
+            {sceneId === "intro" && (() => {
+              const fourRx = beatReaction(beats, "four", sceneSeconds, 0.85);
+              const crossRx = beatReaction(beats, "cross", sceneSeconds, 0.85);
+              const turnRx = beatReaction(beats, "turn", sceneSeconds, 0.9);
+              return (
+                <g opacity={e}>
+                  <text x="360" y="66" textAnchor="middle" fontSize="17" fontWeight="800" fill="#F59E0B" fontFamily="var(--font-mono), monospace">
+                    OS 4 DIEDROS · SENTIDO ANTI-HORÁRIO ↺
+                  </text>
+                  <line x1="360" y1="92" x2="360" y2="368" stroke="#F87171" strokeWidth={4 + 2.5 * crossRx.pulse} />
+                  <line x1="150" y1="230" x2="570" y2="230" stroke="#38BDF8" strokeWidth={4 + 2.5 * crossRx.pulse} />
+                  <circle cx="360" cy="230" r={5 + 4 * crossRx.pulse} fill="#FDE68A" opacity={0.4 + 0.6 * crossRx.pulse} />
+                  {/* Counter-clockwise arc arrow */}
+                  <g transform={popTransform(360, 230, 1 + 0.04 * turnRx.pulse, -10 * turnRx.pulse)}>
+                    <path
+                      d="M 440 185 A 95 95 0 1 0 438 275"
+                      fill="none"
+                      stroke={turnRx.pulse > 0.05 ? "#FDE68A" : "#F59E0B"}
+                      strokeWidth={3.5 + 2.5 * turnRx.pulse}
+                      strokeDasharray="8 5"
+                    />
+                  </g>
+                  <text x="462" y="152" fontSize="22" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace" transform={popTransform(485, 145, fourRx.scale)}>1º D</text>
+                  <text x="205" y="152" fontSize="22" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace" transform={popTransform(228, 145, fourRx.scale)}>2º D</text>
+                  <text x="205" y="316" fontSize="22" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace" transform={popTransform(228, 309, fourRx.scale)}>3º D</text>
+                  <text x="462" y="316" fontSize="22" fontWeight="800" fill="#F59E0B" fontFamily="var(--font-mono), monospace" transform={popTransform(485, 309, fourRx.scale)}>4º D</text>
+                </g>
+              );
+            })()}
             {sceneId === "d1" && renderDiedroFocus(1)}
             {sceneId === "d2" && renderDiedroFocus(2)}
             {sceneId === "d3" && renderDiedroFocus(3)}
@@ -1015,6 +1296,12 @@ function MotionCanvas({
           const frontPulse = Math.sin(frontPhase * Math.PI);
           const backPulse = Math.sin(backPhase * Math.PI);
           const landsPulse = Math.sin(landsPhase * Math.PI);
+          const planesRx = beatReaction(beats, "planes", sceneSeconds, 0.85);
+          const sqRx = beatReaction(beats, "square", sceneSeconds, 0.85);
+          const mongeRx = beatReaction(beats, "monge", sceneSeconds, 0.9);
+          const wallRx = beatReaction(beats, "wallFixed", sceneSeconds, 0.85);
+          const hingeRx = beatReaction(beats, "hinge", sceneSeconds, 0.85);
+          const turnRx = beatReaction(beats, "turn", sceneSeconds, 0.9);
 
           const foldDeg =
             sceneId === "intro" || sceneId === "hinge"
@@ -1035,18 +1322,25 @@ function MotionCanvas({
           const backY = cy - 96 * Math.sin(rad);
 
           if (sceneId === "chamada") {
+            const pARx = beatReaction(beats, "projA", sceneSeconds, 0.85);
+            const pA2Rx = beatReaction(beats, "projA2", sceneSeconds, 0.85);
+            const clRx = beatReaction(beats, "callLine", sceneSeconds, 0.95);
             return (
               <g opacity={e}>
                 <text x="360" y="76" textAnchor="middle" fontSize="18" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
                   ÉPURA PRONTA: A LINHA DE CHAMADA (90° À LT)
                 </text>
-                <line x1="110" y1="220" x2="610" y2="220" stroke="#2DD4BF" strokeWidth="4.5" />
-                <line x1="360" y1="118" x2="360" y2="338" stroke="#FDE68A" strokeWidth="3.5" strokeDasharray="7 5" />
-                <rect x="360" y="200" width="20" height="20" fill="none" stroke="#FDE68A" strokeWidth="2" />
-                <circle cx="360" cy="128" r="10" fill="#F87171" />
-                <text x="380" y="134" fontSize="18" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (mesma abscissa X!)</text>
-                <circle cx="360" cy="326" r="10" fill="#38BDF8" />
-                <text x="380" y="332" fontSize="18" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (mesma abscissa X!)</text>
+                <line x1="110" y1="220" x2="610" y2="220" stroke="#2DD4BF" strokeWidth={4.5 + 1.5 * clRx.pulse} />
+                <line x1="360" y1="118" x2="360" y2="338" stroke={clRx.pulse > 0.05 ? "#FFF7D6" : "#FDE68A"} strokeWidth={3.5 + 2.8 * clRx.pulse} strokeDasharray="7 5" />
+                <rect x="360" y="200" width="20" height="20" fill={clRx.pulse > 0.05 ? "rgba(253,230,138,0.22)" : "none"} stroke="#FDE68A" strokeWidth={2 + 1.5 * clRx.pulse} />
+                <g transform={popTransform(450, 128, pA2Rx.scale, pA2Rx.wiggle * 1.4)}>
+                  <circle cx="360" cy="128" r={10 + 3 * pA2Rx.pulse} fill="#F87171" />
+                  <text x="380" y="134" fontSize="18" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (mesma abscissa X!)</text>
+                </g>
+                <g transform={popTransform(450, 326, pARx.scale, pARx.wiggle * 1.4)}>
+                  <circle cx="360" cy="326" r={10 + 3 * pARx.pulse} fill="#38BDF8" />
+                  <text x="380" y="332" fontSize="18" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (mesma abscissa X!)</text>
+                </g>
               </g>
             );
           }
@@ -1074,7 +1368,10 @@ function MotionCanvas({
                     </g>
                     <rect width="800" height="450" fill="url(#cinemaVignette)" />
                     {mongeReveal > 0.01 && (
-                      <g opacity={0.52 * mongeReveal}>
+                      <g
+                        opacity={Math.min(0.85, (0.52 + 0.25 * mongeRx.pulse) * mongeReveal)}
+                        transform={popTransform(100, 235, 1 + 0.04 * mongeRx.pulse)}
+                      >
                         <image
                           href="/illustrations/gaspard-monge.png"
                           x="-55"
@@ -1099,44 +1396,54 @@ function MotionCanvas({
                       : `PISO TRASEIRO (πP) SUBINDO: ${Math.round(foldDeg)}°`}
               </text>
               {/* Fixed PV */}
-              <line x1={cx} y1="88" x2={cx} y2="362" stroke="#F87171" strokeWidth="4.5" />
+              <line x1={cx} y1="88" x2={cx} y2="362" stroke={Math.max(planesRx.pulse, wallRx.pulse) > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={4.5 + 2.8 * Math.max(planesRx.pulse, wallRx.pulse)} />
               <text x={cx + 12} y="102" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">π&apos;S (Fixo)</text>
               <text x={cx + 12} y="356" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">π&apos;I (Fixo)</text>
+              {sqRx.pulse > 0.05 && (
+                <rect x={cx} y={cy - 22} width="22" height="22" fill="rgba(253,230,138,0.2)" stroke="#FDE68A" strokeWidth={2.2 * sqRx.pulse} opacity={sqRx.pulse} />
+              )}
               {/* Folding PH (split into back and front halves so each half reacts directly to its spoken beat) */}
               <line
                 x1={cx - len * Math.cos(rad)}
                 y1={cy - len * Math.sin(rad)}
                 x2={cx}
                 y2={cy}
-                stroke={backPulse > 0.05 ? "#99F6E4" : "#38BDF8"}
-                strokeWidth={4.5 + 2.5 * backPulse}
+                stroke={Math.max(backPulse, planesRx.pulse, turnRx.pulse) > 0.05 ? "#99F6E4" : "#38BDF8"}
+                strokeWidth={4.5 + 2.5 * Math.max(backPulse, planesRx.pulse, turnRx.pulse)}
               />
               <line
                 x1={cx}
                 y1={cy}
                 x2={cx + len * Math.cos(rad)}
                 y2={cy + len * Math.sin(rad)}
-                stroke={frontPulse > 0.05 ? "#BAE6FD" : "#38BDF8"}
-                strokeWidth={4.5 + 2.5 * frontPulse}
+                stroke={Math.max(frontPulse, planesRx.pulse, turnRx.pulse) > 0.05 ? "#BAE6FD" : "#38BDF8"}
+                strokeWidth={4.5 + 2.5 * Math.max(frontPulse, planesRx.pulse, turnRx.pulse)}
               />
               {/* Front compass arc */}
               <path
                 d={`M ${cx + 96} ${cy} A 96 96 0 0 1 ${cx} ${cy + 96}`}
                 fill="none"
-                stroke={frontPulse > 0.05 ? "#BAE6FD" : "#38BDF8"}
-                strokeWidth={(sceneId === "front-down" ? 4 : 2) + 3 * frontPulse}
+                stroke={Math.max(frontPulse, turnRx.pulse) > 0.05 ? "#BAE6FD" : "#38BDF8"}
+                strokeWidth={(sceneId === "front-down" ? 4 : 2) + 3 * Math.max(frontPulse, turnRx.pulse)}
                 strokeDasharray="6 4"
               />
               {/* Back compass arc */}
               <path
                 d={`M ${cx - 96} ${cy} A 96 96 0 0 1 ${cx} ${cy - 96}`}
                 fill="none"
-                stroke={backPulse > 0.05 ? "#99F6E4" : "#2DD4BF"}
-                strokeWidth={(sceneId === "back-up" ? 4 : 2) + 3 * backPulse}
+                stroke={Math.max(backPulse, turnRx.pulse) > 0.05 ? "#99F6E4" : "#2DD4BF"}
+                strokeWidth={(sceneId === "back-up" ? 4 : 2) + 3 * Math.max(backPulse, turnRx.pulse)}
                 strokeDasharray="6 4"
               />
               {/* LT Hinge */}
-              <circle cx={cx} cy={cy} r={sceneId === "hinge" ? 13 : 8} fill="#2DD4BF" stroke="#FFFFFF" strokeWidth="2" />
+              <circle
+                cx={cx}
+                cy={cy}
+                r={(sceneId === "hinge" ? 13 : 8) + 4 * Math.max(hingeRx.pulse, sqRx.pulse)}
+                fill={hingeRx.pulse > 0.05 ? "#FDE68A" : "#2DD4BF"}
+                stroke="#FFFFFF"
+                strokeWidth="2"
+              />
               {/* Front point A (+Y) */}
               {frontPulse > 0.05 && (
                 <circle
@@ -1186,85 +1493,137 @@ function MotionCanvas({
         {/* =================== EPISODE 05: BISSETORES =================== */}
         {episode.id === "ep05-bissetores" && (
           <g opacity={e}>
-            {sceneId === "intro" && (
-              <>
-                <text x="360" y="130" textAnchor="middle" fontSize="16" fontWeight="800" fill="#A78BFA" fontFamily="var(--font-mono), monospace">
-                  EPISÓDIO 05 · NÍVEL PROVA UERJ
-                </text>
-                <text x="360" y="196" textAnchor="middle" fontSize="38" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
-                  Casos Especiais &amp; Bissetores
-                </text>
-                <text x="360" y="254" textAnchor="middle" fontSize="18" fontWeight="700" fill="#CBD5E1" fontFamily="var(--font-mono), monospace">
-                  Coordenada Zero · 1º Bissetor (β₁₃) · 2º Bissetor (β₂₄)
-                </text>
-              </>
-            )}
+            {sceneId === "intro" && (() => {
+              const zRx = beatReaction(beats, "zero", sceneSeconds, 0.85);
+              const sRx = beatReaction(beats, "sameSize", sceneSeconds, 0.9);
+              return (
+                <>
+                  <text x="360" y="130" textAnchor="middle" fontSize="16" fontWeight="800" fill="#A78BFA" fontFamily="var(--font-mono), monospace">
+                    EPISÓDIO 05 · NÍVEL PROVA UERJ
+                  </text>
+                  <text
+                    x="360"
+                    y="196"
+                    textAnchor="middle"
+                    fontSize="38"
+                    fontWeight="800"
+                    fill="#FFFFFF"
+                    fontFamily="var(--font-display), serif"
+                    transform={popTransform(360, 186, 1 + 0.04 * sRx.pulse)}
+                  >
+                    Casos Especiais &amp; Bissetores
+                  </text>
+                  <text
+                    x="360"
+                    y="254"
+                    textAnchor="middle"
+                    fontSize="18"
+                    fontWeight="700"
+                    fill={Math.max(zRx.pulse, sRx.pulse) > 0.05 ? "#FDE68A" : "#CBD5E1"}
+                    fontFamily="var(--font-mono), monospace"
+                    transform={popTransform(360, 248, 1 + 0.04 * zRx.pulse)}
+                  >
+                    Coordenada Zero · 1º Bissetor (β₁₃) · 2º Bissetor (β₂₄)
+                  </text>
+                </>
+              );
+            })()}
 
-            {sceneId === "zero-cota" && (
-              <>
-                <text x="360" y="72" textAnchor="middle" fontSize="17" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
-                  QUANDO UMA COORDENADA VALE ZERO!
-                </text>
-                <line x1="100" y1="220" x2="620" y2="220" stroke="#2DD4BF" strokeWidth="4" />
-                {/* Left: Cota = 0 */}
-                <line x1="210" y1="220" x2="210" y2="310" stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
-                <circle cx="210" cy="220" r="9" fill="#F87171" />
-                <text x="210" y="196" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; na LT (Cota=0)</text>
-                <circle cx="210" cy="310" r="9" fill="#38BDF8" />
-                <text x="210" y="338" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (em π)</text>
-                {/* Center: LT */}
-                <circle cx="360" cy="220" r="11" fill="#FDE68A" />
-                <text x="360" y="256" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">Na LT (0;0)</text>
-                {/* Right: Afast = 0 */}
-                <line x1="510" y1="130" x2="510" y2="220" stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
-                <circle cx="510" cy="220" r="9" fill="#38BDF8" />
-                <text x="510" y="250" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">C na LT (Afast.=0)</text>
-                <circle cx="510" cy="130" r="9" fill="#F87171" />
-                <text x="510" y="110" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">C&apos; (em π&apos;)</text>
-              </>
-            )}
+            {sceneId === "zero-cota" && (() => {
+              const zCRx = beatReaction(beats, "zeroCota", sceneSeconds, 0.9);
+              const zARx = beatReaction(beats, "zeroAfast", sceneSeconds, 0.9);
+              const zBRx = beatReaction(beats, "zeroBoth", sceneSeconds, 0.9);
+              return (
+                <>
+                  <text x="360" y="72" textAnchor="middle" fontSize="17" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                    QUANDO UMA COORDENADA VALE ZERO!
+                  </text>
+                  <line x1="100" y1="220" x2="620" y2="220" stroke="#2DD4BF" strokeWidth={4 + 1.8 * zBRx.pulse} />
+                  {/* Left: Cota = 0 */}
+                  <g transform={popTransform(210, 265, zCRx.scale, zCRx.wiggle * 1.6)}>
+                    <line x1="210" y1="220" x2="210" y2="310" stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
+                    <circle cx="210" cy="220" r={9 + 3 * zCRx.pulse} fill="#F87171" />
+                    <text x="210" y="196" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; na LT (Cota=0)</text>
+                    <circle cx="210" cy="310" r={9 + 2.5 * zCRx.pulse} fill="#38BDF8" />
+                    <text x="210" y="338" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (em π)</text>
+                  </g>
+                  {/* Center: LT */}
+                  <g transform={popTransform(360, 228, zBRx.scale)}>
+                    <circle cx="360" cy="220" r={11 + 4 * zBRx.pulse} fill="#FDE68A" />
+                    <text x="360" y="256" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">Na LT (0;0)</text>
+                  </g>
+                  {/* Right: Afast = 0 */}
+                  <g transform={popTransform(510, 175, zARx.scale, zARx.wiggle * 1.6)}>
+                    <line x1="510" y1="130" x2="510" y2="220" stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
+                    <circle cx="510" cy="220" r={9 + 3 * zARx.pulse} fill="#38BDF8" />
+                    <text x="510" y="250" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">C na LT (Afast.=0)</text>
+                    <circle cx="510" cy="130" r={9 + 2.5 * zARx.pulse} fill="#F87171" />
+                    <text x="510" y="110" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">C&apos; (em π&apos;)</text>
+                  </g>
+                </>
+              );
+            })()}
 
-            {(sceneId === "bisectors-intro" || sceneId === "b13" || sceneId === "b24") && (
-              <>
-                <line x1="255" y1="74" x2="255" y2="354" stroke="#F87171" strokeWidth="3" />
-                <line x1="115" y1="214" x2="395" y2="214" stroke="#38BDF8" strokeWidth="3" />
-                <line x1="135" y1="334" x2="375" y2="94" stroke="#F59E0B" strokeWidth={sceneId === "b13" ? 5.5 : 3} strokeDasharray="8 5" />
-                <text x="375" y="76" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">β₁₃ (45°)</text>
-                <line x1="135" y1="94" x2="375" y2="334" stroke="#A78BFA" strokeWidth={sceneId === "b24" ? 5.5 : 3} strokeDasharray="8 5" />
-                <text x="108" y="90" fontSize="14" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace">β₂₄ (45°)</text>
+            {(sceneId === "bisectors-intro" || sceneId === "b13" || sceneId === "b24") && (() => {
+              const biRx = beatReaction(beats, "bisector", sceneSeconds, 0.85);
+              const angRx = beatReaction(beats, "angle", sceneSeconds, 0.85);
+              const b13Rx = beatReaction(beats, "b13", sceneSeconds, 0.9);
+              const symRx = beatReaction(beats, "symmetry", sceneSeconds, 0.95);
+              const b24Rx = beatReaction(beats, "b24", sceneSeconds, 0.9);
+              const coinRx = beatReaction(beats, "coincident", sceneSeconds, 0.95);
+              const b13Glow = Math.max(biRx.pulse, b13Rx.pulse);
+              const b24Glow = Math.max(biRx.pulse, b24Rx.pulse);
+              return (
+                <>
+                  <line x1="255" y1="74" x2="255" y2="354" stroke="#F87171" strokeWidth="3" />
+                  <line x1="115" y1="214" x2="395" y2="214" stroke="#38BDF8" strokeWidth="3" />
+                  <line x1="135" y1="334" x2="375" y2="94" stroke={b13Glow > 0.05 ? "#FFF7D6" : "#F59E0B"} strokeWidth={(sceneId === "b13" ? 5.5 : 3) + 2.5 * b13Glow} strokeDasharray="8 5" />
+                  <text x="375" y="76" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace" transform={popTransform(375, 72, 1 + 0.05 * Math.max(b13Glow, angRx.pulse))}>β₁₃ (45°)</text>
+                  <line x1="135" y1="94" x2="375" y2="334" stroke={b24Glow > 0.05 ? "#F3E8FF" : "#A78BFA"} strokeWidth={(sceneId === "b24" ? 5.5 : 3) + 2.5 * b24Glow} strokeDasharray="8 5" />
+                  <text x="108" y="90" fontSize="14" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace" transform={popTransform(138, 86, 1 + 0.05 * Math.max(b24Glow, angRx.pulse))}>β₂₄ (45°)</text>
 
-                <rect x="445" y="88" width="195" height="250" rx="18" fill="rgba(15,23,42,0.88)" stroke={sceneId === "b24" ? "#A78BFA" : "#F59E0B"} strokeWidth="2.4" />
-                <line x1="468" y1="214" x2="618" y2="214" stroke="#2DD4BF" strokeWidth="3" />
-                {sceneId === "b13" && (
-                  <>
-                    <text x="542" y="118" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">1º BISSETOR (+3; +3)</text>
-                    <line x1="542" y1="146" x2="542" y2="282" stroke="#F59E0B" strokeDasharray="5 4" strokeWidth="2.5" />
-                    <circle cx="542" cy="146" r="9" fill="#F87171" />
-                    <text x="560" y="151" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (+3)</text>
-                    <circle cx="542" cy="282" r="9" fill="#38BDF8" />
-                    <text x="560" y="287" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (+3)</text>
-                    <text x="542" y="320" textAnchor="middle" fontSize="12" fontWeight="800" fill="#FDE68A">SIMÉTRICOS NA LT!</text>
-                  </>
-                )}
-                {sceneId === "b24" && (
-                  <>
-                    <text x="542" y="118" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace">2º BISSETOR (−3; +3)</text>
-                    <line x1="542" y1="150" x2="542" y2="214" stroke="#A78BFA" strokeDasharray="5 4" strokeWidth="2.5" />
-                    <circle cx="542" cy="150" r={15 + Math.sin(localT * 8) * 3} fill="rgba(167,139,250,0.28)" stroke="#A78BFA" strokeWidth="3" />
-                    <circle cx="542" cy="150" r="8" fill="#F87171" />
-                    <text x="542" y="264" textAnchor="middle" fontSize="19" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace">B ≡ B&apos; !</text>
-                    <text x="542" y="294" textAnchor="middle" fontSize="12" fontWeight="700" fill="#E9D5FF">COINCIDENTES!</text>
-                  </>
-                )}
-                {sceneId === "bisectors-intro" && (
-                  <>
-                    <text x="542" y="160" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">|Afast.| = |Cota|</text>
-                    <text x="542" y="256" textAnchor="middle" fontSize="13" fill="#CBD5E1">Cortam os diedros</text>
-                    <text x="542" y="278" textAnchor="middle" fontSize="13" fill="#CBD5E1">exatamente a 45°!</text>
-                  </>
-                )}
-              </>
-            )}
+                  <rect
+                    x="445"
+                    y="88"
+                    width="195"
+                    height="250"
+                    rx="18"
+                    fill="rgba(15,23,42,0.88)"
+                    stroke={sceneId === "b24" ? "#A78BFA" : "#F59E0B"}
+                    strokeWidth={2.4 + 2 * Math.max(angRx.pulse, symRx.pulse, coinRx.pulse)}
+                  />
+                  <line x1="468" y1="214" x2="618" y2="214" stroke="#2DD4BF" strokeWidth="3" />
+                  {sceneId === "b13" && (
+                    <g transform={popTransform(542, 214, 1 + 0.04 * symRx.pulse)}>
+                      <text x="542" y="118" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">1º BISSETOR (+3; +3)</text>
+                      <line x1="542" y1="146" x2="542" y2="282" stroke="#F59E0B" strokeDasharray="5 4" strokeWidth={2.5 + 1.8 * symRx.pulse} />
+                      <circle cx="542" cy={146 - 4 * symRx.pulse} r={9 + 2.5 * symRx.pulse} fill="#F87171" />
+                      <text x="560" y={151 - 4 * symRx.pulse} fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (+3)</text>
+                      <circle cx="542" cy={282 + 4 * symRx.pulse} r={9 + 2.5 * symRx.pulse} fill="#38BDF8" />
+                      <text x="560" y={287 + 4 * symRx.pulse} fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (+3)</text>
+                      <text x="542" y="320" textAnchor="middle" fontSize="12" fontWeight="800" fill={symRx.pulse > 0.05 ? "#FFF7D6" : "#FDE68A"}>SIMÉTRICOS NA LT!</text>
+                    </g>
+                  )}
+                  {sceneId === "b24" && (
+                    <g transform={popTransform(542, 180, 1 + 0.05 * coinRx.pulse, coinRx.wiggle * 1.5)}>
+                      <text x="542" y="118" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace">2º BISSETOR (−3; +3)</text>
+                      <line x1="542" y1="150" x2="542" y2="214" stroke="#A78BFA" strokeDasharray="5 4" strokeWidth={2.5 + 2 * coinRx.pulse} />
+                      <circle cx="542" cy="150" r={15 + Math.sin(localT * 8) * 3 + 5 * coinRx.pulse} fill="rgba(167,139,250,0.28)" stroke="#A78BFA" strokeWidth={3 + 1.5 * coinRx.pulse} />
+                      <circle cx="542" cy="150" r={8 + 2.5 * coinRx.pulse} fill="#F87171" />
+                      <text x="542" y="264" textAnchor="middle" fontSize="19" fontWeight="800" fill={coinRx.pulse > 0.05 ? "#FFFFFF" : "#DDD6FE"} fontFamily="var(--font-mono), monospace">B ≡ B&apos; !</text>
+                      <text x="542" y="294" textAnchor="middle" fontSize="12" fontWeight="700" fill="#E9D5FF">COINCIDENTES!</text>
+                    </g>
+                  )}
+                  {sceneId === "bisectors-intro" && (
+                    <g transform={popTransform(542, 214, 1 + 0.045 * Math.max(biRx.pulse, angRx.pulse))}>
+                      <text x="542" y="160" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">|Afast.| = |Cota|</text>
+                      <text x="542" y="256" textAnchor="middle" fontSize="13" fill="#CBD5E1">Cortam os diedros</text>
+                      <text x="542" y="278" textAnchor="middle" fontSize="13" fill="#CBD5E1">exatamente a 45°!</text>
+                    </g>
+                  )}
+                </>
+              );
+            })()}
           </g>
         )}
 
@@ -1273,6 +1632,7 @@ function MotionCanvas({
           <g opacity={e}>
             {sceneId === "intro" && (() => {
               const kbScale = 1.03 + localT * 0.07;
+              const prRx = beatReaction(beats, "practice", sceneSeconds, 0.9);
               return (
                 <>
                   <g
@@ -1289,126 +1649,167 @@ function MotionCanvas({
                     />
                   </g>
                   <rect width="800" height="450" fill="url(#cinemaVignette)" />
-                  <rect x="84" y="96" width="546" height="234" rx="24" fill="rgba(9,16,30,0.72)" stroke="#FB7185" strokeWidth="2" />
-                  <text x="357" y="146" textAnchor="middle" fontSize="15" fontWeight="800" fill="#FB7185" fontFamily="var(--font-mono), monospace">
-                    SLIDE DA AULA 1 · UERJ
-                  </text>
-                  <text x="357" y="200" textAnchor="middle" fontSize="34" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
-                    Resolução dos Exercícios 1 e 2
-                  </text>
-                  <text x="357" y="252" textAnchor="middle" fontSize="14.5" fontWeight="700" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
-                    Ex. 1: (A)(+2; +5; +3) e (B)(−2; −5; −3)
-                  </text>
-                  <text x="357" y="284" textAnchor="middle" fontSize="14.5" fontWeight="700" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                    Ex. 2: (A)(+1;+2;+3) · (B)(+2;+3;+4) · (C)(+3;+4;+5)
-                  </text>
+                  <g transform={popTransform(357, 213, 1 + 0.035 * prRx.pulse)}>
+                    <rect x="84" y="96" width="546" height="234" rx="24" fill="rgba(9,16,30,0.72)" stroke="#FB7185" strokeWidth={2 + 2.2 * prRx.pulse} />
+                    <text x="357" y="146" textAnchor="middle" fontSize="15" fontWeight="800" fill="#FB7185" fontFamily="var(--font-mono), monospace">
+                      SLIDE DA AULA 1 · UERJ
+                    </text>
+                    <text x="357" y="200" textAnchor="middle" fontSize="34" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
+                      Resolução dos Exercícios 1 e 2
+                    </text>
+                    <text x="357" y="252" textAnchor="middle" fontSize="14.5" fontWeight="700" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                      Ex. 1: (A)(+2; +5; +3) e (B)(−2; −5; −3)
+                    </text>
+                    <text x="357" y="284" textAnchor="middle" fontSize="14.5" fontWeight="700" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                      Ex. 2: (A)(+1;+2;+3) · (B)(+2;+3;+4) · (C)(+3;+4;+5)
+                    </text>
+                  </g>
                 </>
               );
             })()}
 
-            {(sceneId === "ex1-points" || sceneId === "ex1-line") && (
-              <>
-                <text x="350" y="68" textAnchor="middle" fontSize="15" fontWeight="800" fill="#FB7185" fontFamily="var(--font-mono), monospace">
-                  EX. 1: (A)(+2; +5; +3) [1ºD] ⇄ (B)(−2; −5; −3) [3ºD]
-                </text>
-                <line x1="100" y1="218" x2="600" y2="218" stroke="#2DD4BF" strokeWidth="4" />
-                {sceneId === "ex1-line" && (
-                  <>
-                    <line x1="220" y1="288" x2={220 + 260 * e} y2={288 - 140 * e} stroke="#F87171" strokeWidth="4.5" />
-                    <line x1="220" y1="108" x2={220 + 260 * e} y2={108 + 220 * e} stroke="#38BDF8" strokeWidth="4.5" />
-                    <circle cx="350" cy="218" r={16 + Math.sin(localT * 8) * 4} fill="rgba(245,158,11,0.25)" stroke="#F59E0B" strokeWidth="3.2" />
-                    <circle cx="350" cy="218" r="7" fill="#FDE68A" />
-                    <rect x="235" y="346" width="230" height="34" rx="10" fill="#F59E0B" />
-                    <text x="350" y="368" textAnchor="middle" fontSize="13" fontWeight="800" fill="#1C1917" fontFamily="var(--font-mono), monospace">
-                      r e r&apos; CRUZAM NA ORIGEM O!
-                    </text>
-                  </>
-                )}
-                <line x1="480" y1="148" x2="480" y2="328" stroke="#94A3B8" strokeDasharray="4 4" strokeWidth="1.8" />
-                <line x1="220" y1="108" x2="220" y2="288" stroke="#94A3B8" strokeDasharray="4 4" strokeWidth="1.8" />
-                <circle cx="480" cy="148" r="8.5" fill="#F87171" />
-                <text x="496" y="153" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (+3)</text>
-                <circle cx="480" cy="328" r="8.5" fill="#38BDF8" />
-                <text x="496" y="333" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (+5)</text>
-                <circle cx="220" cy="288" r="8.5" fill="#F87171" />
-                <text x="202" y="293" textAnchor="end" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">B&apos; (−3)</text>
-                <circle cx="220" cy="108" r="8.5" fill="#38BDF8" />
-                <text x="202" y="113" textAnchor="end" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">B (−5)</text>
-              </>
-            )}
-
-            {(sceneId === "ex2-points" || sceneId === "ex2-collinear") && (
-              <>
-                <text x="355" y="68" textAnchor="middle" fontSize="15" fontWeight="800" fill="#34D399" fontFamily="var(--font-mono), monospace">
-                  {sceneId === "ex2-points"
-                    ? "EX. 2: (A)(1;2;3) · (B)(2;3;4) · (C)(3;4;5) — PASSO (+1;+1;+1)"
-                    : "EX. 2 · PLOT TWIST: NÃO É TRIÂNGULO — SÃO COLINEARES!"}
-                </text>
-                <line x1="100" y1="224" x2="600" y2="224" stroke="#2DD4BF" strokeWidth="4" />
-                {sceneId === "ex2-collinear" && (
-                  <>
-                    <line x1="255" y1="176" x2="505" y2="92" stroke="#F87171" strokeWidth="5" />
-                    <line x1="255" y1="272" x2="505" y2="356" stroke="#38BDF8" strokeWidth="5" />
-                    <rect x="108" y="102" width="160" height="72" rx="14" fill="rgba(52,211,153,0.18)" stroke="#34D399" strokeWidth="2" />
-                    <text x="188" y="128" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                      ✗ SEM TRIÂNGULO
-                    </text>
-                    <text x="188" y="154" textAnchor="middle" fontSize="12.5" fontWeight="800" fill="#A7F3D0" fontFamily="var(--font-mono), monospace">
-                      RETA // AO β₁₃!
-                    </text>
-                  </>
-                )}
-                {[
-                  { lbl: "A", x: 300, pvY: 162, phY: 286 },
-                  { lbl: "B", x: 380, pvY: 135, phY: 313 },
-                  { lbl: "C", x: 460, pvY: 108, phY: 340 },
-                ].map((pt) => (
-                  <g key={pt.lbl}>
-                    <line x1={pt.x} y1={pt.pvY} x2={pt.x} y2={pt.phY} stroke="#94A3B8" strokeDasharray="4 4" strokeWidth="1.6" />
-                    <circle cx={pt.x} cy={pt.pvY} r="8.5" fill="#F87171" />
-                    <text x={pt.x - 16} y={pt.pvY - 8} fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">{pt.lbl}&apos;</text>
-                    <circle cx={pt.x} cy={pt.phY} r="8.5" fill="#38BDF8" />
-                    <text x={pt.x - 16} y={pt.phY + 22} fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">{pt.lbl}</text>
+            {(sceneId === "ex1-points" || sceneId === "ex1-line") && (() => {
+              const pARx = beatReaction(beats, "pointA", sceneSeconds, 0.9);
+              const pBRx = beatReaction(beats, "pointB", sceneSeconds, 0.9);
+              const symRx = beatReaction(beats, "symmetric", sceneSeconds, 0.95);
+              const orgRx = beatReaction(beats, "origin", sceneSeconds, 0.95);
+              const crossRx = beatReaction(beats, "crossZero", sceneSeconds, 0.95);
+              const originPulse = Math.max(orgRx.pulse, crossRx.pulse);
+              const lineGlow = Math.max(symRx.pulse, crossRx.pulse);
+              return (
+                <>
+                  <text x="350" y="68" textAnchor="middle" fontSize="15" fontWeight="800" fill="#FB7185" fontFamily="var(--font-mono), monospace">
+                    EX. 1: (A)(+2; +5; +3) [1ºD] ⇄ (B)(−2; −5; −3) [3ºD]
+                  </text>
+                  <line x1="100" y1="218" x2="600" y2="218" stroke="#2DD4BF" strokeWidth={4 + 1.8 * originPulse} />
+                  {sceneId === "ex1-line" && (
+                    <>
+                      <line x1="220" y1="288" x2={220 + 260 * e} y2={288 - 140 * e} stroke={crossRx.pulse > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={4.5 + 2.5 * lineGlow} />
+                      <line x1="220" y1="108" x2={220 + 260 * e} y2={108 + 220 * e} stroke={crossRx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"} strokeWidth={4.5 + 2.5 * lineGlow} />
+                      <circle cx="350" cy="218" r={16 + Math.sin(localT * 8) * 4 + 6 * originPulse} fill="rgba(245,158,11,0.25)" stroke="#F59E0B" strokeWidth={3.2 + 2 * originPulse} />
+                      <circle cx="350" cy="218" r={7 + 2.5 * originPulse} fill="#FDE68A" />
+                      <g transform={popTransform(350, 363, 1 + 0.045 * originPulse)}>
+                        <rect x="235" y="346" width="230" height="34" rx="10" fill={originPulse > 0.05 ? "#FBBF24" : "#F59E0B"} />
+                        <text x="350" y="368" textAnchor="middle" fontSize="13" fontWeight="800" fill="#1C1917" fontFamily="var(--font-mono), monospace">
+                          r e r&apos; CRUZAM NA ORIGEM O!
+                        </text>
+                      </g>
+                    </>
+                  )}
+                  <g transform={popTransform(480, 238, 1 + 0.045 * Math.max(pARx.pulse, symRx.pulse), pARx.wiggle * 1.5)}>
+                    <line x1="480" y1="148" x2="480" y2="328" stroke="#94A3B8" strokeDasharray="4 4" strokeWidth={1.8 + 1.4 * pARx.pulse} />
+                    <circle cx="480" cy="148" r={8.5 + 3 * pARx.pulse} fill="#F87171" />
+                    <text x="496" y="153" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (+3)</text>
+                    <circle cx="480" cy="328" r={8.5 + 3 * pARx.pulse} fill="#38BDF8" />
+                    <text x="496" y="333" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (+5)</text>
                   </g>
-                ))}
-              </>
-            )}
+                  <g transform={popTransform(220, 198, 1 + 0.045 * Math.max(pBRx.pulse, symRx.pulse), pBRx.wiggle * 1.5)}>
+                    <line x1="220" y1="108" x2="220" y2="288" stroke="#94A3B8" strokeDasharray="4 4" strokeWidth={1.8 + 1.4 * pBRx.pulse} />
+                    <circle cx="220" cy="288" r={8.5 + 3 * pBRx.pulse} fill="#F87171" />
+                    <text x="202" y="293" textAnchor="end" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">B&apos; (−3)</text>
+                    <circle cx="220" cy="108" r={8.5 + 3 * pBRx.pulse} fill="#38BDF8" />
+                    <text x="202" y="113" textAnchor="end" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">B (−5)</text>
+                  </g>
+                </>
+              );
+            })()}
+
+            {(sceneId === "ex2-points" || sceneId === "ex2-collinear") && (() => {
+              const ptTargets = ["pointA", "pointB", "pointC"] as const;
+              const noTriRx = beatReaction(beats, "noTriangle", sceneSeconds, 0.9);
+              const colRx = beatReaction(beats, "collinear", sceneSeconds, 0.95);
+              const parRx = beatReaction(beats, "parallel", sceneSeconds, 0.95);
+              return (
+                <>
+                  <text x="355" y="68" textAnchor="middle" fontSize="15" fontWeight="800" fill="#34D399" fontFamily="var(--font-mono), monospace">
+                    {sceneId === "ex2-points"
+                      ? "EX. 2: (A)(1;2;3) · (B)(2;3;4) · (C)(3;4;5) — PASSO (+1;+1;+1)"
+                      : "EX. 2 · PLOT TWIST: NÃO É TRIÂNGULO — SÃO COLINEARES!"}
+                  </text>
+                  <line x1="100" y1="224" x2="600" y2="224" stroke="#2DD4BF" strokeWidth="4" />
+                  {sceneId === "ex2-collinear" && (
+                    <>
+                      <line x1="255" y1="176" x2="505" y2="92" stroke={colRx.pulse > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={5 + 2.6 * colRx.pulse} />
+                      <line x1="255" y1="272" x2="505" y2="356" stroke={colRx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"} strokeWidth={5 + 2.6 * colRx.pulse} />
+                      <g transform={popTransform(188, 138, 1 + 0.045 * Math.max(noTriRx.pulse, parRx.pulse), noTriRx.wiggle * 2.2, noTriRx.wiggle * 4, 0)}>
+                        <rect x="108" y="102" width="160" height="72" rx="14" fill="rgba(52,211,153,0.18)" stroke={parRx.pulse > 0.05 ? "#FDE68A" : "#34D399"} strokeWidth={2 + 2 * Math.max(noTriRx.pulse, parRx.pulse)} />
+                        <text x="188" y="128" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                          ✗ SEM TRIÂNGULO
+                        </text>
+                        <text x="188" y="154" textAnchor="middle" fontSize="12.5" fontWeight="800" fill={parRx.pulse > 0.05 ? "#FDE68A" : "#A7F3D0"} fontFamily="var(--font-mono), monospace">
+                          RETA // AO β₁₃!
+                        </text>
+                      </g>
+                    </>
+                  )}
+                  {[
+                    { lbl: "A", x: 300, pvY: 162, phY: 286 },
+                    { lbl: "B", x: 380, pvY: 135, phY: 313 },
+                    { lbl: "C", x: 460, pvY: 108, phY: 340 },
+                  ].map((pt, idx) => {
+                    const ptRx = beatReaction(beats, ptTargets[idx], sceneSeconds, 0.85);
+                    const grpPulse = Math.max(ptRx.pulse, colRx.pulse * 0.7);
+                    return (
+                      <g key={pt.lbl} transform={popTransform(pt.x, (pt.pvY + pt.phY) / 2, 1 + 0.05 * grpPulse, ptRx.wiggle * 1.4)}>
+                        <line x1={pt.x} y1={pt.pvY} x2={pt.x} y2={pt.phY} stroke="#94A3B8" strokeDasharray="4 4" strokeWidth={1.6 + 1.4 * grpPulse} />
+                        <circle cx={pt.x} cy={pt.pvY} r={8.5 + 3 * grpPulse} fill="#F87171" />
+                        <text x={pt.x - 16} y={pt.pvY - 8} fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">{pt.lbl}&apos;</text>
+                        <circle cx={pt.x} cy={pt.phY} r={8.5 + 3 * grpPulse} fill="#38BDF8" />
+                        <text x={pt.x - 16} y={pt.phY + 22} fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">{pt.lbl}</text>
+                      </g>
+                    );
+                  })}
+                </>
+              );
+            })()}
           </g>
         )}
 
         {/* =================== EPISODE 07: Y-UP vs Z-UP =================== */}
         {episode.id === "ep07-yup-zup" && (
           <g opacity={e}>
-            {sceneId === "intro" && (
-              <>
-                <g opacity={0.22 * e}>
-                  <image
-                    href="/illustrations/cg-vs-cad.png"
-                    x="0"
-                    y="-175"
-                    width="800"
-                    height="800"
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                </g>
-                <rect width="800" height="450" fill="url(#cinemaVignette)" />
-                <rect x="92" y="88" width="230" height="252" rx="20" fill="rgba(15,23,42,0.82)" stroke="#F87171" strokeWidth="2.2" />
-                <text x="207" y="124" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">GAMES &amp; WEBGL (Y-UP)</text>
-                <text x="207" y="148" textAnchor="middle" fontSize="12" fill="#CBD5E1">Unity · Three.js · OpenGL</text>
-                <text x="207" y="232" textAnchor="middle" fontSize="34" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">Y = Altura ↑</text>
+            {sceneId === "intro" && (() => {
+              const yRx = beatReaction(beats, "yUp", sceneSeconds, 0.9);
+              const zRx = beatReaction(beats, "zUp", sceneSeconds, 0.9);
+              return (
+                <>
+                  <g opacity={0.22 * e}>
+                    <image
+                      href="/illustrations/cg-vs-cad.png"
+                      x="0"
+                      y="-175"
+                      width="800"
+                      height="800"
+                      preserveAspectRatio="xMidYMid slice"
+                    />
+                  </g>
+                  <rect width="800" height="450" fill="url(#cinemaVignette)" />
+                  <g transform={popTransform(207, 214, yRx.scale, yRx.wiggle * 1.8)}>
+                    <rect x="92" y="88" width="230" height="252" rx="20" fill="rgba(15,23,42,0.82)" stroke="#F87171" strokeWidth={2.2 + 2.4 * yRx.pulse} />
+                    <text x="207" y="124" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">GAMES &amp; WEBGL (Y-UP)</text>
+                    <text x="207" y="148" textAnchor="middle" fontSize="12" fill="#CBD5E1">Unity · Three.js · OpenGL</text>
+                    <text x="207" y="232" textAnchor="middle" fontSize="34" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">Y = Altura ↑</text>
+                  </g>
 
-                <circle cx="358" cy="214" r="30" fill="#F59E0B" />
-                <text x="358" y="220" textAnchor="middle" fontSize="16" fontWeight="800" fill="#1C1917" fontFamily="var(--font-mono), monospace">Y ⇄ Z</text>
+                  <g transform={popTransform(358, 214, 1 + 0.08 * Math.max(yRx.pulse, zRx.pulse), 12 * Math.max(yRx.wiggle, zRx.wiggle))}>
+                    <circle cx="358" cy="214" r="30" fill="#F59E0B" />
+                    <text x="358" y="220" textAnchor="middle" fontSize="16" fontWeight="800" fill="#1C1917" fontFamily="var(--font-mono), monospace">Y ⇄ Z</text>
+                  </g>
 
-                <rect x="394" y="88" width="230" height="252" rx="20" fill="rgba(15,23,42,0.82)" stroke="#38BDF8" strokeWidth="2.2" />
-                <text x="509" y="124" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">UERJ / GD / CAD (Z-UP)</text>
-                <text x="509" y="148" textAnchor="middle" fontSize="12" fill="#CBD5E1">Monge · Blender · Engenharia</text>
-                <text x="509" y="232" textAnchor="middle" fontSize="34" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">Z = Cota ↑</text>
-              </>
-            )}
+                  <g transform={popTransform(509, 214, zRx.scale, zRx.wiggle * 1.8)}>
+                    <rect x="394" y="88" width="230" height="252" rx="20" fill="rgba(15,23,42,0.82)" stroke="#38BDF8" strokeWidth={2.2 + 2.4 * zRx.pulse} />
+                    <text x="509" y="124" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">UERJ / GD / CAD (Z-UP)</text>
+                    <text x="509" y="148" textAnchor="middle" fontSize="12" fill="#CBD5E1">Monge · Blender · Engenharia</text>
+                    <text x="509" y="232" textAnchor="middle" fontSize="34" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">Z = Cota ↑</text>
+                  </g>
+                </>
+              );
+            })()}
 
             {sceneId === "cg-origin" && (() => {
               const kbScale = 1.0 + localT * 0.08;
+              const yRx = beatReaction(beats, "axisY", sceneSeconds, 0.9);
+              const zRx = beatReaction(beats, "axisZ", sceneSeconds, 0.9);
               return (
                 <>
                   {/* Integrated Documentary Zoom on the 3D Monitor half of cg-vs-cad.png! */}
@@ -1428,10 +1829,16 @@ function MotionCanvas({
                     {/* Live animated RGB axes projected straight onto the monitor */}
                     <line x1="128" y1="308" x2={128 + 160 * e} y2="308" stroke="#2DD4BF" strokeWidth="4" strokeLinecap="round" />
                     <text x="296" y="314" fontSize="14" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">+X</text>
-                    <line x1="128" y1="308" x2="128" y2={308 - 118 * e} stroke="#F87171" strokeWidth="4.5" strokeLinecap="round" />
-                    <text x="128" y="176" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">+Y Altura</text>
-                    <line x1="128" y1="308" x2={128 - 46 * e} y2={308 + 44 * e} stroke="#38BDF8" strokeWidth="4.5" strokeLinecap="round" />
-                    <text x="64" y="370" fontSize="13" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">+Z Prof.</text>
+                    <g transform={popTransform(128, 240, 1 + 0.05 * yRx.pulse)}>
+                      <line x1="128" y1="308" x2="128" y2={308 - 118 * e} stroke={yRx.pulse > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={4.5 + 3 * yRx.pulse} strokeLinecap="round" />
+                      <text x="128" y="176" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">+Y Altura</text>
+                    </g>
+                    <g transform={popTransform(105, 330, 1 + 0.05 * zRx.pulse)}>
+                      <line x1="128" y1="308" x2={128 - 46 * e} y2={308 + 44 * e} stroke={zRx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"} strokeWidth={4.5 + 3 * zRx.pulse} strokeLinecap="round" />
+                      <text x="64" y="370" fontSize="13" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                        +Z Prof.
+                      </text>
+                    </g>
                   </g>
 
                   {/* Right Integrated Motion Typography */}
@@ -1448,22 +1855,28 @@ function MotionCanvas({
                   <text x="428" y="242" fontSize="14" fill="#E2E8F0">
                     No 3D, empurraram Z p/ profundidade!
                   </text>
-                  <rect x="428" y="264" width="218" height="40" rx="12" fill="rgba(248,113,113,0.16)" stroke="#F87171" strokeWidth="1.5" />
-                  <text x="537" y="289" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FECACA" fontFamily="var(--font-mono), monospace">
-                    Unity · Three.js · OpenGL
-                  </text>
+                  <g transform={popTransform(537, 284, 1 + 0.04 * zRx.pulse)}>
+                    <rect x="428" y="264" width="218" height="40" rx="12" fill="rgba(248,113,113,0.16)" stroke="#F87171" strokeWidth={1.5 + 1.8 * zRx.pulse} />
+                    <text x="537" y="289" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FECACA" fontFamily="var(--font-mono), monospace">
+                      Unity · Three.js · OpenGL
+                    </text>
+                  </g>
                 </>
               );
             })()}
 
             {sceneId === "gd-origin" && (() => {
               const kbScale = 1.0 + localT * 0.08;
+              const flRx = beatReaction(beats, "floorXY", sceneSeconds, 0.9);
+              const zRx = beatReaction(beats, "axisZ", sceneSeconds, 0.9);
+              const cotaRx = beatReaction(beats, "cota", sceneSeconds, 0.9);
+              const zGlow = Math.max(zRx.pulse, cotaRx.pulse);
               return (
                 <>
                   {/* Integrated Documentary Zoom on the Z-Up Drafting Table & Rising Building half! */}
                   <g clipPath="url(#gdTableClip)">
                     <g
-                      transform={`translate(215 235) scale(${kbScale.toFixed(4)}) translate(-215 -235)`}
+                      transform={`translate(215 235) scale(${(kbScale + 0.03 * flRx.pulse).toFixed(4)}) translate(-215 -235)`}
                       opacity={0.96 * e}
                     >
                       <image
@@ -1475,11 +1888,13 @@ function MotionCanvas({
                       />
                     </g>
                     {/* Live animated +Z Altitude Vector rising next to the building */}
-                    <line x1="112" y1="305" x2="112" y2={305 - 175 * e} stroke="#F87171" strokeWidth="5.5" strokeLinecap="round" />
-                    <polygon points={`112,${295 - 175 * e} 102,${312 - 175 * e} 122,${312 - 175 * e}`} fill="#F87171" />
-                    <text x="128" y={310 - 175 * e} fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                      +Z COTA ↑
-                    </text>
+                    <g transform={popTransform(135, 220, 1 + 0.05 * zGlow)}>
+                      <line x1="112" y1="305" x2="112" y2={305 - 175 * e} stroke={zGlow > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={5.5 + 3 * zGlow} strokeLinecap="round" />
+                      <polygon points={`112,${295 - 175 * e} 102,${312 - 175 * e} 122,${312 - 175 * e}`} fill="#F87171" />
+                      <text x="128" y={310 - 175 * e} fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                        +Z COTA ↑
+                      </text>
+                    </g>
                   </g>
 
                   {/* Right Integrated Motion Typography */}
@@ -1496,58 +1911,92 @@ function MotionCanvas({
                   <text x="428" y="242" fontSize="14" fill="#E2E8F0">
                     Ao subir paredes, a altura vira Z!
                   </text>
-                  <rect x="428" y="264" width="222" height="40" rx="12" fill="rgba(56,189,248,0.16)" stroke="#38BDF8" strokeWidth="1.5" />
-                  <text x="539" y="289" textAnchor="middle" fontSize="13" fontWeight="800" fill="#BAE6FD" fontFamily="var(--font-mono), monospace">
-                    Monge · Blender · AutoCAD
-                  </text>
+                  <g transform={popTransform(539, 284, 1 + 0.045 * zGlow)}>
+                    <rect x="428" y="264" width="222" height="40" rx="12" fill="rgba(56,189,248,0.16)" stroke="#38BDF8" strokeWidth={1.5 + 2 * zGlow} />
+                    <text x="539" y="289" textAnchor="middle" fontSize="13" fontWeight="800" fill="#BAE6FD" fontFamily="var(--font-mono), monospace">
+                      Monge · Blender · AutoCAD
+                    </text>
+                  </g>
                 </>
               );
             })()}
 
-            {sceneId === "translator" && (
-              <>
-                <text x="360" y="88" textAnchor="middle" fontSize="16" fontWeight="800" fill="#34D399" fontFamily="var(--font-mono), monospace">
-                  TRADUÇÃO EM 1 SEGUNDO: MANTENHA X E TROQUE Y ⇄ Z!
-                </text>
-                <rect x="115" y="122" width="490" height="72" rx="16" fill="rgba(56,189,248,0.14)" stroke="#38BDF8" strokeWidth="2" />
-                <text x="360" y="166" textAnchor="middle" fontSize="26" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-mono), monospace">
-                  GD (UERJ): (A)(<tspan fill="#2DD4BF">+2</tspan>; <tspan fill="#38BDF8">+5</tspan>; <tspan fill="#F87171">+3</tspan>)
-                </text>
+            {sceneId === "translator" && (() => {
+              const swRx = beatReaction(beats, "swap", sceneSeconds, 0.9);
+              const resRx = beatReaction(beats, "result", sceneSeconds, 0.95);
+              return (
+                <>
+                  <text x="360" y="88" textAnchor="middle" fontSize="16" fontWeight="800" fill="#34D399" fontFamily="var(--font-mono), monospace">
+                    TRADUÇÃO EM 1 SEGUNDO: MANTENHA X E TROQUE Y ⇄ Z!
+                  </text>
+                  <g transform={popTransform(360, 158, 1 + 0.035 * swRx.pulse)}>
+                    <rect x="115" y="122" width="490" height="72" rx="16" fill="rgba(56,189,248,0.14)" stroke="#38BDF8" strokeWidth={2 + 1.8 * swRx.pulse} />
+                    <text x="360" y="166" textAnchor="middle" fontSize="26" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-mono), monospace">
+                      GD (UERJ): (A)(<tspan fill="#2DD4BF">+2</tspan>; <tspan fill="#38BDF8">+5</tspan>; <tspan fill="#F87171">+3</tspan>)
+                    </text>
+                  </g>
 
-                <text x="360" y="232" textAnchor="middle" fontSize="22" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
-                  ↓  5 e 3 trocam de lugar!  ↓
-                </text>
+                  <text
+                    x="360"
+                    y="232"
+                    textAnchor="middle"
+                    fontSize="22"
+                    fontWeight="800"
+                    fill="#FDE68A"
+                    fontFamily="var(--font-mono), monospace"
+                    transform={popTransform(360, 224, swRx.scale, swRx.wiggle * 2.2)}
+                  >
+                    ↓  5 e 3 trocam de lugar!  ↓
+                  </text>
 
-                <rect x="115" y="256" width="490" height="72" rx="16" fill="rgba(52,211,153,0.16)" stroke="#34D399" strokeWidth="2" />
-                <text x="360" y="300" textAnchor="middle" fontSize="25" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-mono), monospace">
-                  Three.js: Vector3(<tspan fill="#2DD4BF">+2</tspan>, <tspan fill="#F87171">+3</tspan>, <tspan fill="#38BDF8">+5</tspan>)
-                </text>
-              </>
-            )}
+                  <g transform={popTransform(360, 292, resRx.scale)}>
+                    <rect x="115" y="256" width="490" height="72" rx="16" fill={`rgba(52,211,153,${(0.16 + 0.14 * resRx.pulse).toFixed(2)})`} stroke={resRx.pulse > 0.05 ? "#6EE7B7" : "#34D399"} strokeWidth={2 + 2.4 * resRx.pulse} />
+                    <text x="360" y="300" textAnchor="middle" fontSize="25" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-mono), monospace">
+                      Three.js: Vector3(<tspan fill="#2DD4BF">+2</tspan>, <tspan fill="#F87171">+3</tspan>, <tspan fill="#38BDF8">+5</tspan>)
+                    </text>
+                  </g>
+                </>
+              );
+            })()}
           </g>
         )}
         {beats.map((beat, index) => {
           const phase = reactionPhase(beat.at, sceneSeconds);
           if (!beat.mark || phase <= 0 || phase >= 1) return null;
           const [x, y] = beat.mark;
+          const fade = Math.sin(Math.PI * phase);
           return (
-            <circle
-              key={index}
-              cx={x}
-              cy={y}
-              r={11 + phase * 20}
-              fill="none"
-              stroke={episode.themeAccent}
-              strokeWidth={1.5 + 3 * (1 - phase)}
-              opacity={Math.sin(Math.PI * phase) * 0.83}
-            />
+            <g key={index}>
+              <circle
+                cx={x}
+                cy={y}
+                r={10 + phase * 18}
+                fill="none"
+                stroke={episode.themeAccent}
+                strokeWidth={1.6 + 2.6 * (1 - phase)}
+                opacity={fade * 0.85}
+              />
+              <circle
+                cx={x}
+                cy={y}
+                r={16 + phase * 30}
+                fill="none"
+                stroke="#FDE68A"
+                strokeWidth={1.2}
+                opacity={fade * 0.42}
+              />
+            </g>
           );
         })}
       </g>
 
+      {cutFlash > 0.005 && (
+        <rect x="0" y="48" width="800" height="337" fill="#38BDF8" opacity={cutFlash} pointerEvents="none" />
+      )}
+
       <rect width="800" height="48" fill="#0B1422" />
       <path d="M30 47H770" stroke="#263B53" />
-      <path d={"M30 47H" + (30 + 90 * chapterTrace)} stroke={episode.themeAccent} strokeWidth="2.5" strokeLinecap="round" />
+      <path d={"M30 47H" + (30 + 740 * Math.max(0.06, localT))} stroke={episode.themeAccent} strokeWidth="2.5" strokeLinecap="round" />
       <text x="30" y="31" fontSize="13" fontWeight="800" fill={episode.themeAccent} fontFamily="var(--font-mono), monospace">{episode.number}</text>
       <text x="104" y="31" fontSize="14" fontWeight="700" fill="#E2E8F0" fontFamily="var(--font-body), sans-serif">{sceneLabel}</text>
       {Array.from({ length: sceneCount }, (_, index) => (
@@ -1588,6 +2037,8 @@ export function MotionVideoPlayer({
 
   const stageRef = useRef<HTMLDivElement | null>(null);
   const controlTimer = useRef<number | undefined>(undefined);
+  const controlsHoverRef = useRef(false);
+  const scrubbingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -1843,21 +2294,47 @@ export function MotionVideoPlayer({
     setCurrentTime(audio.currentTime);
   }, [effectiveDuration]);
 
-  const revealControls = useCallback(() => {
+  const revealControls = useCallback((keepOpen = false) => {
     setControlsVisible(true);
     window.clearTimeout(controlTimer.current);
-    controlTimer.current = window.setTimeout(() => setControlsVisible(false), 2600);
+    if (!keepOpen && !controlsHoverRef.current && !scrubbingRef.current) {
+      controlTimer.current = window.setTimeout(() => setControlsVisible(false), 2600);
+    }
   }, []);
 
   useEffect(() => {
-    if (isFullscreen && !upNextVisible) revealControls();
-    return () => window.clearTimeout(controlTimer.current);
+    if (!isFullscreen || upNextVisible) {
+      controlsHoverRef.current = false;
+      scrubbingRef.current = false;
+      return () => window.clearTimeout(controlTimer.current);
+    }
+    revealControls();
+    const handlePointer = () => revealControls();
+    window.addEventListener("mousemove", handlePointer, { passive: true });
+    window.addEventListener("pointermove", handlePointer, { passive: true });
+    window.addEventListener("touchstart", handlePointer, { passive: true });
+    return () => {
+      window.clearTimeout(controlTimer.current);
+      window.removeEventListener("mousemove", handlePointer);
+      window.removeEventListener("pointermove", handlePointer);
+      window.removeEventListener("touchstart", handlePointer);
+    };
   }, [isFullscreen, isPlaying, upNextVisible, revealControls]);
 
   useEffect(() => {
-    const syncFullscreen = () => setNativeFullscreen(document.fullscreenElement === stageRef.current);
+    const syncFullscreen = () => {
+      const doc = document as Document & { webkitFullscreenElement?: Element | null };
+      setNativeFullscreen(
+        document.fullscreenElement === stageRef.current ||
+        doc.webkitFullscreenElement === stageRef.current,
+      );
+    };
     document.addEventListener("fullscreenchange", syncFullscreen);
-    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+    document.addEventListener("webkitfullscreenchange", syncFullscreen);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+      document.removeEventListener("webkitfullscreenchange", syncFullscreen);
+    };
   }, []);
 
   useEffect(() => {
@@ -1947,7 +2424,9 @@ export function MotionVideoPlayer({
           data-video-player
           data-fullscreen={isFullscreen || undefined}
           data-expanded={expandedFullscreen || undefined}
-          onPointerMove={isFullscreen ? revealControls : undefined}
+          data-idle-cursor={isFullscreen && isPlaying && !controlsVisible && !upNextVisible ? "true" : undefined}
+          onPointerMove={isFullscreen ? () => revealControls() : undefined}
+          onTouchStart={isFullscreen ? () => revealControls() : undefined}
           onClick={isFullscreen ? (event) => {
             if (event.target === event.currentTarget) revealControls();
           } : undefined}
@@ -2110,7 +2589,19 @@ export function MotionVideoPlayer({
             className={styles.transport + " border-t border-white/10 px-3 py-2 sm:px-4"}
             data-video-controls
             data-visible={!isFullscreen || controlsVisible || (!isPlaying && !upNextVisible) || undefined}
-            onFocusCapture={isFullscreen ? revealControls : undefined}
+            onPointerEnter={isFullscreen ? (event) => {
+              if (event.pointerType === "mouse") {
+                controlsHoverRef.current = true;
+                revealControls(true);
+              }
+            } : undefined}
+            onPointerLeave={isFullscreen ? (event) => {
+              if (event.pointerType === "mouse") {
+                controlsHoverRef.current = false;
+                revealControls(false);
+              }
+            } : undefined}
+            onFocusCapture={isFullscreen ? () => revealControls() : undefined}
           >
             <div className="space-y-1">
               <div className={styles.timeline}>
@@ -2125,6 +2616,19 @@ export function MotionVideoPlayer({
                   min={0}
                   max={1000}
                   value={Math.round(progress * 1000)}
+                  onPointerDown={() => {
+                    scrubbingRef.current = true;
+                    if (isFullscreen) revealControls(true);
+                  }}
+                  onPointerUp={() => {
+                    scrubbingRef.current = false;
+                    if (isFullscreen) revealControls(false);
+                  }}
+                  onPointerCancel={() => {
+                    scrubbingRef.current = false;
+                    if (isFullscreen) revealControls(false);
+                  }}
+                  onClick={(event) => event.stopPropagation()}
                   onChange={(event) => {
                     seekToSeconds(Number(event.target.value) / 1000 * effectiveDuration);
                     if (isFullscreen) revealControls();

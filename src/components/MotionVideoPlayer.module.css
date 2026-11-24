@@ -81,6 +81,10 @@
   background: #030407;
 }
 
+.player[data-fullscreen][data-idle-cursor] {
+  cursor: none;
+}
+
 .player[data-expanded] {
   position: fixed;
   inset: 0;
@@ -98,12 +102,14 @@
 }
 
 .player[data-fullscreen] .transport {
-  background: linear-gradient(180deg, rgb(3 7 18 / 0.76), rgb(3 7 18 / 0.98));
-  border: 1px solid rgb(148 163 184 / 0.26);
+  background: linear-gradient(180deg, rgb(6 12 28 / 0.84), rgb(3 7 18 / 0.98));
+  border: 1px solid rgb(148 163 184 / 0.34);
+  box-shadow: 0 18px 40px rgb(2 6 23 / 0.65);
+  backdrop-filter: blur(12px);
   border-radius: 1rem;
   position: absolute;
   inset-inline: 0;
-  bottom: max(0.5rem, env(safe-area-inset-bottom));
+  bottom: max(0.65rem, env(safe-area-inset-bottom));
   margin-inline: auto;
   width: min(calc(100% - 1rem), 60rem);
   z-index: 25;
@@ -111,6 +117,10 @@
   transform: translateY(6px);
   transition: opacity 150ms ease, transform 150ms ease;
   pointer-events: none;
+}
+
+.player[data-fullscreen] .timeline {
+  height: 2rem;
 }
 
 .player[data-fullscreen] .transport[data-visible],
