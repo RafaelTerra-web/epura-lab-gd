@@ -9,8 +9,6 @@ interface LipSyncMascotProps {
   energy: number; // 0 to 1 smoothed RMS loudness
   isPlaying: boolean;
   label?: string;
-  size?: "sm" | "md" | "lg";
-  className?: string;
 }
 
 const SPRITE_FRAMES = [
@@ -26,8 +24,6 @@ export function LipSyncMascot({
   energy,
   isPlaying,
   label = "Prof. Mongezinho",
-  size = "md",
-  className = "",
 }: LipSyncMascotProps) {
   const [blinking, setBlinking] = useState(false);
 
@@ -51,65 +47,34 @@ export function LipSyncMascot({
   const activeSprite: "closed" | "small" | "mid" | "open" | "blink" =
     blinking && mouth === "closed" ? "blink" : mouth;
 
-  const boxSize =
-    size === "sm"
-      ? "w-16 h-16"
-      : size === "lg"
-        ? "w-32 h-32 sm:w-36 sm:h-36"
-        : "w-24 h-24 sm:w-28 sm:h-28";
-
-  const bars = [0.45, 0.85, 0.65, 1.0, 0.55];
-
   return (
-    <div
-      className={`relative select-none flex flex-col items-center ${className}`}
-    >
-      {/* Rock-solid steady PiP Mascot Frame — ZERO shaking/rotation! Only mouth & eyes animate! */}
+    <div role="img" aria-label={label} className="flex flex-col items-center">
       <div
-        className={`relative ${boxSize} rounded-2xl overflow-hidden border-2 transition-colors duration-300 bg-[#FEF7E0] shadow-xl ${
-          isPlaying && energy > 0.06
-            ? "border-amber-400 shadow-amber-500/20"
-            : "border-white/25"
-        }`}
+        className={
+          "relative w-full aspect-square rounded-[2.2cqw] overflow-hidden border-2 bg-[#FEF7E0] shadow-xl " +
+          (isPlaying && energy > 0.06 ? "border-amber-300" : "border-white/25")
+        }
       >
         {SPRITE_FRAMES.map((frame) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             key={frame.id}
             src={frame.src}
-            alt={label}
+            alt=""
             draggable={false}
             className="absolute inset-0 w-full h-full object-cover scale-[1.05]"
-            style={{
-              opacity: activeSprite === frame.id ? 1 : 0,
-            }}
+            style={{ opacity: activeSprite === frame.id ? 1 : 0 }}
           />
         ))}
-
-        {/* Smooth audio level strip along bottom */}
-        <div className="absolute bottom-1.5 inset-x-2 flex items-end justify-center gap-[3px] h-3 pointer-events-none">
-          {bars.map((mult, idx) => {
-            const h = isPlaying
-              ? Math.max(2.5, Math.min(11, 2.5 + energy * 18 * mult))
-              : 2.5;
-            return (
-              <span
-                key={idx}
-                className="w-[2.5px] rounded-full bg-ph/85"
-                style={{
-                  height: `${h.toFixed(1)}px`,
-                  transition: "height 110ms ease-out",
-                }}
-              />
-            );
-          })}
+        <div aria-hidden="true" className="absolute inset-x-[15%] bottom-[5%] h-[12%] flex items-end justify-center gap-[5%]">
+          {[0.45, 0.85, 0.65, 1, 0.55].map((level, index) => (
+            <span key={index} className="w-[5%] rounded-full bg-ph/90" style={{ height: 21 + Math.min(65, energy * 160 * level) + "%" }} />
+          ))}
         </div>
       </div>
-
-      {/* Studio Nameplate */}
-      <div className="mt-1 px-2 py-0.5 rounded-full bg-slate-950/85 border border-white/15 text-[9.5px] font-mono font-bold text-amber-200 tracking-wide backdrop-blur-sm whitespace-nowrap">
+      <span aria-hidden="true" className="mt-[0.55cqw] whitespace-nowrap rounded-full border border-white/15 bg-slate-950/85 px-[1cqw] py-[0.18cqw] font-mono text-[1.15cqw] leading-tight font-bold text-amber-200">
         {label}
-      </div>
+      </span>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EpisodeTimingsMap,
   VIDEO_EPISODES,
@@ -10,6 +10,9 @@ import {
 import { LipSyncMascot, MouthFrame } from "./LipSyncMascot";
 import { GDPoint, GDSegment } from "@/lib/gd-math";
 import { sfx } from "@/lib/sfx";
+import { getVideoSoundCues, MONGE_BEATS, playVideoSound, type VideoSound } from "@/lib/video-effects";
+import { getNarrationBeats, type NarrationBeat } from "@/lib/video-narration-beats";
+import styles from "./MotionVideoPlayer.module.css";
 import {
   Captions,
   CheckCircle2,
@@ -55,6 +58,115 @@ function smoothStep(edge0: number, edge1: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
+function reactionPhase(at: number | undefined, seconds: number, length = 0.7) {
+  if (at === undefined) return 0;
+  return Math.max(0, Math.min(1, (seconds - at) / length));
+}
+
+function DiagramLabel({ x, y, width, color, connector, children }: {
+  x: number;
+  y: number;
+  width: number;
+  color: string;
+  connector?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <g fontFamily="var(--font-mono), monospace">
+      {connector && <polyline points={connector} fill="none" stroke={color} strokeOpacity={0.72} strokeWidth="1.5" />}
+      <rect x={x} y={y} width={width} height="30" rx="7" fill="#0B1525" stroke={color} strokeOpacity={0.65} />
+      <text x={x + width / 2} y={y + 20} textAnchor="middle" fontSize="13" fontWeight="800" fill={color}>
+        {children}
+      </text>
+    </g>
+  );
+}
+
+function MongeProjection({ time, seconds, beats }: { time: number; seconds: number; beats: NarrationBeat[] }) {
+  const reveal = (target: keyof typeof MONGE_BEATS, lag = 0) => {
+    const at = beats.find((beat) => beat.target === target)?.at;
+    if (at === undefined) {
+      const [edge0, edge1] = MONGE_BEATS[target];
+      return smoothStep(edge0, edge1, time);
+    }
+    return smoothStep(at + lag, at + lag + 0.55, seconds);
+  };
+  const planesAt = beats.find((beat) => beat.target === "planes")?.at;
+  const floorAt = beats.find((beat) => beat.target === "floor")?.at;
+  const planes = reveal("planes");
+  const planesPulse = Math.sin(reactionPhase(planesAt, seconds, 0.8) * Math.PI);
+  const floorReveal = floorAt === undefined ? planes : smoothStep(floorAt - 0.12, floorAt + 0.45, seconds);
+  const floorPulse = Math.sin(reactionPhase(floorAt, seconds, 0.85) * Math.PI);
+  const point = reveal("point");
+  const horizontal = reveal("horizontal");
+  const vertical = reveal("vertical");
+  const phLabel = reveal("horizontal", 0.22);
+  const pvLabel = reveal("vertical", 0.22);
+
+  return (
+    <g opacity={planes}>
+      <path d="M218 72 558 112V252L218 212Z" fill="url(#verticalPlane)" stroke="#F87171" strokeWidth={2.2 + 2.2 * planesPulse} />
+      <g opacity={floorReveal}>
+        <path
+          d="M218 212 558 252 446 332 106 292Z"
+          fill="url(#horizontalPlane)"
+          stroke={floorPulse > 0.05 ? "#BAE6FD" : "#38BDF8"}
+          strokeWidth={2.2 + 2.6 * floorPulse}
+        />
+        {floorPulse > 0.05 && (
+          <path
+            d="M218 212 558 252 446 332 106 292Z"
+            fill="none"
+            stroke="#BAE6FD"
+            strokeOpacity={0.5 * floorPulse}
+            strokeWidth={6 * floorPulse}
+          />
+        )}
+        <path d="M218 212 558 252" stroke="#2DD4BF" strokeWidth={3.2 + 1.4 * floorPulse} />
+      </g>
+      <path d="M490 244l11-9 14 2" fill="none" stroke="#5EEAD4" strokeWidth="2" />
+      <text x="510" y="225" fontSize="14" fontWeight="800" fill="#99F6E4">90°</text>
+      <DiagramLabel x={36} y={89} width={160} color="#FCA5A5" connector="196,104 208,104 218,112">
+        π&apos; · Plano vertical
+      </DiagramLabel>
+      <g opacity={floorReveal}>
+        <DiagramLabel x={399} y={341} width={184} color="#7DD3FC" connector="485,304 501,329 501,341">
+          π · Plano horizontal
+        </DiagramLabel>
+      </g>
+
+      <g opacity={point}>
+        <circle cx="333" cy="166" r="17" fill="none" stroke="#FDE68A" strokeOpacity="0.47" strokeWidth="1.5" />
+        <circle cx="333" cy="166" r="9.5" fill="#FDE68A" stroke="#FFF7D6" strokeWidth="1.5" />
+        <DiagramLabel x={245} y={131} width={59} color="#FDE68A" connector="304,146 314,146 321,155">(A)</DiagramLabel>
+      </g>
+      {horizontal > 0 && (
+        <g>
+          <path d={"M333 166V" + (166 + 116 * horizontal)} stroke="#7DD3FC" strokeWidth="2.5" strokeDasharray="5 4" />
+          <circle cx="333" cy={166 + 116 * horizontal} r="6" fill="#38BDF8" stroke="#E0F2FE" strokeWidth="1.5" />
+          <circle cx="333" cy="282" r={9 + 13 * phLabel} fill="none" stroke="#7DD3FC" strokeOpacity={0.65 * (1 - phLabel)} />
+          <g opacity={phLabel}>
+            <DiagramLabel x={61} y={232} width={147} color="#7DD3FC" connector="208,247 246,247 324,279">
+              A · Horizontal
+            </DiagramLabel>
+          </g>
+        </g>
+      )}
+      {vertical > 0 && (
+        <g>
+          <path d={"M333 166L" + (333 + 91 * vertical) + " " + (166 - 26 * vertical)} stroke="#FCA5A5" strokeWidth="2.5" strokeDasharray="5 4" />
+          <circle cx={333 + 91 * vertical} cy={166 - 26 * vertical} r="6" fill="#F87171" stroke="#FEE2E2" strokeWidth="1.5" />
+          <circle cx="424" cy="140" r={9 + 13 * pvLabel} fill="none" stroke="#FCA5A5" strokeOpacity={0.65 * (1 - pvLabel)} />
+          <g opacity={pvLabel}>
+            <DiagramLabel x={536} y={152} width={147} color="#FCA5A5" connector="434,141 488,167 536,167">
+              A&apos; · Vertical
+            </DiagramLabel>
+          </g>
+        </g>
+      )}
+    </g>
+  );
+}
 /**
  * Hand-choreographed 16:9 60fps Motion Graphics Renderer (viewBox 800 x 450)
  * Every single sceneId maps 1:1 to the EXACT spoken studio scene in `timings.json`!
@@ -63,22 +175,31 @@ function MotionCanvas({
   episode,
   sceneId,
   localT,
-  progress,
+  sceneSeconds,
+  sceneLabel,
+  sceneNumber,
+  sceneCount,
 }: {
   episode: VideoEpisode;
   sceneId: string;
   localT: number;
-  progress: number;
+  sceneSeconds: number;
+  sceneLabel: string;
+  sceneNumber: number;
+  sceneCount: number;
 }) {
-  const e = easeOutCubic(Math.min(1, localT * 2.6));
-  const eSlow = easeOutCubic(Math.min(1, localT * 1.15));
-  const subtleZoom = 1 + progress * 0.025;
+  const initialOpacity = sceneId === "intro" ? 0.65 : 0.16;
+  const e = initialOpacity + (1 - initialOpacity) * easeOutCubic(sceneSeconds / 2.4);
+  const eSlow = smoothStep(0.08, 0.78, localT);
+  const chapterTrace = easeOutCubic(sceneSeconds / 0.75);
+  const beats = getNarrationBeats(episode.id, sceneId);
 
   // Helper for reusable animated Diedro profile + live Epura pair
   const renderDiedroFocus = (
     diedro: 1 | 2 | 3 | 4,
     showRuleFooter = false
   ) => {
+    const labelReveal = smoothStep(0.45, 1.15, sceneSeconds);
     const specs = {
       1: {
         dx: 88,
@@ -244,6 +365,7 @@ function MotionCanvas({
         <text
           x="520"
           y={205 + specs.pvY * e}
+          opacity={labelReveal}
           fontSize="12.5"
           fontWeight="800"
           fill="#FCA5A5"
@@ -255,6 +377,7 @@ function MotionCanvas({
         <text
           x="520"
           y={205 + specs.phY * e}
+          opacity={labelReveal}
           fontSize="12.5"
           fontWeight="800"
           fill="#7DD3FC"
@@ -291,7 +414,7 @@ function MotionCanvas({
     <svg
       viewBox="0 0 800 450"
       className="w-full h-full block select-none"
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio="xMidYMid meet"
     >
       <defs>
         <radialGradient id="studioGlowV2" cx="45%" cy="42%" r="68%">
@@ -345,21 +468,27 @@ function MotionCanvas({
         <clipPath id="gdTableClip">
           <rect x="56" y="56" width="340" height="348" rx="26" />
         </clipPath>
+        <clipPath id="sceneWindow">
+          <rect x="-25" y="47" width="850" height="358" />
+        </clipPath>
+        <linearGradient id="verticalPlane" x2="1" y2="1">
+          <stop stopColor="#C85E66" stopOpacity="0.27" />
+          <stop offset="1" stopColor="#F87171" stopOpacity="0.08" />
+        </linearGradient>
+        <linearGradient id="horizontalPlane" x2="1" y2="1">
+          <stop stopColor="#158CC1" stopOpacity="0.24" />
+          <stop offset="1" stopColor="#38BDF8" stopOpacity="0.09" />
+        </linearGradient>
+        <linearGradient id="sceneFoot" x2="0" y2="1">
+          <stop stopColor="#101C2D" />
+          <stop offset="1" stopColor="#090F1B" />
+        </linearGradient>
       </defs>
 
       <rect width="800" height="450" fill="url(#studioGlowV2)" />
       <rect width="800" height="450" fill="url(#studioGridV2)" />
 
-      {/* Minimalist cinema crop marks */}
-      <g stroke="rgba(255,255,255,0.16)" strokeWidth="1.5" fill="none">
-        <path d="M20 42 V20 H42" />
-        <path d="M780 42 V20 H758" />
-        <path d="M20 408 V430 H42" />
-      </g>
-
-      <g
-        transform={`translate(400 225) scale(${subtleZoom.toFixed(4)}) translate(-400 -225)`}
-      >
+      <g clipPath="url(#sceneWindow)" transform="translate(24 4) scale(.94)">
         {/* =================== EPISODE 01: MONGE =================== */}
         {episode.id === "ep01-monge" && (
           <>
@@ -435,6 +564,14 @@ function MotionCanvas({
               const cutProgress = smoothStep(0.32, 0.42, localT);
               const beatAOp = e * (1 - cutProgress);
               const beatBOp = e * cutProgress;
+              const flyPhase = reactionPhase(beats.find((beat) => beat.target === "fly")?.at, sceneSeconds, 0.85);
+              const flySwing = Math.sin(flyPhase * 4 * Math.PI) * Math.sin(flyPhase * Math.PI);
+              const flyX = 435 + flySwing * 7;
+              const flyY = 206 - Math.sin(flyPhase * Math.PI) * 5;
+              const lowPhase = reactionPhase(beats.find((beat) => beat.target === "lowFly")?.at, sceneSeconds);
+              const highPhase = reactionPhase(beats.find((beat) => beat.target === "highFly")?.at, sceneSeconds);
+              const lowY = 218 - 7 * Math.sin(lowPhase * Math.PI);
+              const highY = 112 - 9 * Math.sin(highPhase * Math.PI);
               const imgZoom = 1.0 + localT * 0.09;
               return (
                 <g>
@@ -483,16 +620,17 @@ function MotionCanvas({
 
                       {/* Animated callout arrow pointing straight to the glowing fly in the artwork */}
                       <circle
-                        cx="435"
-                        cy="206"
-                        r={20 + Math.sin(localT * 10) * 3}
+                        cx={flyX}
+                        cy={flyY}
+                        r={17 + 6 * Math.sin(flyPhase * Math.PI)}
                         fill="none"
                         stroke="#FDE68A"
                         strokeWidth="2.4"
                         strokeDasharray="6 4"
                       />
+                      <circle cx={flyX} cy={flyY} r={3 + 2.5 * Math.sin(flyPhase * Math.PI)} fill="#FDE68A" />
                       <polyline
-                        points="458,194 522,148 634,148"
+                        points={(flyX + 19) + "," + (flyY - 11) + " 522,148 634,148"}
                         fill="none"
                         stroke="#FDE68A"
                         strokeWidth="2.2"
@@ -525,21 +663,19 @@ function MotionCanvas({
                         stroke="#38BDF8"
                         strokeWidth="2.2"
                       />
-                      <text x="515" y="316" fontSize="15" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
-                        π (Plano Horizontal)
-                      </text>
+                      <DiagramLabel x={454} y={351} width={183} color="#7DD3FC" connector="527,324 547,340 547,351">π · Plano horizontal</DiagramLabel>
                       <line x1="360" y1="68" x2="360" y2="288" stroke="#FDE68A" strokeWidth="2.5" strokeDasharray="7 5" />
                       <polygon points="360,280 353,266 367,266" fill="#FDE68A" />
                       <circle cx="360" cy="288" r="11" fill="#38BDF8" />
                       <text x="380" y="294" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
                         Sombra A (idêntica!)
                       </text>
-                      <circle cx="360" cy={218 - Math.sin(localT * 10) * 8} r="11" fill="#F87171" />
-                      <text x="382" y={222 - Math.sin(localT * 10) * 8} fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                      <circle cx="360" cy={lowY} r="11" fill="#F87171" />
+                      <text x="382" y={lowY + 4} fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
                         Mosca baixa (1m)
                       </text>
-                      <circle cx="360" cy={112 + Math.sin(localT * 10) * 8} r="11" fill="#F59E0B" />
-                      <text x="382" y={116 + Math.sin(localT * 10) * 8} fontSize="15" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                      <circle cx="360" cy={highY} r="11" fill="#F59E0B" />
+                      <text x="382" y={highY + 4} fontSize="15" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
                         Mosca alta (3m)
                       </text>
                       <rect x="98" y="68" width="228" height="46" rx="12" fill="rgba(239,68,68,0.24)" stroke="#F87171" strokeWidth="2" />
@@ -553,12 +689,12 @@ function MotionCanvas({
             })()}
 
             {sceneId === "two-planes" && (() => {
-              // Beat A (0..0.34): Full-height Documentary Portrait Cut of Gaspard Monge!
-              // Beat B (0.30..1.0): Smooth cross-dissolve into the 90° Mongean 2-plane diagram!
-              const cutProgress = smoothStep(0.28, 0.38, localT);
-              const portraitOp = e * (1 - cutProgress * 0.88);
-              const bioOp = e * (1 - cutProgress);
-              const diagOp = e * cutProgress;
+              const planeMention = beats.find((beat) => beat.target === "planes")?.at;
+              const [pStart, pEnd] = MONGE_BEATS.portrait;
+              const cutProgress = planeMention === undefined
+                ? smoothStep(pStart, pEnd, localT)
+                : smoothStep(planeMention - 0.38, planeMention + 0.12, sceneSeconds);
+              const portraitOp = e * (1 - cutProgress);
               const kbScale = 1.0 + localT * 0.08;
               return (
                 <g>
@@ -579,8 +715,8 @@ function MotionCanvas({
                   </g>
 
                   {/* BEAT A: Museum Documentary Editorial Bio Card integrated right next to Monge */}
-                  {bioOp > 0.01 && (
-                    <g opacity={bioOp}>
+                  {portraitOp > 0.01 && (
+                    <g opacity={portraitOp}>
                       <line
                         x1="408"
                         y1="118"
@@ -618,41 +754,7 @@ function MotionCanvas({
                     </g>
                   )}
 
-                  {/* BEAT B: 2-Plane 90° Orthogonal Projection Construction */}
-                  {diagOp > 0.01 && (
-                    <g opacity={diagOp}>
-                      <polygon
-                        points={`230,${65 + (1 - diagOp) * 26} 570,${110 + (1 - diagOp) * 26} 570,270 230,225`}
-                        fill="rgba(248,113,113,0.16)"
-                        stroke="#F87171"
-                        strokeWidth="2.2"
-                      />
-                      <text x="246" y="102" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                        π&apos; (Plano Vertical)
-                      </text>
-                      <polygon
-                        points="230,225 570,270 440,355 100,310"
-                        fill="rgba(56,189,248,0.16)"
-                        stroke="#38BDF8"
-                        strokeWidth="2.2"
-                      />
-                      <text x="415" y="344" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                        π (Plano Horizontal)
-                      </text>
-                      <rect x="498" y="216" width="54" height="32" rx="8" fill="#0F172A" stroke="#2DD4BF" strokeWidth="2" />
-                      <text x="525" y="237" textAnchor="middle" fontSize="14" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
-                        90°
-                      </text>
-                      <line x1="335" y1="168" x2="405" y2="132" stroke="#38BDF8" strokeWidth="3" strokeDasharray="6 4" />
-                      <line x1="335" y1="168" x2="335" y2="288" stroke="#F87171" strokeWidth="3" strokeDasharray="6 4" />
-                      <circle cx="335" cy="168" r="12" fill="#FDE68A" />
-                      <text x="292" y="164" fontSize="18" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
-                      <circle cx="405" cy="132" r="9" fill="#F87171" />
-                      <text x="422" y="137" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (Vertical)</text>
-                      <circle cx="335" cy="288" r="9" fill="#38BDF8" />
-                      <text x="218" y="296" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (Horizontal)</text>
-                    </g>
-                  )}
+                  <MongeProjection time={localT} seconds={sceneSeconds} beats={beats} />
                 </g>
               );
             })()}
@@ -904,13 +1006,33 @@ function MotionCanvas({
           const cx = 340;
           const cy = 225;
           const len = 135;
+          const frontAt = beats.find((beat) => beat.target === "front")?.at;
+          const backAt = beats.find((beat) => beat.target === "back")?.at;
+          const landsAt = beats.find((beat) => beat.target === "lands")?.at;
+          const frontPhase = reactionPhase(frontAt, sceneSeconds, 0.95);
+          const backPhase = reactionPhase(backAt, sceneSeconds, 0.95);
+          const landsPhase = reactionPhase(landsAt, sceneSeconds, 0.8);
+          const frontPulse = Math.sin(frontPhase * Math.PI);
+          const backPulse = Math.sin(backPhase * Math.PI);
+          const landsPulse = Math.sin(landsPhase * Math.PI);
+
           const foldDeg =
             sceneId === "intro" || sceneId === "hinge"
               ? 0
-              : sceneId === "front-down" || sceneId === "back-up"
-                ? eSlow * 90
-                : 90;
+              : sceneId === "front-down"
+                ? (frontAt !== undefined && landsAt !== undefined
+                    ? smoothStep(Math.max(0, frontAt - 0.6), landsAt, sceneSeconds) * 90
+                    : eSlow * 90)
+                : sceneId === "back-up"
+                  ? (backAt !== undefined && landsAt !== undefined
+                      ? smoothStep(Math.max(0, backAt - 0.6), landsAt, sceneSeconds) * 90
+                      : eSlow * 90)
+                  : 90;
           const rad = (foldDeg * Math.PI) / 180;
+          const frontX = cx + 96 * Math.cos(rad);
+          const frontY = cy + 96 * Math.sin(rad);
+          const backX = cx - 96 * Math.cos(rad);
+          const backY = cy - 96 * Math.sin(rad);
 
           if (sceneId === "chamada") {
             return (
@@ -980,41 +1102,81 @@ function MotionCanvas({
               <line x1={cx} y1="88" x2={cx} y2="362" stroke="#F87171" strokeWidth="4.5" />
               <text x={cx + 12} y="102" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">π&apos;S (Fixo)</text>
               <text x={cx + 12} y="356" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">π&apos;I (Fixo)</text>
-              {/* Folding PH */}
+              {/* Folding PH (split into back and front halves so each half reacts directly to its spoken beat) */}
               <line
                 x1={cx - len * Math.cos(rad)}
                 y1={cy - len * Math.sin(rad)}
+                x2={cx}
+                y2={cy}
+                stroke={backPulse > 0.05 ? "#99F6E4" : "#38BDF8"}
+                strokeWidth={4.5 + 2.5 * backPulse}
+              />
+              <line
+                x1={cx}
+                y1={cy}
                 x2={cx + len * Math.cos(rad)}
                 y2={cy + len * Math.sin(rad)}
-                stroke="#38BDF8"
-                strokeWidth="4.5"
+                stroke={frontPulse > 0.05 ? "#BAE6FD" : "#38BDF8"}
+                strokeWidth={4.5 + 2.5 * frontPulse}
               />
               {/* Front compass arc */}
               <path
                 d={`M ${cx + 96} ${cy} A 96 96 0 0 1 ${cx} ${cy + 96}`}
                 fill="none"
-                stroke="#38BDF8"
-                strokeWidth={sceneId === "front-down" ? 4 : 2}
+                stroke={frontPulse > 0.05 ? "#BAE6FD" : "#38BDF8"}
+                strokeWidth={(sceneId === "front-down" ? 4 : 2) + 3 * frontPulse}
                 strokeDasharray="6 4"
               />
               {/* Back compass arc */}
               <path
                 d={`M ${cx - 96} ${cy} A 96 96 0 0 1 ${cx} ${cy - 96}`}
                 fill="none"
-                stroke="#2DD4BF"
-                strokeWidth={sceneId === "back-up" ? 4 : 2}
+                stroke={backPulse > 0.05 ? "#99F6E4" : "#2DD4BF"}
+                strokeWidth={(sceneId === "back-up" ? 4 : 2) + 3 * backPulse}
                 strokeDasharray="6 4"
               />
               {/* LT Hinge */}
               <circle cx={cx} cy={cy} r={sceneId === "hinge" ? 13 : 8} fill="#2DD4BF" stroke="#FFFFFF" strokeWidth="2" />
               {/* Front point A (+Y) */}
-              <circle cx={cx + 96 * Math.cos(rad)} cy={cy + 96 * Math.sin(rad)} r="10" fill="#38BDF8" />
-              <text x={cx + 96 * Math.cos(rad) + 14} y={cy + 96 * Math.sin(rad) + 6} fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+              {frontPulse > 0.05 && (
+                <circle
+                  cx={frontX}
+                  cy={frontY}
+                  r={14 + 14 * frontPhase}
+                  fill="none"
+                  stroke="#BAE6FD"
+                  strokeWidth="2.5"
+                  strokeOpacity={0.75 * frontPulse}
+                />
+              )}
+              <circle
+                cx={frontX}
+                cy={frontY}
+                r={10 + 3.5 * frontPulse + 2.5 * (sceneId === "front-down" ? landsPulse : 0)}
+                fill="#38BDF8"
+              />
+              <text x={frontX + 14} y={frontY + 6} fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
                 πA (+Y desce!)
               </text>
               {/* Back point B (-Y) */}
-              <circle cx={cx - 96 * Math.cos(rad)} cy={cy - 96 * Math.sin(rad)} r="10" fill="#2DD4BF" />
-              <text x={cx - 96 * Math.cos(rad) - 14} y={cy - 96 * Math.sin(rad) - 8} textAnchor="end" fontSize="15" fontWeight="800" fill="#99F6E4" fontFamily="var(--font-mono), monospace">
+              {backPulse > 0.05 && (
+                <circle
+                  cx={backX}
+                  cy={backY}
+                  r={14 + 14 * backPhase}
+                  fill="none"
+                  stroke="#99F6E4"
+                  strokeWidth="2.5"
+                  strokeOpacity={0.75 * backPulse}
+                />
+              )}
+              <circle
+                cx={backX}
+                cy={backY}
+                r={10 + 3.5 * backPulse + 2.5 * (sceneId === "back-up" ? landsPulse : 0)}
+                fill="#2DD4BF"
+              />
+              <text x={backX - 14} y={backY - 8} textAnchor="end" fontSize="15" fontWeight="800" fill="#99F6E4" fontFamily="var(--font-mono), monospace">
                 πP (−Y sobe!)
               </text>
             </g>
@@ -1067,7 +1229,7 @@ function MotionCanvas({
                 <line x1="255" y1="74" x2="255" y2="354" stroke="#F87171" strokeWidth="3" />
                 <line x1="115" y1="214" x2="395" y2="214" stroke="#38BDF8" strokeWidth="3" />
                 <line x1="135" y1="334" x2="375" y2="94" stroke="#F59E0B" strokeWidth={sceneId === "b13" ? 5.5 : 3} strokeDasharray="8 5" />
-                <text x="382" y="96" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">β₁₃ (45°)</text>
+                <text x="375" y="76" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">β₁₃ (45°)</text>
                 <line x1="135" y1="94" x2="375" y2="334" stroke="#A78BFA" strokeWidth={sceneId === "b24" ? 5.5 : 3} strokeDasharray="8 5" />
                 <text x="108" y="90" fontSize="14" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace">β₂₄ (45°)</text>
 
@@ -1169,9 +1331,9 @@ function MotionCanvas({
                 <circle cx="480" cy="328" r="8.5" fill="#38BDF8" />
                 <text x="496" y="333" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (+5)</text>
                 <circle cx="220" cy="288" r="8.5" fill="#F87171" />
-                <text x="148" y="293" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">B&apos; (−3)</text>
+                <text x="202" y="293" textAnchor="end" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">B&apos; (−3)</text>
                 <circle cx="220" cy="108" r="8.5" fill="#38BDF8" />
-                <text x="148" y="113" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">B (−5)</text>
+                <text x="202" y="113" textAnchor="end" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">B (−5)</text>
               </>
             )}
 
@@ -1364,7 +1526,35 @@ function MotionCanvas({
             )}
           </g>
         )}
+        {beats.map((beat, index) => {
+          const phase = reactionPhase(beat.at, sceneSeconds);
+          if (!beat.mark || phase <= 0 || phase >= 1) return null;
+          const [x, y] = beat.mark;
+          return (
+            <circle
+              key={index}
+              cx={x}
+              cy={y}
+              r={11 + phase * 20}
+              fill="none"
+              stroke={episode.themeAccent}
+              strokeWidth={1.5 + 3 * (1 - phase)}
+              opacity={Math.sin(Math.PI * phase) * 0.83}
+            />
+          );
+        })}
       </g>
+
+      <rect width="800" height="48" fill="#0B1422" />
+      <path d="M30 47H770" stroke="#263B53" />
+      <path d={"M30 47H" + (30 + 90 * chapterTrace)} stroke={episode.themeAccent} strokeWidth="2.5" strokeLinecap="round" />
+      <text x="30" y="31" fontSize="13" fontWeight="800" fill={episode.themeAccent} fontFamily="var(--font-mono), monospace">{episode.number}</text>
+      <text x="104" y="31" fontSize="14" fontWeight="700" fill="#E2E8F0" fontFamily="var(--font-body), sans-serif">{sceneLabel}</text>
+      {Array.from({ length: sceneCount }, (_, index) => (
+        <rect key={index} x={700 + index * 14} y="25" width="9" height="3" rx="1.5" fill={index === sceneNumber ? episode.themeAccent : "#34465E"} />
+      ))}
+      <rect y="385" width="800" height="65" fill="url(#sceneFoot)" />
+      <path d="M30 385H770" stroke="#263B53" />
     </svg>
   );
 }
@@ -1383,7 +1573,10 @@ export function MotionVideoPlayer({
   const [volume, setVolume] = useState(0.95);
   const [isMuted, setIsMuted] = useState(false);
   const [showCaptions, setShowCaptions] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const [expandedFullscreen, setExpandedFullscreen] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const isFullscreen = nativeFullscreen || expandedFullscreen;
 
   // Netflix-style Up-Next countdown at the end of each episode
   const [upNextVisible, setUpNextVisible] = useState(false);
@@ -1394,10 +1587,15 @@ export function MotionVideoPlayer({
   const [energy, setEnergy] = useState(0);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const controlTimer = useRef<number | undefined>(undefined);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceAttachedRef = useRef(false);
+  const mixRef = useRef<GainNode | null>(null);
+  const audioStep = useRef<number | null>(null);
+  const videoLevel = isMuted ? 0 : volume;
+  const videoLevelRef = useRef(videoLevel);
+  videoLevelRef.current = videoLevel;
   const smoothEnergyRef = useRef(0);
   const lastMouthSwitchRef = useRef(0);
   const currentMouthRef = useRef<MouthFrame>("closed");
@@ -1415,6 +1613,9 @@ export function MotionVideoPlayer({
   const baseEp = VIDEO_EPISODES[epIndex];
   const timingEntry = timings[baseEp.id];
   const scenes: VideoSceneCue[] = timingEntry?.scenes ?? baseEp.scenes;
+  const cues = useMemo(() => getVideoSoundCues(baseEp.id, scenes), [baseEp.id, scenes]);
+  const cuesRef = useRef(cues);
+  cuesRef.current = cues;
   const effectiveDuration = duration ?? timingEntry?.duration ?? 95;
   const progress =
     effectiveDuration > 0 ? Math.min(1, currentTime / effectiveDuration) : 0;
@@ -1430,14 +1631,12 @@ export function MotionVideoPlayer({
   }
   const activeScene = scenes[sceneIndex] ?? scenes[0];
   const sceneSpan = Math.max(0.2, activeScene.endSec - activeScene.startSec);
-  const localT = Math.max(
-    0,
-    Math.min(1, (currentTime - activeScene.startSec) / sceneSpan)
-  );
+  const sceneSeconds = Math.max(0, currentTime - activeScene.startSec);
+  const localT = Math.min(1, sceneSeconds / sceneSpan);
 
   const ensureAudioAnalyser = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio || sourceAttachedRef.current) return;
+    if (!audio || audioCtxRef.current) return;
     try {
       const AC =
         window.AudioContext ||
@@ -1450,15 +1649,29 @@ export function MotionVideoPlayer({
       analyser.smoothingTimeConstant = 0.65;
       const source = ctx.createMediaElementSource(audio);
       source.connect(analyser);
-      analyser.connect(ctx.destination);
+      const mix = ctx.createGain();
+      mix.gain.value = videoLevelRef.current;
+      analyser.connect(mix).connect(ctx.destination);
       audioCtxRef.current = ctx;
       analyserRef.current = analyser;
-      sourceAttachedRef.current = true;
+      mixRef.current = mix;
+      audio.volume = 1;
     } catch {
       // graceful fallback
     }
   }, []);
 
+  const playSound = useCallback((sound: VideoSound) => {
+    const ctx = audioCtxRef.current;
+    const mix = mixRef.current;
+    if (ctx && mix && videoLevelRef.current > 0 && sfx.isEnabled()) {
+      playVideoSound(ctx, mix, sound);
+    }
+  }, []);
+
+  useEffect(() => () => {
+    void audioCtxRef.current?.close().catch(() => {});
+  }, []);
   // 60fps Sync Loop with EMA smoothing + 85ms syllable hold (silky smooth lip-sync!)
   useEffect(() => {
     let rafId = 0;
@@ -1469,7 +1682,15 @@ export function MotionVideoPlayer({
       const audio = audioRef.current;
       if (!audio) return;
 
-      setCurrentTime(audio.currentTime || 0);
+      const time = audio.currentTime;
+      setCurrentTime(time);
+      const previous = audioStep.current;
+      audioStep.current = audio.paused || audio.seeking ? null : time;
+      if (audioStep.current !== null && previous !== null && time > previous && time - previous < 0.24) {
+        for (const cue of cuesRef.current) {
+          if (cue.at > previous && cue.at <= time) playSound(cue.sound);
+        }
+      }
       if (Number.isFinite(audio.duration) && audio.duration > 0) {
         setDuration(audio.duration);
       }
@@ -1526,7 +1747,7 @@ export function MotionVideoPlayer({
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, []);
+  }, [playSound]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -1535,66 +1756,61 @@ export function MotionVideoPlayer({
   }, [playbackRate, epIndex]);
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume;
-      audioRef.current.muted = isMuted;
+    const audio = audioRef.current;
+    const ctx = audioCtxRef.current;
+    const mix = mixRef.current;
+    if (ctx && mix) {
+      mix.gain.setTargetAtTime(videoLevel, ctx.currentTime, 0.012);
+    } else if (audio) {
+      audio.volume = videoLevel;
     }
-  }, [volume, isMuted, epIndex]);
+    if (audio) audio.muted = isMuted;
+  }, [videoLevel, isMuted]);
 
-  const togglePlay = async () => {
+  const startPlayback = useCallback((sound?: VideoSound) => {
     const audio = audioRef.current;
     if (!audio) return;
-    sfx.tick();
-    setUpNextVisible(false);
     ensureAudioAnalyser();
-    if (audioCtxRef.current?.state === "suspended") {
-      await audioCtxRef.current.resume().catch(() => {});
-    }
+    const context = audioCtxRef.current;
+    if (context?.state === "suspended") void context.resume().catch(() => {});
+    if (sound) playSound(sound);
+    void audio.play().catch(() => {});
+  }, [ensureAudioAnalyser, playSound]);
+
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    setUpNextVisible(false);
     if (audio.paused) {
       if (audio.ended) audio.currentTime = 0;
-      try {
-        await audio.play();
-        setIsPlaying(true);
-      } catch {
-        setIsPlaying(false);
-      }
+      startPlayback("click");
     } else {
       audio.pause();
-      setIsPlaying(false);
+      playSound("click");
     }
-  };
+  }, [startPlayback, playSound]);
 
-  const selectEpisode = async (idx: number, autoStart = true) => {
-    const clamped = (idx + VIDEO_EPISODES.length) % VIDEO_EPISODES.length;
-    sfx.click();
+  const selectEpisode = useCallback((index: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const nextIndex = (index + VIDEO_EPISODES.length) % VIDEO_EPISODES.length;
+    const next = VIDEO_EPISODES[nextIndex];
+    const source = timings[next.id]?.audioSrc ?? next.audioSrc;
+    audio.pause();
+    audioStep.current = null;
     setUpNextVisible(false);
     setUpNextProgress(0);
-    setEpIndex(clamped);
-    setDuration(null);
+    setEpIndex(nextIndex);
     setCurrentTime(0);
-    setIsPlaying(false);
-    setTimeout(async () => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      audio.load();
-      audio.playbackRate = playbackRate;
-      audio.volume = isMuted ? 0 : volume;
-      audio.muted = isMuted;
-      if (autoStart) {
-        ensureAudioAnalyser();
-        if (audioCtxRef.current?.state === "suspended") {
-          await audioCtxRef.current.resume().catch(() => {});
-        }
-        try {
-          await audio.play();
-          setIsPlaying(true);
-        } catch {
-          setIsPlaying(false);
-        }
-      }
-    }, 60);
-  };
-
+    if (audio.getAttribute("src") === source) {
+      audio.currentTime = 0;
+    } else {
+      setDuration(null);
+      audio.src = source;
+    }
+    audio.playbackRate = playbackRate;
+    startPlayback("click");
+  }, [timings, playbackRate, startPlayback]);
   // Netflix-style 6-second auto-advance animation loop when episode ends
   useEffect(() => {
     if (!upNextVisible || epIndex === VIDEO_EPISODES.length - 1) {
@@ -1608,44 +1824,77 @@ export function MotionVideoPlayer({
       const p = Math.min(1, (now - start) / DURATION_MS);
       setUpNextProgress(p);
       if (p >= 1) {
-        void selectEpisode(epIndex + 1, true);
+        selectEpisode(epIndex + 1);
         return;
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [upNextVisible, epIndex]);
+  }, [upNextVisible, epIndex, selectEpisode]);
 
-  const seekToSeconds = (sec: number) => {
+  const seekToSeconds = useCallback((sec: number) => {
     const audio = audioRef.current;
     if (!audio) return;
     setUpNextVisible(false);
     const maxD = Number.isFinite(audio.duration) ? audio.duration : effectiveDuration;
+    audioStep.current = null;
     audio.currentTime = Math.max(0, Math.min(maxD, sec));
     setCurrentTime(audio.currentTime);
-  };
+  }, [effectiveDuration]);
+
+  const revealControls = useCallback(() => {
+    setControlsVisible(true);
+    window.clearTimeout(controlTimer.current);
+    controlTimer.current = window.setTimeout(() => setControlsVisible(false), 2600);
+  }, []);
 
   useEffect(() => {
-    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === stageRef.current);
+    if (isFullscreen && !upNextVisible) revealControls();
+    return () => window.clearTimeout(controlTimer.current);
+  }, [isFullscreen, isPlaying, upNextVisible, revealControls]);
+
+  useEffect(() => {
+    const syncFullscreen = () => setNativeFullscreen(document.fullscreenElement === stageRef.current);
     document.addEventListener("fullscreenchange", syncFullscreen);
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
 
-  const toggleFullscreen = async () => {
-    const el = stageRef.current;
-    if (!el) return;
-    if (document.fullscreenElement === el) {
-      await document.exitFullscreen?.().catch(() => {});
-    } else {
-      await el.requestFullscreen?.().catch(() => {});
-    }
-  };
+  useEffect(() => {
+    if (!expandedFullscreen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = originalOverflow; };
+  }, [expandedFullscreen]);
 
+  const toggleFullscreen = useCallback(async () => {
+    const player = stageRef.current;
+    if (!player) return;
+    if (expandedFullscreen) {
+      setExpandedFullscreen(false);
+    } else if (document.fullscreenElement === player) {
+      await document.exitFullscreen().catch(() => {});
+    } else {
+      try {
+        if (!player.requestFullscreen) {
+          setExpandedFullscreen(true);
+          return;
+        }
+        await player.requestFullscreen();
+      } catch {
+        setExpandedFullscreen(true);
+      }
+    }
+  }, [expandedFullscreen]);
   // Pro Video Keyboard Shortcuts: Space (play/pause), ←/→ (±5s), M (mute), F (fullscreen)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && expandedFullscreen) {
+        e.preventDefault();
+        setExpandedFullscreen(false);
+        return;
+      }
+      if (isFullscreen && e.key === "Tab") revealControls();
       const target = e.target instanceof Element ? e.target : null;
       if (
         e.defaultPrevented ||
@@ -1659,16 +1908,20 @@ export function MotionVideoPlayer({
       }
       if (e.code === "Space") {
         if (target?.closest("button, a")) return;
+        if (isFullscreen) revealControls();
         e.preventDefault();
         if (!e.repeat) void togglePlay();
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
+        if (isFullscreen) revealControls();
         seekToSeconds((audioRef.current?.currentTime ?? 0) - 5);
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
+        if (isFullscreen) revealControls();
         seekToSeconds((audioRef.current?.currentTime ?? 0) + 5);
       } else if (e.key === "m" || e.key === "M") {
         e.preventDefault();
+        if (isFullscreen) revealControls();
         setIsMuted((m) => !m);
       } else if (e.key === "f" || e.key === "F") {
         e.preventDefault();
@@ -1677,8 +1930,7 @@ export function MotionVideoPlayer({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveDuration, epIndex]);
+  }, [expandedFullscreen, isFullscreen, revealControls, seekToSeconds, toggleFullscreen, togglePlay]);
 
   const nextEpisode =
     epIndex < VIDEO_EPISODES.length - 1 ? VIDEO_EPISODES[epIndex + 1] : null;
@@ -1686,82 +1938,82 @@ export function MotionVideoPlayer({
   const finishedSeason = VIDEO_EPISODES.every((episode) => watchedEpisodes.includes(episode.id));
 
   return (
-    <section className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start animate-fade-up">
+    <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start">
       {/* LEFT: 16:9 CINEMATIC MOTION VIDEO PLAYER */}
       <div className="space-y-3">
         <div
           ref={stageRef}
-          className="relative rounded-3xl overflow-hidden border-2 border-blueprint-700 bg-[#09101E] shadow-2xl"
+          className={styles.player}
+          data-video-player
+          data-fullscreen={isFullscreen || undefined}
+          data-expanded={expandedFullscreen || undefined}
+          onPointerMove={isFullscreen ? revealControls : undefined}
+          onClick={isFullscreen ? (event) => {
+            if (event.target === event.currentTarget) revealControls();
+          } : undefined}
         >
+          {/* Episode changes reuse the same audio element and Web Audio graph. */}
           <audio
             ref={audioRef}
-            src={timingEntry?.audioSrc ?? baseEp.audioSrc}
+            src={VIDEO_EPISODES[0].audioSrc}
             preload="metadata"
             onEnded={() => {
               setIsPlaying(false);
+              setControlsVisible(false);
               setUpNextVisible(true);
               onEpisodeWatched?.(baseEp.id);
-              sfx.success();
+              playSound("resolve");
             }}
             onPause={() => setIsPlaying(false)}
+            onSeeking={() => { audioStep.current = null; }}
             onPlay={() => {
               setIsPlaying(true);
               setUpNextVisible(false);
             }}
           />
 
-          {/* 16:9 Motion Stage */}
-          <div
-            onClick={() => void togglePlay()}
-            className="relative aspect-video w-full cursor-pointer overflow-hidden select-none"
-          >
+          <div className={styles.frame} data-video-frame>
             <MotionCanvas
               episode={baseEp}
               sceneId={activeScene.id}
               localT={localT}
-              progress={progress}
+              sceneSeconds={sceneSeconds}
+              sceneLabel={activeScene.label}
+              sceneNumber={sceneIndex}
+              sceneCount={scenes.length}
             />
-
-            {/* Top HUD */}
-            <div className="pointer-events-none absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950/75 border border-white/15 backdrop-blur-md">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: baseEp.themeAccent }}
-                />
-                <span className="font-mono text-[10px] sm:text-[11px] font-extrabold text-white">
-                  {baseEp.number} · {activeScene.label}
-                </span>
-              </div>
+            <div className={styles.presenter} data-video-presenter>
+              <LipSyncMascot mouth={mouth} energy={energy} isPlaying={isPlaying} />
             </div>
-
-            {/* DESKTOP PiP Lip-Sync Mascot (100% STEADY FRAME, SMOOTH LIP-SYNC!) */}
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="hidden sm:block absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-10"
-            >
-              <LipSyncMascot
-                mouth={mouth}
-                energy={energy}
-                isPlaying={isPlaying}
-                size="md"
-                label="Prof. Mongezinho"
-              />
-            </div>
-
-            {/* DESKTOP Closed Captions */}
-            {showCaptions && !upNextVisible && (
-              <div className="hidden sm:flex pointer-events-none absolute bottom-3 left-3 right-36 justify-center">
-                <div className="px-3.5 py-2 rounded-xl bg-slate-950/88 border border-white/15 text-slate-100 text-xs font-semibold leading-snug max-w-xl shadow-lg backdrop-blur-md">
-                  {activeScene.subtitle}
-                </div>
+            {showCaptions && (
+              <div className={styles.captionBand}>
+                <p className={styles.caption}>{activeScene.subtitle}</p>
               </div>
             )}
-
+            {!upNextVisible && (
+              <button
+                type="button"
+                aria-label={isFullscreen && isPlaying ? "Mostrar controles do vídeo" : isPlaying ? "Pausar no vídeo" : "Reproduzir vídeo"}
+                onClick={() => {
+                  if (isFullscreen && isPlaying) revealControls();
+                  else togglePlay();
+                }}
+                className="absolute inset-0 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-400"
+              >
+                {!isPlaying && (
+                  <span className={styles.playBadge}>
+                    <Play className="fill-current" aria-hidden="true" />
+                  </span>
+                )}
+              </button>
+            )}
             {/* NETFLIX-STYLE "PRÓXIMO EPISÓDIO" AUTO-FILL OVERLAY */}
             {upNextVisible && (
               <div
-                onClick={(e) => e.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (isFullscreen && event.target === event.currentTarget) revealControls();
+                }}
                 className="absolute inset-0 z-20 bg-slate-950/82 backdrop-blur-md flex items-center justify-center p-4 animate-fade-up"
               >
                 {nextEpisode ? (
@@ -1793,7 +2045,7 @@ export function MotionVideoPlayer({
                       {/* Netflix Filling Progress Button */}
                       <button
                         type="button"
-                        onClick={() => void selectEpisode(epIndex + 1, true)}
+                        onClick={() => selectEpisode(epIndex + 1)}
                         className="relative flex-1 overflow-hidden rounded-xl bg-slate-700 hover:bg-slate-600 text-white py-2.5 px-4 text-xs font-extrabold transition"
                       >
                         <span
@@ -1809,7 +2061,7 @@ export function MotionVideoPlayer({
                       <button
                         type="button"
                         onClick={() => {
-                          sfx.tick();
+                          playSound("click");
                           setUpNextVisible(false);
                         }}
                         className="px-3.5 py-2.5 rounded-xl border border-white/20 bg-white/5 hover:bg-white/15 text-xs font-bold text-slate-200 transition"
@@ -1841,7 +2093,7 @@ export function MotionVideoPlayer({
                       </button>
                       <button
                         type="button"
-                        onClick={() => void selectEpisode(0, true)}
+                        onClick={() => selectEpisode(0)}
                         className="px-3.5 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/15 text-xs font-bold"
                       >
                         Rever EP. 01
@@ -1852,74 +2104,44 @@ export function MotionVideoPlayer({
               </div>
             )}
 
-            {/* Big Play Overlay when paused (hidden when Up-Next card is shown) */}
-            {!isPlaying && !upNextVisible && (
-              <div className="absolute inset-0 flex items-center justify-center bg-slate-950/35 transition">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-ph/95 hover:bg-ph text-white flex items-center justify-center shadow-2xl ring-4 ring-white/25 transition-transform hover:scale-105">
-                  <Play className="w-7 h-7 sm:w-9 sm:h-9 ml-1 fill-current" />
+          </div>
+
+          <div
+            className={styles.transport + " border-t border-white/10 px-3 py-2 sm:px-4"}
+            data-video-controls
+            data-visible={!isFullscreen || controlsVisible || (!isPlaying && !upNextVisible) || undefined}
+            onFocusCapture={isFullscreen ? revealControls : undefined}
+          >
+            <div className="space-y-1">
+              <div className={styles.timeline}>
+                <div className={styles.track} aria-hidden="true">
+                  <span className={styles.played} style={{ width: progress * 100 + "%" }} />
+                  {scenes.slice(1).map((scene) => (
+                    <span key={scene.id} className={styles.marker} style={{ left: Math.min(99, scene.startSec / effectiveDuration * 100) + "%" }} />
+                  ))}
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* MOBILE-ONLY PRESENTER STRIP (100% unobstructed 16:9 canvas + steady Prof. Mongezinho!) */}
-          <div className="flex sm:hidden items-center gap-3 px-3 py-2.5 bg-slate-900/95 border-t border-white/10">
-            <LipSyncMascot
-              mouth={mouth}
-              energy={energy}
-              isPlaying={isPlaying}
-              size="sm"
-              label="Mongezinho"
-            />
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-mono font-bold text-amber-300 uppercase">
-                {activeScene.label}
-              </div>
-              <p className="text-xs text-slate-100 font-medium leading-snug mt-0.5">
-                {showCaptions
-                  ? activeScene.subtitle
-                  : "Legendas ocultas — toque em CC para ativar."}
-              </p>
-            </div>
-          </div>
-
-          {/* PRO VIDEO TRANSPORT & CHAPTER SCRUBBER */}
-          <div className="bg-slate-950/95 border-t border-white/10 px-3 sm:px-4 py-3 space-y-2.5 text-slate-200">
-            <div className="space-y-1.5">
-              <div className="relative h-5 flex items-center">
                 <input
                   type="range"
                   min={0}
                   max={1000}
                   value={Math.round(progress * 1000)}
-                  onChange={(e) =>
-                    seekToSeconds((Number(e.target.value) / 1000) * effectiveDuration)
-                  }
+                  onChange={(event) => {
+                    seekToSeconds(Number(event.target.value) / 1000 * effectiveDuration);
+                    if (isFullscreen) revealControls();
+                  }}
                   aria-label="Linha do tempo do vídeo"
-                  className="w-full accent-sky-400 cursor-pointer h-1.5 rounded-lg relative z-10"
+                  aria-valuetext={formatTime(currentTime) + " de " + formatTime(effectiveDuration)}
+                  className={styles.scrubber}
                 />
-                {/* Exact scene boundary ticks */}
-                <div className="pointer-events-none absolute inset-x-0 flex items-center">
-                  {scenes.slice(1).map((sc) => (
-                    <span
-                      key={sc.id}
-                      style={{
-                        left: `${Math.min(99, (sc.startSec / effectiveDuration) * 100)}%`,
-                      }}
-                      className="absolute w-1.5 h-3 rounded-full bg-amber-400/90 -translate-x-1/2"
-                    />
-                  ))}
-                </div>
               </div>
-
               {/* Exact Scene Jump Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <div className={styles.chapters + " flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1"}>
                 {scenes.map((sc, idx) => (
                   <button
                     key={sc.id}
                     type="button"
                     onClick={() => {
-                      sfx.tick();
+                      playSound("click");
                       seekToSeconds(sc.startSec + 0.05);
                     }}
                     className={`shrink-0 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold transition ${
@@ -1962,7 +2184,7 @@ export function MotionVideoPlayer({
                 </button>
                 <button
                   type="button"
-                  onClick={() => void selectEpisode(epIndex - 1)}
+                  onClick={() => selectEpisode(epIndex - 1)}
                   className="p-1.5 rounded-lg hover:bg-white/10 text-slate-300"
                   title="Episódio anterior"
                   aria-label="Episódio anterior"
@@ -1971,7 +2193,7 @@ export function MotionVideoPlayer({
                 </button>
                 <button
                   type="button"
-                  onClick={() => void selectEpisode(epIndex + 1)}
+                  onClick={() => selectEpisode(epIndex + 1)}
                   className="p-1.5 rounded-lg hover:bg-white/10 text-slate-300"
                   title="Próximo episódio"
                   aria-label="Próximo episódio"
@@ -2035,6 +2257,7 @@ export function MotionVideoPlayer({
                       : "text-slate-400 hover:bg-white/10"
                   }`}
                   aria-label="Legendas"
+                  aria-pressed={showCaptions}
                 >
                   <Captions className="w-4 h-4" />
                 </button>
@@ -2098,7 +2321,7 @@ export function MotionVideoPlayer({
               <button
                 key={ep.id}
                 type="button"
-                onClick={() => void selectEpisode(idx, true)}
+                onClick={() => selectEpisode(idx)}
                 className={`w-full text-left p-2.5 rounded-2xl border transition flex items-start gap-2.5 ${
                   active
                     ? "bg-ink-900 text-paper-50 border-ink-900 shadow-sm dark:bg-sky-500 dark:text-blueprint-950 dark:border-sky-400"
