@@ -6,12 +6,14 @@ import { ProfessorAvatar } from "./ProfessorAvatar";
 import { TtsModelTier, VoiceState } from "@/lib/voice";
 import { ConceptAnatomyStage } from "./ConceptAnatomyStage";
 import { AxisParallelWidget } from "./AxisParallelWidget";
+import { MotionVideoPlayer } from "./MotionVideoPlayer";
 import {
   ArrowLeftRight,
   ArrowRight,
   BookOpen,
   CheckCircle2,
   Compass,
+  Film,
   Lightbulb,
   Sparkles,
   Volume2,
@@ -36,7 +38,7 @@ interface LessonsViewProps {
   ttsModelTier: TtsModelTier;
 }
 
-type LessonSubTab = "anatomy" | "parallel" | "chapters";
+type LessonSubTab = "video" | "anatomy" | "parallel" | "chapters";
 
 const DIEDRO_MATRIX = [
   {
@@ -91,7 +93,7 @@ export function LessonsView({
   customApiKey,
   ttsModelTier,
 }: LessonsViewProps) {
-  const [subTab, setSubTab] = useState<LessonSubTab>("anatomy");
+  const [subTab, setSubTab] = useState<LessonSubTab>("video");
   const [activeId, setActiveId] = useState<string>(LESSON_CHAPTERS[0].id);
   const active: LessonChapter =
     LESSON_CHAPTERS.find((c) => c.id === activeId) ?? LESSON_CHAPTERS[0];
@@ -102,9 +104,16 @@ export function LessonsView({
   return (
     <div className="space-y-5">
       {/* Top Interactive Sub-Mode Switcher for the Classroom */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 rounded-2xl bg-paper-200/80 dark:bg-blueprint-900 border border-paper-300 dark:border-blueprint-700">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 p-1.5 rounded-2xl bg-paper-200/80 dark:bg-blueprint-900 border border-paper-300 dark:border-blueprint-700">
         {(
           [
+            {
+              id: "video" as const,
+              icon: Film,
+              title: "Aulas em Vídeo",
+              sub: "7 episódios Motion + Lip-Sync",
+              accent: "text-bisector dark:text-amber-400",
+            },
             {
               id: "anatomy" as const,
               icon: Sparkles,
@@ -115,15 +124,15 @@ export function LessonsView({
             {
               id: "parallel" as const,
               icon: ArrowLeftRight,
-              title: "3D Computação ⇄ GD",
+              title: "3D CG ⇄ GD",
               sub: "Por que altura muda de Y para Z",
               accent: "text-pv dark:text-red-400",
             },
             {
               id: "chapters" as const,
               icon: BookOpen,
-              title: "Capítulos (01–06)",
-              sub: `${completedLessons.length}/${LESSON_CHAPTERS.length} concluídos · UERJ`,
+              title: "Apostila (01–06)",
+              sub: `${completedLessons.length}/${LESSON_CHAPTERS.length} capítulos · UERJ`,
               accent: "text-lt dark:text-teal-400",
             },
           ] as const
@@ -135,14 +144,14 @@ export function LessonsView({
               key={item.id}
               type="button"
               onClick={() => setSubTab(item.id)}
-              className={`flex items-center gap-3 p-3 rounded-xl text-left transition-all ${
+              className={`flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl text-left transition-all ${
                 selected
                   ? "bg-paper-50 dark:bg-blueprint-800 shadow-sm ring-1 ring-ink-900/10 dark:ring-sky-400/30"
                   : "hover:bg-paper-50/50 dark:hover:bg-blueprint-800/50 opacity-80 hover:opacity-100"
               }`}
             >
               <span
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 ${
                   selected
                     ? "bg-ink-900 text-paper-50 dark:bg-sky-500 dark:text-blueprint-950"
                     : "bg-paper-100 dark:bg-blueprint-950 " + item.accent
@@ -154,7 +163,7 @@ export function LessonsView({
                 <div className="text-xs sm:text-sm font-extrabold text-ink-900 dark:text-white truncate">
                   {item.title}
                 </div>
-                <div className="text-[11px] text-ink-500 dark:text-slate-400 truncate">
+                <div className="text-[10.5px] sm:text-[11px] text-ink-500 dark:text-slate-400 truncate">
                   {item.sub}
                 </div>
               </div>
@@ -162,6 +171,9 @@ export function LessonsView({
           );
         })}
       </div>
+
+      {/* SUB-TAB 0: CINEMATIC MOTION-DESIGN VIDEO THEATER WITH REAL-TIME LIP-SYNC MASCOT */}
+      {subTab === "video" && <MotionVideoPlayer onOpenInLab={onOpenInLab} />}
 
       {/* SUB-TAB 1: ANIMATED CONCEPT EXPLORER ("O QUE É O QUÊ?") */}
       {subTab === "anatomy" && (

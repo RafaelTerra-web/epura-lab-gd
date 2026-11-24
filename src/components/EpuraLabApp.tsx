@@ -435,7 +435,7 @@ export function EpuraLabApp() {
                 onClick={() => setSection("lessons")}
                 className="px-3 py-1.5 rounded-xl bg-ph hover:bg-ph-dark text-white text-xs font-bold transition"
               >
-                Aula Animada: O que é o quê?
+                ▶ Aulas em Vídeo (Motion)
               </button>
               <button
                 type="button"
