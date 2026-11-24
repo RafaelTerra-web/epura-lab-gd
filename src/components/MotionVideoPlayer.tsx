@@ -19,7 +19,8 @@ import {
   RotateCcw,
   SkipBack,
   SkipForward,
-  Sparkles,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 interface MotionVideoPlayerProps {
@@ -996,6 +997,8 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(95);
   const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [volume, setVolume] = useState(0.95);
+  const [isMuted, setIsMuted] = useState(false);
   const [showCaptions, setShowCaptions] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -1147,6 +1150,13 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
     }
   }, [playbackRate, epIndex]);
 
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume;
+      audioRef.current.muted = isMuted;
+    }
+  }, [volume, isMuted, epIndex]);
+
   const togglePlay = async () => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -1253,9 +1263,6 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                   {baseEp.number} · {activeScene.label}
                 </span>
               </div>
-              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-950/75 border border-white/15 text-[10px] font-mono font-bold text-amber-300 backdrop-blur-md">
-                <Sparkles className="w-3 h-3" /> STUDIO · SYNC EXATO
-              </span>
             </div>
 
             {/* DESKTOP PiP Lip-Sync Mascot (100% STEADY FRAME, SMOOTH LIP-SYNC!) */}
@@ -1409,7 +1416,37 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
+                {/* Volume Control (Mute toggle + Slider) */}
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/5 border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setIsMuted((m) => !m)}
+                    className="text-slate-300 hover:text-white transition"
+                    title={isMuted || volume === 0 ? "Ativar som" : "Silenciar"}
+                    aria-label={isMuted || volume === 0 ? "Ativar som" : "Silenciar"}
+                  >
+                    {isMuted || volume === 0 ? (
+                      <VolumeX className="w-3.5 h-3.5 text-red-400" />
+                    ) : (
+                      <Volume2 className="w-3.5 h-3.5 text-sky-300" />
+                    )}
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={isMuted ? 0 : Math.round(volume * 100)}
+                    onChange={(e) => {
+                      const v = Number(e.target.value) / 100;
+                      setVolume(v);
+                      if (v > 0 && isMuted) setIsMuted(false);
+                    }}
+                    aria-label="Volume do vídeo"
+                    className="w-16 sm:w-20 h-1.5 accent-sky-400 cursor-pointer rounded-lg"
+                  />
+                </div>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -1481,7 +1518,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
             Temporada 1 · {VIDEO_EPISODES.length} Aulas
           </div>
           <span className="font-mono text-[10px] font-bold text-lt">
-            Sync Exato
+            Motion HD
           </span>
         </div>
 

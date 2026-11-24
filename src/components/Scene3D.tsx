@@ -10,7 +10,7 @@ import {
   NotationMode,
 } from "@/lib/gd-math";
 import { LabSpotlight } from "@/lib/director";
-import { Eye, RotateCcw } from "lucide-react";
+import { Crosshair, Eye, Hand, Rotate3d, RotateCcw } from "lucide-react";
 
 interface Scene3DProps {
   points: GDPoint[];
@@ -35,29 +35,36 @@ function makeTextSprite(
   color: string,
   bgColor: string,
   borderColor?: string,
-  fontSize = 44
+  fontSize = 46
 ): THREE.Sprite {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
-  canvas.width = 256;
-  canvas.height = 112;
+  canvas.width = 280;
+  canvas.height = 120;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.font = `700 ${fontSize}px "JetBrains Mono", monospace`;
+  ctx.font = `800 ${fontSize}px "JetBrains Mono", monospace`;
   const metrics = ctx.measureText(text);
-  const w = Math.min(240, Math.max(76, metrics.width + 38));
-  const h = 66;
+  const w = Math.min(264, Math.max(88, metrics.width + 44));
+  const h = 74;
   const x = (canvas.width - w) / 2;
   const y = (canvas.height - h) / 2;
 
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.18)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 3;
   ctx.fillStyle = bgColor;
   ctx.beginPath();
-  ctx.roundRect(x, y, w, h, 18);
+  ctx.roundRect(x, y, w, h, 20);
   ctx.fill();
+  ctx.restore();
 
   if (borderColor) {
     ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 20);
     ctx.stroke();
   }
 
@@ -74,7 +81,7 @@ function makeTextSprite(
     depthTest: false,
   });
   const sprite = new THREE.Sprite(mat);
-  sprite.scale.set(1.55, 0.68, 1);
+  sprite.scale.set(1.68, 0.74, 1);
   return sprite;
 }
 
@@ -153,9 +160,16 @@ export function Scene3D({
 }: Scene3DProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [activePreset, setActivePreset] = useState<CameraPreset>("iso");
+  const [interactionMode, setInteractionMode] = useState<"orbit" | "pan">("orbit");
+  const [isPanned, setIsPanned] = useState(false);
   const [webglError, setWebglError] = useState(false);
 
-  // Camera spherical state kept in refs for 60fps interaction without React rerenders
+  const interactionModeRef = useRef<"orbit" | "pan">("orbit");
+  useEffect(() => {
+    interactionModeRef.current = interactionMode;
+  }, [interactionMode]);
+
+  // Camera spherical + bounded pan state kept in refs for 60fps interaction without React rerenders
   const camStateRef = useRef({
     theta: 0.68, // azimuth around Y
     phi: 1.14, // polar angle from +Y
@@ -163,6 +177,12 @@ export function Scene3D({
     targetTheta: 0.68,
     targetPhi: 1.14,
     targetRadius: 17.5,
+    panX: 0,
+    panY: 0,
+    panZ: 0,
+    targetPanX: 0,
+    targetPanY: 0,
+    targetPanZ: 0,
   });
 
   const sceneRefs = useRef<{
@@ -175,7 +195,15 @@ export function Scene3D({
     foldRef: { angle: number };
   } | null>(null);
 
-  const applyCameraPreset = (preset: CameraPreset) => {
+  const recenterPan = () => {
+    const s = camStateRef.current;
+    s.targetPanX = 0;
+    s.targetPanY = 0;
+    s.targetPanZ = 0;
+    setIsPanned(false);
+  };
+
+  const applyCameraPreset = (preset: CameraPreset, alsoRecenter = false) => {
     setActivePreset(preset);
     const s = camStateRef.current;
     if (preset === "iso") {
@@ -194,6 +222,12 @@ export function Scene3D({
       s.targetTheta = 0;
       s.targetPhi = 0.16;
       s.targetRadius = 17.5;
+    }
+    if (alsoRecenter) {
+      s.targetPanX = 0;
+      s.targetPanY = 0;
+      s.targetPanZ = 0;
+      setIsPanned(false);
     }
   };
 
@@ -275,18 +309,61 @@ export function Scene3D({
       foldRef,
     };
 
-    // Pointer drag & pinch zoom handlers
+    // Pointer drag, bounded PAN & pinch zoom handlers
     const dom = renderer.domElement;
     dom.style.touchAction = "none";
     const activePointers = new Map<number, { x: number; y: number }>();
     let lastPinchDist = 0;
+    let lastTwoFingerCenter: { x: number; y: number } | null = null;
+    let dragMode: "orbit" | "pan" = "orbit";
+
+    const PAN_LIMIT = 5.5;
+    const applyBoundedPan = (dx: number, dy: number) => {
+      const s = camStateRef.current;
+      const panSpeed = s.radius * 0.00145;
+      // Camera right & up unit vectors in world space from current spherical angles
+      const right = new THREE.Vector3(Math.cos(s.theta), 0, -Math.sin(s.theta));
+      const viewDir = new THREE.Vector3(
+        -Math.sin(s.phi) * Math.sin(s.theta),
+        -Math.cos(s.phi),
+        -Math.sin(s.phi) * Math.cos(s.theta)
+      );
+      const up = new THREE.Vector3().crossVectors(right, viewDir).normalize();
+
+      s.targetPanX = Math.max(
+        -PAN_LIMIT,
+        Math.min(PAN_LIMIT, s.targetPanX - right.x * dx * panSpeed + up.x * dy * panSpeed)
+      );
+      s.targetPanY = Math.max(
+        -PAN_LIMIT,
+        Math.min(PAN_LIMIT, s.targetPanY - right.y * dx * panSpeed + up.y * dy * panSpeed)
+      );
+      s.targetPanZ = Math.max(
+        -PAN_LIMIT,
+        Math.min(PAN_LIMIT, s.targetPanZ - right.z * dx * panSpeed + up.z * dy * panSpeed)
+      );
+      setIsPanned(true);
+    };
+
+    const onContextMenu = (e: MouseEvent) => e.preventDefault();
 
     const onPointerDown = (e: PointerEvent) => {
       dom.setPointerCapture(e.pointerId);
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const wantsPan =
+        interactionModeRef.current === "pan" ||
+        e.button === 2 ||
+        e.button === 1 ||
+        e.shiftKey;
+      dragMode = wantsPan ? "pan" : "orbit";
+
       if (activePointers.size === 2) {
         const pts = Array.from(activePointers.values());
         lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        lastTwoFingerCenter = {
+          x: (pts[0].x + pts[1].x) / 2,
+          y: (pts[0].y + pts[1].y) / 2,
+        };
       }
     };
 
@@ -299,11 +376,15 @@ export function Scene3D({
 
       const s = camStateRef.current;
       if (activePointers.size === 1) {
-        s.targetTheta -= dx * 0.0085;
-        s.targetPhi = Math.max(
-          0.12,
-          Math.min(Math.PI - 0.12, s.targetPhi - dy * 0.0085)
-        );
+        if (dragMode === "pan" || interactionModeRef.current === "pan") {
+          applyBoundedPan(dx, dy);
+        } else {
+          s.targetTheta -= dx * 0.0085;
+          s.targetPhi = Math.max(
+            0.12,
+            Math.min(Math.PI - 0.12, s.targetPhi - dy * 0.0085)
+          );
+        }
       } else if (activePointers.size === 2) {
         const pts = Array.from(activePointers.values());
         const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
@@ -312,12 +393,27 @@ export function Scene3D({
           s.targetRadius = Math.max(9, Math.min(28, s.targetRadius + delta));
         }
         lastPinchDist = dist;
+
+        const center = {
+          x: (pts[0].x + pts[1].x) / 2,
+          y: (pts[0].y + pts[1].y) / 2,
+        };
+        if (lastTwoFingerCenter) {
+          applyBoundedPan(
+            center.x - lastTwoFingerCenter.x,
+            center.y - lastTwoFingerCenter.y
+          );
+        }
+        lastTwoFingerCenter = center;
       }
     };
 
     const onPointerUp = (e: PointerEvent) => {
       activePointers.delete(e.pointerId);
-      if (activePointers.size < 2) lastPinchDist = 0;
+      if (activePointers.size < 2) {
+        lastPinchDist = 0;
+        lastTwoFingerCenter = null;
+      }
     };
 
     const onWheel = (e: WheelEvent) => {
@@ -326,6 +422,7 @@ export function Scene3D({
       s.targetRadius = Math.max(9, Math.min(28, s.targetRadius + e.deltaY * 0.01));
     };
 
+    dom.addEventListener("contextmenu", onContextMenu);
     dom.addEventListener("pointerdown", onPointerDown);
     dom.addEventListener("pointermove", onPointerMove);
     dom.addEventListener("pointerup", onPointerUp);
@@ -349,13 +446,16 @@ export function Scene3D({
       s.theta += (s.targetTheta - s.theta) * 0.12;
       s.phi += (s.targetPhi - s.phi) * 0.12;
       s.radius += (s.targetRadius - s.radius) * 0.12;
+      s.panX += (s.targetPanX - s.panX) * 0.14;
+      s.panY += (s.targetPanY - s.panY) * 0.14;
+      s.panZ += (s.targetPanZ - s.panZ) * 0.14;
 
       camera.position.set(
-        s.radius * Math.sin(s.phi) * Math.sin(s.theta),
-        s.radius * Math.cos(s.phi),
-        s.radius * Math.sin(s.phi) * Math.cos(s.theta)
+        s.panX + s.radius * Math.sin(s.phi) * Math.sin(s.theta),
+        s.panY + s.radius * Math.cos(s.phi),
+        s.panZ + s.radius * Math.sin(s.phi) * Math.cos(s.theta)
       );
-      camera.lookAt(0, 0, 0);
+      camera.lookAt(s.panX, s.panY, s.panZ);
 
       // Smoothly fold horizontalGroup around X axis (Mongean clockwise fold)
       const targetRad = (foldRef.angle * Math.PI) / 180;
@@ -369,6 +469,7 @@ export function Scene3D({
     return () => {
       cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
+      dom.removeEventListener("contextmenu", onContextMenu);
       dom.removeEventListener("pointerdown", onPointerDown);
       dom.removeEventListener("pointermove", onPointerMove);
       dom.removeEventListener("pointerup", onPointerUp);
@@ -417,8 +518,11 @@ export function Scene3D({
 
     const SIZE = 12; // -6 to +6
     const HALF = SIZE / 2;
-    const labelBg = dark ? "rgba(17,26,46,0.9)" : "rgba(253,252,248,0.92)";
-    const inkColor = dark ? "#F1F5F9" : "#1C1917";
+    const labelBg = dark ? "rgba(11,18,32,0.96)" : "rgba(255,255,255,0.97)";
+    const inkColor = dark ? "#F8FAFC" : "#111827";
+    const pvTagCol = dark ? "#FCA5A5" : "#B91C1C";
+    const phTagCol = dark ? "#93C5FD" : "#1D4ED8";
+    const ltTagCol = dark ? "#5EEAD4" : "#0F766E";
     const foldRatio = foldAngle / 90;
     const spaceFade = Math.max(0.06, 1 - foldRatio * 1.15);
 
@@ -428,17 +532,17 @@ export function Scene3D({
     const pvMat = new THREE.MeshBasicMaterial({
       color: dark ? 0xef4444 : 0xc94032,
       transparent: true,
-      opacity: dark ? 0.1 : 0.085,
+      opacity: dark ? 0.11 : 0.095,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
     const pvPlane = new THREE.Mesh(new THREE.PlaneGeometry(SIZE, SIZE), pvMat);
     staticGroup.add(pvPlane);
 
-    // PV border & subtle grid
+    // PV border & higher-contrast grid
     for (let i = -HALF; i <= HALF; i++) {
       const isEdge = Math.abs(i) === HALF;
-      const op = isEdge ? 0.45 : i === 0 ? 0.25 : 0.14;
+      const op = isEdge ? 0.62 : i === 0 ? 0.34 : 0.2;
       staticGroup.add(
         makeSolidLine(
           new THREE.Vector3(i, -HALF, 0),
@@ -461,29 +565,31 @@ export function Scene3D({
 
     const pvsSprite = makeTextSprite(
       `${sampleLabels.pvShort}S`,
-      "#C94032",
+      pvTagCol,
       labelBg,
-      "#C94032",
-      38
+      pvTagCol,
+      44
     );
-    pvsSprite.position.set(-HALF + 0.95, HALF - 0.65, 0.06);
+    pvsSprite.scale.set(1.55, 0.72, 1);
+    pvsSprite.position.set(-HALF + 1.0, HALF - 0.65, 0.08);
     staticGroup.add(pvsSprite);
 
     const pviSprite = makeTextSprite(
       `${sampleLabels.pvShort}I`,
-      "#C94032",
+      pvTagCol,
       labelBg,
-      "#C94032",
-      38
+      pvTagCol,
+      44
     );
-    pviSprite.position.set(-HALF + 0.95, -HALF + 0.65, 0.06);
+    pviSprite.scale.set(1.55, 0.72, 1);
+    pviSprite.position.set(-HALF + 1.0, -HALF + 0.65, 0.08);
     staticGroup.add(pviSprite);
 
     // ---- 2. PLANO HORIZONTAL (π / PH) inside horizontalGroup (FOLDS 0° → 90°) ----
     const phMat = new THREE.MeshBasicMaterial({
       color: dark ? 0x3b82f6 : 0x1e56a0,
       transparent: true,
-      opacity: dark ? 0.12 : 0.095,
+      opacity: dark ? 0.13 : 0.105,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
@@ -493,7 +599,7 @@ export function Scene3D({
 
     for (let i = -HALF; i <= HALF; i++) {
       const isEdge = Math.abs(i) === HALF;
-      const op = isEdge ? 0.48 : i === 0 ? 0.25 : 0.15;
+      const op = isEdge ? 0.64 : i === 0 ? 0.34 : 0.22;
       horizontalGroup.add(
         makeSolidLine(
           new THREE.Vector3(i, 0, -HALF),
@@ -516,22 +622,24 @@ export function Scene3D({
 
     const phaSprite = makeTextSprite(
       `${sampleLabels.phShort}A`,
-      "#1E56A0",
+      phTagCol,
       labelBg,
-      "#1E56A0",
-      38
+      phTagCol,
+      44
     );
-    phaSprite.position.set(HALF - 0.95, 0.06, HALF - 0.65);
+    phaSprite.scale.set(1.55, 0.72, 1);
+    phaSprite.position.set(HALF - 1.0, 0.08, HALF - 0.65);
     horizontalGroup.add(phaSprite);
 
     const phpSprite = makeTextSprite(
       `${sampleLabels.phShort}P`,
-      "#1E56A0",
+      phTagCol,
       labelBg,
-      "#1E56A0",
-      38
+      phTagCol,
+      44
     );
-    phpSprite.position.set(HALF - 0.95, 0.06, -HALF + 0.65);
+    phpSprite.scale.set(1.55, 0.72, 1);
+    phpSprite.position.set(HALF - 1.0, 0.08, -HALF + 0.65);
     horizontalGroup.add(phpSprite);
 
     // ---- 3. LINHA DE TERRA (LT) along X_w axis ----
@@ -539,20 +647,21 @@ export function Scene3D({
       makeCylinderSegment(
         new THREE.Vector3(-HALF - 0.5, 0, 0),
         new THREE.Vector3(HALF + 0.5, 0, 0),
-        0.065,
+        0.075,
         0x0f766e,
         1
       )
     );
     // Origin O(0) sphere
     const originMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.14, 16, 16),
+      new THREE.SphereGeometry(0.15, 16, 16),
       new THREE.MeshStandardMaterial({ color: 0x0f766e })
     );
     staticGroup.add(originMesh);
 
-    const ltSprite = makeTextSprite("LT", "#0F766E", labelBg, "#0F766E", 40);
-    ltSprite.position.set(HALF + 0.85, 0.12, 0.12);
+    const ltSprite = makeTextSprite("LT", "#FFFFFF", "#0F766E", "#0D9488", 46);
+    ltSprite.scale.set(1.5, 0.7, 1);
+    ltSprite.position.set(HALF + 0.9, 0.14, 0.14);
     staticGroup.add(ltSprite);
 
     // ---- 4. OPTIONAL BISECTORS (β₁₃ and β₂₄) ----
@@ -560,7 +669,7 @@ export function Scene3D({
       const b13Mat = new THREE.MeshBasicMaterial({
         color: 0xd97706,
         transparent: true,
-        opacity: 0.12 * spaceFade,
+        opacity: 0.14 * spaceFade,
         side: THREE.DoubleSide,
         depthWrite: false,
       });
@@ -571,7 +680,7 @@ export function Scene3D({
       const b24Mat = new THREE.MeshBasicMaterial({
         color: 0x7c3aed,
         transparent: true,
-        opacity: 0.1 * spaceFade,
+        opacity: 0.12 * spaceFade,
         side: THREE.DoubleSide,
         depthWrite: false,
       });
@@ -580,12 +689,14 @@ export function Scene3D({
       staticGroup.add(b24);
 
       if (spaceFade > 0.3) {
-        const b13Tag = makeTextSprite("β₁₃", "#B45309", labelBg, "#B45309", 36);
-        b13Tag.position.set(-HALF + 0.7, 3.8, 3.8);
+        const b13Tag = makeTextSprite("β₁₃", "#FFFFFF", "#B45309", "#F59E0B", 44);
+        b13Tag.scale.set(1.5, 0.7, 1);
+        b13Tag.position.set(-HALF + 0.85, 3.8, 3.8);
         staticGroup.add(b13Tag);
 
-        const b24Tag = makeTextSprite("β₂₄", "#6D28D9", labelBg, "#6D28D9", 36);
-        b24Tag.position.set(-HALF + 0.7, 3.8, -3.8);
+        const b24Tag = makeTextSprite("β₂₄", "#FFFFFF", "#6D28D9", "#A78BFA", 44);
+        b24Tag.scale.set(1.5, 0.7, 1);
+        b24Tag.position.set(-HALF + 0.85, 3.8, -3.8);
         staticGroup.add(b24Tag);
       }
     }
@@ -620,30 +731,54 @@ export function Scene3D({
       staticGroup.add(arrowZ);
       horizontalGroup.add(arrowY);
 
-      const xTag = makeTextSprite("+X Absc.", "#0F766E", labelBg, undefined, 32);
-      xTag.position.set(5.4, -0.55, 0.2);
+      const xTag = makeTextSprite("+X Absc.", ltTagCol, labelBg, ltTagCol, 36);
+      xTag.scale.set(2.0, 0.78, 1);
+      xTag.position.set(5.4, -0.65, 0.2);
       staticGroup.add(xTag);
 
-      const zTag = makeTextSprite("+Z Cota", "#C94032", labelBg, undefined, 32);
-      zTag.position.set(0.35, 5.7, 0.15);
+      const zTag = makeTextSprite("+Z Cota", pvTagCol, labelBg, pvTagCol, 36);
+      zTag.scale.set(1.9, 0.78, 1);
+      zTag.position.set(0.35, 5.75, 0.15);
       staticGroup.add(zTag);
 
-      const yTag = makeTextSprite("+Y Afast.", "#1E56A0", labelBg, undefined, 32);
-      yTag.position.set(0.35, 0.25, 5.65);
+      const yTag = makeTextSprite("+Y Afast.", phTagCol, labelBg, phTagCol, 36);
+      yTag.scale.set(2.05, 0.78, 1);
+      yTag.position.set(0.35, 0.28, 5.7);
       horizontalGroup.add(yTag);
     }
 
-    // ---- 6. DIEDRO QUADRANT LABELS (visible when not fully folded) ----
+    // ---- 6. HIGH-CONTRAST DIEDRO QUADRANT LABELS (visible when not fully folded) ----
     if (showDiedroLabels && spaceFade > 0.35) {
       const diedroSpecs = [
-        { txt: "1º D", pos: new THREE.Vector3(4.6, 3.4, 3.4), col: "#1E56A0" },
-        { txt: "2º D", pos: new THREE.Vector3(4.6, 3.4, -3.4), col: "#0F766E" },
-        { txt: "3º D", pos: new THREE.Vector3(4.6, -3.4, -3.4), col: "#C94032" },
-        { txt: "4º D", pos: new THREE.Vector3(4.6, -3.4, 3.4), col: "#B45309" },
+        {
+          txt: "1º D",
+          pos: new THREE.Vector3(4.5, 3.5, 3.5),
+          bg: "#1E56A0",
+          border: "#93C5FD",
+        },
+        {
+          txt: "2º D",
+          pos: new THREE.Vector3(4.5, 3.5, -3.5),
+          bg: "#0F766E",
+          border: "#5EEAD4",
+        },
+        {
+          txt: "3º D",
+          pos: new THREE.Vector3(4.5, -3.5, -3.5),
+          bg: "#B91C1C",
+          border: "#FCA5A5",
+        },
+        {
+          txt: "4º D",
+          pos: new THREE.Vector3(4.5, -3.5, 3.5),
+          bg: "#B45309",
+          border: "#FDE68A",
+        },
       ];
       diedroSpecs.forEach((d) => {
-        const sp = makeTextSprite(d.txt, d.col, labelBg, undefined, 34);
-        sp.scale.set(1.15, 0.52, 1);
+        const sp = makeTextSprite(d.txt, "#FFFFFF", d.bg, d.border, 46);
+        sp.scale.set(1.95, 0.88, 1);
+        sp.material.opacity = Math.min(1, spaceFade * 1.15);
         sp.position.copy(d.pos);
         staticGroup.add(sp);
       });
@@ -718,15 +853,15 @@ export function Scene3D({
 
       const pvTag = makeTextSprite(
         labels.vertical,
-        "#C94032",
+        pvTagCol,
         labelBg,
-        "#C94032",
-        42
+        pvTagCol,
+        46
       );
-      pvTag.scale.set(1.15, 0.52, 1);
+      pvTag.scale.set(1.38, 0.62, 1);
       pvTag.position.set(
-        pt.x + 0.42,
-        pt.z + (pt.z >= 0 ? 0.38 : -0.38),
+        pt.x + 0.44,
+        pt.z + (pt.z >= 0 ? 0.42 : -0.42),
         0.08
       );
       dynamicGroup.add(pvTag);
@@ -744,16 +879,16 @@ export function Scene3D({
 
       const phTag = makeTextSprite(
         labels.horizontal,
-        "#1E56A0",
+        phTagCol,
         labelBg,
-        "#1E56A0",
-        42
+        phTagCol,
+        46
       );
-      phTag.scale.set(1.15, 0.52, 1);
+      phTag.scale.set(1.38, 0.62, 1);
       phTag.position.set(
-        pt.x - 0.42,
+        pt.x - 0.44,
         0.1,
-        pt.y + (pt.y >= 0 ? 0.38 : -0.38)
+        pt.y + (pt.y >= 0 ? 0.42 : -0.42)
       );
       horizontalGroup.add(phTag);
 
@@ -1059,7 +1194,43 @@ export function Scene3D({
           </span>
         </span>
 
-        <div className="pointer-events-auto flex items-center gap-1">
+        <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-1">
+          {/* Orbit vs Bounded Pan Toggle */}
+          <div
+            className={`inline-flex items-center rounded-lg border p-0.5 backdrop-blur-md ${
+              dark
+                ? "bg-blueprint-900/85 border-blueprint-700"
+                : "bg-paper-50/92 border-paper-300"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setInteractionMode("orbit")}
+              className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold transition ${
+                interactionMode === "orbit"
+                  ? "bg-ph text-white"
+                  : "text-ink-600 dark:text-slate-300"
+              }`}
+              title="Modo Girar (Rotacionar 3D)"
+            >
+              <Rotate3d className="w-3 h-3" />
+              <span className="hidden sm:inline">Girar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInteractionMode("pan")}
+              className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold transition ${
+                interactionMode === "pan"
+                  ? "bg-lt text-white"
+                  : "text-ink-600 dark:text-slate-300"
+              }`}
+              title="Modo Mover (Pan limitado)"
+            >
+              <Hand className="w-3 h-3" />
+              <span className="hidden sm:inline">Mover</span>
+            </button>
+          </div>
+
           {(
             [
               { id: "iso", label: "3D" },
@@ -1084,15 +1255,33 @@ export function Scene3D({
               {cam.label}
             </button>
           ))}
+
           <button
             type="button"
-            onClick={() => applyCameraPreset("iso")}
+            onClick={recenterPan}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border backdrop-blur-md text-[10.5px] sm:text-[11px] font-bold transition ${
+              isPanned
+                ? "bg-amber-500 text-ink-900 border-amber-400 shadow-sm"
+                : dark
+                  ? "bg-blueprint-900/80 text-slate-300 border-blueprint-700 hover:bg-blueprint-800"
+                  : "bg-paper-50/90 text-ink-700 border-paper-300 hover:bg-paper-200"
+            }`}
+            title="Centralizar vista na origem (0;0;0)"
+            aria-label="Centralizar vista"
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Centralizar</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => applyCameraPreset("iso", true)}
             className={`p-1.5 rounded-lg border backdrop-blur-md transition ${
               dark
                 ? "bg-blueprint-900/80 text-slate-300 border-blueprint-700 hover:bg-blueprint-800"
                 : "bg-paper-50/90 text-ink-700 border-paper-300 hover:bg-paper-200"
             }`}
-            title="Resetar câmera"
+            title="Resetar câmera e centralizar"
             aria-label="Resetar câmera"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -1111,12 +1300,16 @@ export function Scene3D({
           <span
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md backdrop-blur-sm ${
               dark
-                ? "bg-blueprint-900/70 text-slate-400"
-                : "bg-paper-50/80 text-ink-500"
+                ? "bg-blueprint-900/75 text-slate-300"
+                : "bg-paper-50/85 text-ink-700"
             }`}
           >
-            <Eye className="w-3 h-3" />
-            Arraste para girar · Pinça/Scroll para zoom
+            <Eye className="w-3 h-3 shrink-0" />
+            <span className="truncate">
+              {interactionMode === "pan"
+                ? "Arraste para mover (Pan) · Pinça/Scroll zoom"
+                : "Arraste p/ girar · Botão direito ou Mover p/ Pan"}
+            </span>
           </span>
         )}
       </div>
