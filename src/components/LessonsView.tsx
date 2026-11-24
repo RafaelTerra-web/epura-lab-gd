@@ -23,6 +23,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { GDPoint, GDSegment } from "@/lib/gd-math";
+import type { LabLaunchPayload } from "@/lib/video-lab-sync";
 
 interface LessonsViewProps {
   dark: boolean;
@@ -30,13 +31,7 @@ interface LessonsViewProps {
   watchedEpisodes: string[];
   onEpisodeWatched: (episodeId: string) => void;
   onToggleComplete: (id: string) => void;
-  onOpenInLab: (payload: {
-    points: GDPoint[];
-    segments: GDSegment[];
-    foldAngle: number;
-    showBisectors?: boolean;
-    showXYZ?: boolean;
-  }) => void;
+  onOpenInLab: (payload: LabLaunchPayload) => void;
   voice: VoiceState;
   voiceRate: number;
   customApiKey?: string;

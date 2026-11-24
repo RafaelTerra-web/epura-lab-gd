@@ -8,10 +8,14 @@ import {
   VideoSceneCue,
 } from "@/lib/video-episodes";
 import { LipSyncMascot, MouthFrame } from "./LipSyncMascot";
-import { GDPoint, GDSegment } from "@/lib/gd-math";
 import { sfx } from "@/lib/sfx";
 import { getVideoSoundCues, MONGE_BEATS, playVideoSound, type VideoSound } from "@/lib/video-effects";
 import { type BeatVisualFx, getNarrationBeats, type NarrationBeat } from "@/lib/video-narration-beats";
+import {
+  getEpisodePointExamples,
+  type LabLaunchPayload,
+  resolveVideoLabMoment,
+} from "@/lib/video-lab-sync";
 import styles from "./MotionVideoPlayer.module.css";
 import {
   Captions,
@@ -31,13 +35,7 @@ import {
 interface MotionVideoPlayerProps {
   watchedEpisodes?: string[];
   onEpisodeWatched?: (episodeId: string) => void;
-  onOpenInLab: (payload: {
-    points: GDPoint[];
-    segments: GDSegment[];
-    foldAngle: number;
-    showBisectors?: boolean;
-    showXYZ?: boolean;
-  }) => void;
+  onOpenInLab: (payload: LabLaunchPayload) => void;
 }
 
 function formatTime(sec: number): string {
@@ -2781,6 +2779,16 @@ export function MotionVideoPlayer({
     epIndex < VIDEO_EPISODES.length - 1 ? VIDEO_EPISODES[epIndex + 1] : null;
   const nextEpDur = nextEpisode ? timings[nextEpisode.id]?.duration : undefined;
   const finishedSeason = VIDEO_EPISODES.every((episode) => watchedEpisodes.includes(episode.id));
+  const activeMoment = resolveVideoLabMoment(
+    baseEp.id,
+    activeScene.id,
+    sceneSeconds,
+    baseEp.labPreset
+  );
+  const episodeExamples = useMemo(
+    () => getEpisodePointExamples(baseEp.id),
+    [baseEp.id]
+  );
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start">
@@ -2933,7 +2941,7 @@ export function MotionVideoPlayer({
                     <div className="flex items-center justify-center gap-2 pt-1">
                       <button
                         type="button"
-                        onClick={() => onOpenInLab(baseEp.labPreset)}
+                        onClick={() => onOpenInLab(activeMoment.payload)}
                         className="px-4 py-2 rounded-xl bg-ph hover:bg-ph-dark text-white text-xs font-bold"
                       >
                         Abrir Lab 3D
@@ -3198,26 +3206,67 @@ export function MotionVideoPlayer({
           </div>
         </div>
 
-        {/* Episode Info Card */}
-        <div className="rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-50 dark:bg-blueprint-900 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-draft">
-          <div>
-            <div className="text-[11px] font-mono font-extrabold text-ph dark:text-sky-400">
-              {baseEp.number} · {baseEp.tag} · Aula Completa · Voz Masculina Gemini 3.8 TTS
+        {/* Episode Info Card + Moment-Synced Lab 3D Presets */}
+        <div className="rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-50 dark:bg-blueprint-900 p-4 space-y-3 shadow-draft">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-mono font-extrabold text-ph dark:text-sky-400">
+                {baseEp.number} · {baseEp.tag} · Aula Completa · Voz Masculina Gemini 3.8 TTS
+              </div>
+              <h3 className="font-display text-xl font-bold text-ink-900 dark:text-white mt-0.5">
+                {baseEp.title}
+              </h3>
+              <p className="text-xs text-ink-500 dark:text-slate-400 mt-0.5">
+                {baseEp.subtitle}
+              </p>
             </div>
-            <h3 className="font-display text-xl font-bold text-ink-900 dark:text-white mt-0.5">
-              {baseEp.title}
-            </h3>
-            <p className="text-xs text-ink-500 dark:text-slate-400 mt-0.5">
-              {baseEp.subtitle}
-            </p>
+            <button
+              type="button"
+              data-lab-moment-btn
+              onClick={() => onOpenInLab(activeMoment.payload)}
+              className="shrink-0 inline-flex flex-col items-center sm:items-end justify-center px-4 py-2 rounded-xl bg-ph hover:bg-ph-dark text-white transition shadow-sm"
+            >
+              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold">
+                <Compass className="w-4 h-4" /> Reproduzir este Momento no Lab 3D
+              </span>
+              <span className="font-mono text-[10px] text-sky-100/95 mt-0.5">
+                {activeMoment.coordsLabel}
+              </span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => onOpenInLab(baseEp.labPreset)}
-            className="shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-ph hover:bg-ph-dark text-white text-xs font-bold transition"
-          >
-            <Compass className="w-4 h-4" /> Praticar esta Cena no Lab 3D
-          </button>
+
+          {episodeExamples.length > 0 && (
+            <div className="pt-2.5 border-t border-paper-200 dark:border-blueprint-800 space-y-1.5">
+              <div className="flex items-center justify-between gap-2 text-[10.5px] font-mono font-bold text-ink-500 dark:text-slate-400">
+                <span>PONTOS CITADOS NESTA AULA · REPRODUZIR NO LAB 3D:</span>
+                <span className="hidden sm:inline text-ph dark:text-sky-400">
+                  No vídeo: {activeMoment.chipLabel}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {episodeExamples.map((ex) => {
+                  const isActive = ex.id === activeMoment.id;
+                  return (
+                    <button
+                      key={ex.id}
+                      type="button"
+                      data-example-id={ex.id}
+                      data-active={isActive ? "true" : undefined}
+                      onClick={() => onOpenInLab(ex.payload)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-left transition ${
+                        isActive
+                          ? "bg-ph/15 dark:bg-sky-500/20 border-ph dark:border-sky-400 text-ph dark:text-sky-200"
+                          : "bg-paper-100/80 dark:bg-blueprint-950 border-paper-300/80 dark:border-blueprint-800 text-ink-700 dark:text-slate-300 hover:border-ph/60"
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold">{ex.chipLabel}</span>
+                      <span className="font-mono text-[10px] opacity-80">{ex.coordsLabel}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -199,16 +199,24 @@ export function EpuraLabApp() {
     foldAngle: number;
     showBisectors?: boolean;
     showXYZ?: boolean;
+    cameraPreset?: "iso" | "profile" | "front" | "top";
+    spotlight?: LabSpotlight | null;
   }) => {
+    sfx.click();
     setActivePresetId(null);
     setPoints(payload.points.map((p) => ({ ...p })));
     setSegments(payload.segments.map((s) => ({ ...s })));
     setFoldAngle(payload.foldAngle);
-    if (typeof payload.showBisectors === "boolean") {
-      setShowBisectors(payload.showBisectors);
-    }
+    setShowBisectors(Boolean(payload.showBisectors));
+    setSpotlight(payload.spotlight ? { ...payload.spotlight } : null);
     if (typeof payload.showXYZ === "boolean") {
       updatePrefs({ showXYZ: payload.showXYZ });
+    }
+    if (payload.cameraPreset) {
+      setCameraCommand((prev) => ({
+        preset: payload.cameraPreset!,
+        seq: (prev?.seq ?? 0) + 1,
+      }));
     }
     setSection("lab");
     if (typeof window !== "undefined") {
