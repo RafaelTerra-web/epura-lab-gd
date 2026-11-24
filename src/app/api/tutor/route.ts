@@ -61,37 +61,41 @@ export async function POST(req: NextRequest) {
         .map((p) => formatPointCoords(p.label, p.x, p.y, p.z))
         .join(", ");
 
-      const res = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `Você é o Prof. Monge, tutor de Geometria Descritiva da UERJ (convenção brasileira: (abscissa; afastamento; cota), ponto espacial (A), projeção horizontal A em π, projeção vertical A' em π', rebatimento horário de π de modo que afastamento + vai abaixo da LT e cota + vai acima da LT). Responda de forma calorosa, objetiva e didática em português do Brasil (máx. 4 frases).\nPontos atuais na prancheta do aluno: ${pointsDesc || "nenhum"}.\nPergunta do aluno: ${question}`,
-                  },
-                ],
-              },
-            ],
-          }),
-        }
-      );
+      for (const model of ["gemini-3.8-flash", "gemini-2.5-flash"]) {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": apiKey,
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: `Você é o Prof. Monge, tutor de Geometria Descritiva da UERJ (convenção brasileira Z-Up: (abscissa; afastamento; cota), ponto espacial (A), projeção horizontal A em π, projeção vertical A' em π', rebatimento horário de π de modo que afastamento + vai abaixo da LT e cota + vai acima da LT). Responda de forma calorosa, objetiva e didática em português do Brasil (máx. 4 frases).\nPontos atuais na prancheta do aluno: ${pointsDesc || "nenhum"}.\nPergunta do aluno: ${question}`,
+                    },
+                  ],
+                },
+              ],
+            }),
+          }
+        );
 
-      if (res.ok) {
-        const data = (await res.json()) as {
-          candidates?: Array<{
-            content?: { parts?: Array<{ text?: string }> };
-          }>;
-        };
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (text) {
-          return NextResponse.json({ answer: text, source: "gemini" });
+        if (res.ok) {
+          const data = (await res.json()) as {
+            candidates?: Array<{
+              content?: { parts?: Array<{ text?: string }> };
+            }>;
+          };
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) {
+            return NextResponse.json({ answer: text, source: model });
+          }
+        } else if (res.status === 402 || res.status === 401 || res.status === 403) {
+          break;
         }
       }
     }

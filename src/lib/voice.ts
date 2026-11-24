@@ -36,6 +36,7 @@ export function useProfessorVoice(): VoiceState {
   const cacheRef = useRef<Map<string, { dataUri: string; model: string }>>(
     new Map()
   );
+  const manifestRef = useRef<Set<string> | null>(null);
   const cancelledRef = useRef(false);
 
   const stop = useCallback(() => {
@@ -188,6 +189,27 @@ export function useProfessorVoice(): VoiceState {
       if (cached) {
         await playDataUri(cached.dataUri, cached.model);
         return;
+      }
+
+      // 1. Check pre-generated static WAV manifest (0 API cost, 0 404 noise!)
+      const safeId = id.replace(/[^a-zA-Z0-9_-]/g, "");
+      if (safeId) {
+        try {
+          if (!manifestRef.current) {
+            const mRes = await fetch("/audio/manifest.json");
+            const ids = mRes.ok ? ((await mRes.json()) as string[]) : [];
+            manifestRef.current = new Set(Array.isArray(ids) ? ids : []);
+          }
+          if (manifestRef.current.has(safeId)) {
+            await playDataUri(
+              `/audio/${safeId}.wav`,
+              "gemini-3.8-flash-tts (pré-gerado)"
+            );
+            return;
+          }
+        } catch {
+          // fall through to live Gemini 3.8 TTS API
+        }
       }
 
       try {

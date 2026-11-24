@@ -722,8 +722,9 @@ export function ConceptAnatomyStage({
                   π&apos; (Parede)
                 </text>
                 <text
-                  x={phCorners[1].x - 56}
-                  y={phCorners[1].y - 6}
+                  x={phCorners[1].x - 16}
+                  y={phCorners[1].y - 10}
+                  textAnchor="end"
                   fontSize="11"
                   fontWeight="800"
                   fill="#1E56A0"
