@@ -7,10 +7,10 @@ import { ProfessorAvatar } from "./ProfessorAvatar";
 import { TtsModelTier, VoiceState } from "@/lib/voice";
 import {
   Crosshair,
+  MessageSquare,
   Mic,
   MicOff,
   Send,
-  Sparkles,
   Volume2,
   VolumeX,
   X,
@@ -236,7 +236,7 @@ export function LiveProfessorSidebar({
             </div>
             <div className="text-[10px] font-mono text-ink-500 dark:text-slate-400 truncate">
               {voice.engine === "gemini-3.8"
-                ? `✦ ${voice.modelUsed}`
+                ? voice.modelUsed
                 : "Fala + Circula no Lab 3D/2D"}
             </div>
           </div>
@@ -286,7 +286,7 @@ export function LiveProfessorSidebar({
             onClick={() => void sendQuestion(chip.q)}
             className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-paper-50 dark:bg-blueprint-900 border border-paper-300 dark:border-blueprint-700 text-ink-800 dark:text-slate-200 hover:border-ph hover:text-ph transition"
           >
-            <Sparkles className="w-2.5 h-2.5 text-bisector" />
+            <MessageSquare className="w-2.5 h-2.5 text-ph" />
             {chip.label}
           </button>
         ))}

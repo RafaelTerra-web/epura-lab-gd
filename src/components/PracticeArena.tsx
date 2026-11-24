@@ -26,10 +26,11 @@ import {
   Compass,
   Flame,
   HelpCircle,
+  Lightbulb,
+  Lock,
   Minus,
   Plus,
   RefreshCw,
-  Sparkles,
   Volume2,
   VolumeX,
   XCircle,
@@ -634,7 +635,7 @@ export function PracticeArena({
 
             {showHint && (
               <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300/70 dark:border-amber-700 text-xs text-ink-700 dark:text-amber-100">
-                💡 <strong>Dica:</strong> {exercise.hint}
+                <Lightbulb className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5 text-amber-500" /><strong>Dica:</strong> {exercise.hint}
               </div>
             )}
 
@@ -922,7 +923,7 @@ export function PracticeArena({
                 <ProfessorAvatar professor="monge" size="lg" className="mx-auto" />
                 <div className="space-y-1.5">
                   <div className="text-sm font-extrabold text-ink-900 dark:text-white flex items-center justify-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-pv" />
+                    <Lock className="w-4 h-4 text-pv" />
                     Prova Real 3D Bloqueada
                   </div>
                   <p className="text-xs text-ink-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">

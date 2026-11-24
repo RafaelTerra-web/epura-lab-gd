@@ -919,7 +919,7 @@ export function Epura2D({
                   fill="#FEF3C7"
                   fontFamily="var(--font-sans), sans-serif"
                 >
-                  ✦ {spotlight.caption.slice(0, 36)}
+                  {spotlight.caption.slice(0, 36)}
                 </text>
               </g>
             </g>

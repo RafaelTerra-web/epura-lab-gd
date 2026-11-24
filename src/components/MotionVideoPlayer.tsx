@@ -11,7 +11,7 @@ import { LipSyncMascot, MouthFrame } from "./LipSyncMascot";
 import { GDPoint, GDSegment } from "@/lib/gd-math";
 import { sfx } from "@/lib/sfx";
 import { getVideoSoundCues, MONGE_BEATS, playVideoSound, type VideoSound } from "@/lib/video-effects";
-import { getNarrationBeats, type NarrationBeat } from "@/lib/video-narration-beats";
+import { type BeatVisualFx, getNarrationBeats, type NarrationBeat } from "@/lib/video-narration-beats";
 import styles from "./MotionVideoPlayer.module.css";
 import {
   Captions,
@@ -24,7 +24,6 @@ import {
   RotateCcw,
   SkipBack,
   SkipForward,
-  Sparkles,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -79,6 +78,145 @@ function popTransform(cx: number, cy: number, scale: number, rotateDeg = 0, dx =
   return `translate(${(cx + dx).toFixed(2)} ${(cy + dy).toFixed(2)}) rotate(${rotateDeg.toFixed(2)}) scale(${scale.toFixed(4)}) translate(${-cx} ${-cy})`;
 }
 
+function renderVectorFly(x: number, y: number, flapPhase: number, scale = 1) {
+  const wingSpread = 7.5 + 3.5 * Math.sin(flapPhase * 12);
+  const wingLift = 6.5 + 3.2 * Math.cos(flapPhase * 12);
+  return (
+    <g transform={`translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${scale.toFixed(3)})`}>
+      <ellipse cx={-4.5} cy={-wingLift * 0.55} rx={wingSpread} ry={4.2} transform="rotate(-26)" fill="#E0F2FE" fillOpacity={0.78} stroke="#BAE6FD" strokeWidth="1" />
+      <ellipse cx={4.5} cy={-wingLift * 0.55} rx={wingSpread} ry={4.2} transform="rotate(26)" fill="#E0F2FE" fillOpacity={0.78} stroke="#BAE6FD" strokeWidth="1" />
+      <ellipse cx="0" cy="1" rx="6.2" ry="4.8" fill="url(#sphereGold)" stroke="#FFF7D6" strokeWidth="1.2" />
+      <circle cx="0" cy="-4.2" r="2.8" fill="#1E293B" stroke="#FDE68A" strokeWidth="0.9" />
+      <circle cx="-1" cy="-4.7" r="0.8" fill="#7DD3FC" />
+      <circle cx="1" cy="-4.7" r="0.8" fill="#7DD3FC" />
+    </g>
+  );
+}
+
+function BeatEffect({
+  fx = "draftingCrosshair",
+  x,
+  y,
+  phase,
+  accent,
+}: {
+  fx?: BeatVisualFx;
+  x: number;
+  y: number;
+  phase: number;
+  accent: string;
+}) {
+  const fade = Math.sin(Math.PI * phase);
+  if (fade <= 0.01) return null;
+
+  switch (fx) {
+    case "wings": {
+      const flap = Math.sin(phase * Math.PI * 6) * 8;
+      return (
+        <g opacity={fade * 0.9} transform={`translate(${x} ${y})`}>
+          <path d={`M -12 -3 Q ${-22 - phase * 10} ${-14 - flap} -26 -2`} fill="none" stroke="#FDE68A" strokeWidth="2" strokeLinecap="round" />
+          <path d={`M 12 -3 Q ${22 + phase * 10} ${-14 - flap} 26 -2`} fill="none" stroke="#FDE68A" strokeWidth="2" strokeLinecap="round" />
+          <circle r={15 + phase * 14} fill="none" stroke="#FEF08A" strokeOpacity={0.45 * (1 - phase)} strokeWidth="1.2" strokeDasharray="3 4" />
+        </g>
+      );
+    }
+    case "sunbeam": {
+      const sweep = phase * 22;
+      return (
+        <g opacity={fade * 0.85} transform={`translate(${x} ${y})`}>
+          <line x1="-14" y1={-32 + sweep * 0.5} x2="-14" y2={4 + sweep} stroke="#FDE68A" strokeWidth="1.8" strokeDasharray="4 4" />
+          <line x1="0" y1={-38 + sweep * 0.4} x2="0" y2={12 + sweep} stroke="#FEF08A" strokeWidth="2.4" strokeDasharray="5 4" />
+          <line x1="14" y1={-32 + sweep * 0.5} x2="14" y2={4 + sweep} stroke="#FDE68A" strokeWidth="1.8" strokeDasharray="4 4" />
+        </g>
+      );
+    }
+    case "draftingCrosshair": {
+      const span = 12 + phase * 12;
+      return (
+        <g opacity={fade * 0.9} transform={`translate(${x} ${y})`}>
+          <line x1={-span} y1="0" x2={-5} y2="0" stroke={accent} strokeWidth="2" strokeLinecap="round" />
+          <line x1={5} y1="0" x2={span} y2="0" stroke={accent} strokeWidth="2" strokeLinecap="round" />
+          <line x1="0" y1={-span} x2="0" y2={-5} stroke={accent} strokeWidth="2" strokeLinecap="round" />
+          <line x1="0" y1={5} x2="0" y2={span} stroke={accent} strokeWidth="2" strokeLinecap="round" />
+          <circle r={8 + phase * 10} fill="none" stroke="#FDE68A" strokeWidth="1.6" />
+        </g>
+      );
+    }
+    case "rightAngleBracket": {
+      const sz = 14 + phase * 6;
+      return (
+        <g opacity={fade * 0.9} transform={`translate(${x} ${y})`}>
+          <path d={`M ${-sz} ${-sz * 0.4} V ${-sz} H ${-sz * 0.4}`} fill="none" stroke="#5EEAD4" strokeWidth="2.2" strokeLinecap="round" />
+          <path d={`M ${sz} ${sz * 0.4} V ${sz} H ${sz * 0.4}`} fill="none" stroke="#5EEAD4" strokeWidth="2.2" strokeLinecap="round" />
+        </g>
+      );
+    }
+    case "hingeArc": {
+      return (
+        <g opacity={fade * 0.9} transform={`translate(${x} ${y})`}>
+          <path d="M -22 0 A 22 22 0 0 1 0 -22" fill="none" stroke="#2DD4BF" strokeWidth="2.5" strokeDasharray="4 3" />
+          <path d="M 22 0 A 22 22 0 0 1 0 22" fill="none" stroke="#7DD3FC" strokeWidth="2.5" strokeDasharray="4 3" />
+          <circle r={5 + phase * 6} fill="none" stroke="#FDE68A" strokeWidth="1.6" />
+        </g>
+      );
+    }
+    case "rulerMeasure": {
+      const w = 16 + phase * 24;
+      return (
+        <g opacity={fade * 0.9} transform={`translate(${x} ${y})`}>
+          <line x1={-w} y1="0" x2={w} y2="0" stroke="#7DD3FC" strokeWidth="2" strokeLinecap="round" />
+          <line x1={-w} y1="-5" x2={-w} y2="5" stroke="#FDE68A" strokeWidth="2" />
+          <line x1="0" y1="-4" x2="0" y2="4" stroke="#7DD3FC" strokeWidth="1.5" />
+          <line x1={w} y1="-5" x2={w} y2="5" stroke="#FDE68A" strokeWidth="2" />
+        </g>
+      );
+    }
+    case "mirrorSweep": {
+      return (
+        <g opacity={fade * 0.88} transform={`translate(${x} ${y})`}>
+          <line x1="-22" y1="22" x2="22" y2="-22" stroke="#DDD6FE" strokeWidth="2" strokeDasharray="4 3" />
+          <circle cx={-12 * (1 - phase * 0.4)} cy={-12 * (1 - phase * 0.4)} r="3.5" fill="#F87171" />
+          <circle cx={12 * (1 - phase * 0.4)} cy={12 * (1 - phase * 0.4)} r="3.5" fill="#38BDF8" />
+        </g>
+      );
+    }
+    case "stampAlert": {
+      const box = 18 + phase * 10;
+      return (
+        <g opacity={fade * 0.9} transform={`translate(${x} ${y})`}>
+          <rect x={-box} y={-box * 0.55} width={box * 2} height={box * 1.1} rx="8" fill="none" stroke="#F87171" strokeWidth="2.4" />
+        </g>
+      );
+    }
+    case "axisTriad": {
+      const len = 14 + phase * 10;
+      return (
+        <g opacity={fade * 0.9} transform={`translate(${x} ${y})`}>
+          <line x1="0" y1="0" x2={len} y2="0" stroke="#2DD4BF" strokeWidth="2.4" strokeLinecap="round" />
+          <line x1="0" y1="0" x2="0" y2={-len} stroke="#F87171" strokeWidth="2.4" strokeLinecap="round" />
+          <line x1="0" y1="0" x2={-len * 0.7} y2={len * 0.55} stroke="#38BDF8" strokeWidth="2.4" strokeLinecap="round" />
+        </g>
+      );
+    }
+    case "cardSheen": {
+      const sweep = -28 + phase * 56;
+      return (
+        <g opacity={fade * 0.72} transform={`translate(${x} ${y})`}>
+          <line x1={sweep - 12} y1="-22" x2={sweep + 12} y2="22" stroke="#FDE68A" strokeWidth="3" strokeLinecap="round" />
+        </g>
+      );
+    }
+    case "quadrantWave":
+    default: {
+      return (
+        <g opacity={fade * 0.85} transform={`translate(${x} ${y})`}>
+          <rect x={-14 - phase * 10} y={-14 - phase * 10} width={28 + phase * 20} height={28 + phase * 20} rx="9" fill="none" stroke={accent} strokeWidth="2" />
+        </g>
+      );
+    }
+  }
+}
+
 function DiagramLabel({ x, y, width, color, connector, children }: {
   x: number;
   y: number;
@@ -125,14 +263,52 @@ function MongeProjection({ time, seconds, beats }: { time: number; seconds: numb
 
   return (
     <g opacity={planes}>
-      <path d="M218 72 558 112V252L218 212Z" fill="url(#verticalPlane)" stroke="#F87171" strokeWidth={2.2 + 2.2 * planesPulse} />
+      {/* Vertical plane π' with subtle architectural perspective grid */}
+      <path d="M218 72 558 112V252L218 212Z" fill="url(#verticalPlane)" stroke="#F87171" strokeWidth={2.2 + 2 * planesPulse} />
+      {[0.25, 0.5, 0.75].map((u) => {
+        const gx = 218 + 340 * u;
+        const gyTop = 72 + 40 * u;
+        const gyBot = 212 + 40 * u;
+        return <line key={"vg" + u} x1={gx} y1={gyTop} x2={gx} y2={gyBot} stroke="#FCA5A5" strokeOpacity="0.14" strokeWidth="1" />;
+      })}
+      {[0.33, 0.66].map((v) => (
+        <line key={"vh" + v} x1="218" y1={72 + 140 * v} x2="558" y2={112 + 140 * v} stroke="#FCA5A5" strokeOpacity="0.14" strokeWidth="1" />
+      ))}
+
+      {/* Horizontal plane π with perspective grid & 3D thickness edge */}
       <g opacity={floorReveal}>
+        <polygon points="106,292 446,332 446,339 106,299" fill="#0F2A44" stroke="#38BDF8" strokeOpacity="0.45" strokeWidth="1" />
+        <polygon points="446,332 558,252 558,259 446,339" fill="#0B1F35" stroke="#38BDF8" strokeOpacity="0.35" strokeWidth="1" />
         <path
           d="M218 212 558 252 446 332 106 292Z"
           fill="url(#horizontalPlane)"
           stroke={floorPulse > 0.05 ? "#BAE6FD" : "#38BDF8"}
-          strokeWidth={2.2 + 2.6 * floorPulse}
+          strokeWidth={2.2 + 2.4 * floorPulse}
         />
+        {[0.25, 0.5, 0.75].map((u) => (
+          <line
+            key={"hgu" + u}
+            x1={218 + 340 * u}
+            y1={212 + 40 * u}
+            x2={106 + 340 * u}
+            y2={292 + 40 * u}
+            stroke="#7DD3FC"
+            strokeOpacity="0.15"
+            strokeWidth="1"
+          />
+        ))}
+        {[0.33, 0.66].map((v) => (
+          <line
+            key={"hgv" + v}
+            x1={218 - 112 * v}
+            y1={212 + 80 * v}
+            x2={558 - 112 * v}
+            y2={252 + 80 * v}
+            stroke="#7DD3FC"
+            strokeOpacity="0.15"
+            strokeWidth="1"
+          />
+        ))}
         {floorPulse > 0.05 && (
           <path
             d="M218 212 558 252 446 332 106 292Z"
@@ -142,7 +318,7 @@ function MongeProjection({ time, seconds, beats }: { time: number; seconds: numb
             strokeWidth={6 * floorPulse}
           />
         )}
-        <path d="M218 212 558 252" stroke="#2DD4BF" strokeWidth={3.2 + 1.4 * floorPulse} />
+        <path d="M218 212 558 252" stroke="#2DD4BF" strokeWidth={3.4 + 1.4 * floorPulse} strokeLinecap="round" />
       </g>
       <path d="M490 244l11-9 14 2" fill="none" stroke={angleRx.pulse > 0.05 ? "#FDE68A" : "#5EEAD4"} strokeWidth={2 + 1.8 * angleRx.pulse} />
       <text
@@ -166,13 +342,22 @@ function MongeProjection({ time, seconds, beats }: { time: number; seconds: numb
         </DiagramLabel>
       </g>
 
+      {/* Orthogonal projection prism edges connecting A -> foot on LT (424,256) -> A' */}
+      {horizontal > 0 && vertical > 0 && (
+        <g opacity={0.45 * Math.min(horizontal, vertical)}>
+          <polyline points="333,282 424,256 424,140" fill="none" stroke="#2DD4BF" strokeWidth="1.4" strokeDasharray="3 4" />
+          <circle cx="424" cy="256" r="3" fill="#2DD4BF" />
+        </g>
+      )}
+
       <g opacity={point} transform={popTransform(333, 166, pointRx.scale, 0, pointRx.wiggle * 4, -2 * pointRx.pulse)}>
         <circle cx="333" cy="166" r={17 + 4 * pointRx.pulse} fill="none" stroke="#FDE68A" strokeOpacity={0.47 + 0.35 * pointRx.pulse} strokeWidth={1.5 + 1.4 * pointRx.pulse} />
-        <circle cx="333" cy="166" r={9.5 + 2.2 * pointRx.pulse} fill="#FDE68A" stroke="#FFF7D6" strokeWidth="1.5" />
+        <circle cx="333" cy="166" r={10 + 2.2 * pointRx.pulse} fill="url(#sphereGold)" stroke="#FFF7D6" strokeWidth="1.5" />
         <DiagramLabel x={245} y={131} width={59} color="#FDE68A" connector="304,146 314,146 321,155">(A)</DiagramLabel>
       </g>
       {horizontal > 0 && (
         <g>
+          <ellipse cx="333" cy="285" rx={12 * horizontal} ry={5.5 * horizontal} fill="url(#floorShadowGrad)" opacity={0.6 * horizontal} />
           <path d={"M333 166V" + (166 + 116 * horizontal)} stroke={horizRx.pulse > 0.05 ? "#BAE6FD" : "#7DD3FC"} strokeWidth={2.5 + 1.8 * horizRx.pulse} strokeDasharray="5 4" />
           <circle cx="333" cy={166 + 116 * horizontal} r={6 + 2.5 * horizRx.pulse} fill="#38BDF8" stroke="#E0F2FE" strokeWidth="1.5" />
           <circle cx="333" cy="282" r={9 + 13 * phLabel} fill="none" stroke="#7DD3FC" strokeOpacity={0.65 * (1 - phLabel)} />
@@ -222,7 +407,7 @@ function MotionCanvas({
   const initialOpacity = sceneId === "intro" ? 0.65 : 0.16;
   const e = initialOpacity + (1 - initialOpacity) * easeOutCubic(sceneSeconds / 2.4);
   const eSlow = smoothStep(0.08, 0.78, localT);
-  const cutFlash = (1 - easeOutCubic(sceneSeconds / 0.38)) * 0.14;
+  const cutFlash = sceneId === "intro" ? 0 : (1 - easeOutCubic(sceneSeconds / 0.34)) * 0.07;
   const beats = getNarrationBeats(episode.id, sceneId);
 
   // Helper for reusable animated Diedro profile + live Epura pair
@@ -326,10 +511,19 @@ function MotionCanvas({
           );
         })}
 
+        {/* Quadrant grid & 90° right-angle marker */}
+        <path
+          d={`M ${245 + (specs.dx > 0 ? 18 : -18)} 200 V ${200 + (specs.dy > 0 ? 18 : -18)} H 245`}
+          fill="none"
+          stroke="#5EEAD4"
+          strokeOpacity="0.6"
+          strokeWidth="1.6"
+        />
+
         {/* π' and π axes */}
         <line x1="245" y1="62" x2="245" y2="338" stroke="#F87171" strokeWidth="3.5" />
         <line x1="88" y1="200" x2="402" y2="200" stroke="#38BDF8" strokeWidth="3.5" />
-        <circle cx="245" cy="200" r="6" fill="#2DD4BF" />
+        <circle cx="245" cy="200" r="6" fill="url(#sphereTeal)" />
 
         {/* Projecting rays from (A) */}
         <line
@@ -355,7 +549,7 @@ function MotionCanvas({
             cx={245 + specs.dx}
             cy={200 + specs.dy}
             r={11 + 2.5 * activeRx.pulse}
-            fill={specs.col}
+            fill="url(#sphereGold)"
             stroke="#FFFFFF"
             strokeWidth="2"
           />
@@ -457,7 +651,7 @@ function MotionCanvas({
             fill="#FEF3C7"
             fontFamily="var(--font-mono), monospace"
           >
-            ✦ {specs.badge}
+            {specs.badge}
           </text>
         </g>
       </g>
@@ -526,12 +720,59 @@ function MotionCanvas({
           <rect x="-25" y="47" width="850" height="358" />
         </clipPath>
         <linearGradient id="verticalPlane" x2="1" y2="1">
-          <stop stopColor="#C85E66" stopOpacity="0.27" />
-          <stop offset="1" stopColor="#F87171" stopOpacity="0.08" />
+          <stop stopColor="#F87171" stopOpacity="0.32" />
+          <stop offset="0.55" stopColor="#C85E66" stopOpacity="0.18" />
+          <stop offset="1" stopColor="#F87171" stopOpacity="0.09" />
         </linearGradient>
         <linearGradient id="horizontalPlane" x2="1" y2="1">
-          <stop stopColor="#158CC1" stopOpacity="0.24" />
+          <stop stopColor="#38BDF8" stopOpacity="0.32" />
+          <stop offset="0.55" stopColor="#158CC1" stopOpacity="0.18" />
           <stop offset="1" stopColor="#38BDF8" stopOpacity="0.09" />
+        </linearGradient>
+        <radialGradient id="sphereGold" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#FEF9C3" />
+          <stop offset="45%" stopColor="#FDE047" />
+          <stop offset="100%" stopColor="#B45309" />
+        </radialGradient>
+        <radialGradient id="sphereBlue" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#E0F2FE" />
+          <stop offset="50%" stopColor="#38BDF8" />
+          <stop offset="100%" stopColor="#0369A1" />
+        </radialGradient>
+        <radialGradient id="sphereRed" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#FEE2E2" />
+          <stop offset="50%" stopColor="#F87171" />
+          <stop offset="100%" stopColor="#991B1B" />
+        </radialGradient>
+        <radialGradient id="sphereTeal" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#CCFBF1" />
+          <stop offset="50%" stopColor="#2DD4BF" />
+          <stop offset="100%" stopColor="#0F766E" />
+        </radialGradient>
+        <radialGradient id="sphereViolet" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#EDE9FE" />
+          <stop offset="50%" stopColor="#A78BFA" />
+          <stop offset="100%" stopColor="#5B21B6" />
+        </radialGradient>
+        <linearGradient id="lightConeGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FDE68A" stopOpacity="0.28" />
+          <stop offset="65%" stopColor="#FDE68A" stopOpacity="0.09" />
+          <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.02" />
+        </linearGradient>
+        <radialGradient id="floorShadowGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#020617" stopOpacity="0.88" />
+          <stop offset="70%" stopColor="#020617" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#020617" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="bisectorGoldGrad" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.06" />
+          <stop offset="50%" stopColor="#F59E0B" stopOpacity="0.24" />
+          <stop offset="100%" stopColor="#FDE68A" stopOpacity="0.1" />
+        </linearGradient>
+        <linearGradient id="bisectorVioletGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#A78BFA" stopOpacity="0.06" />
+          <stop offset="50%" stopColor="#A78BFA" stopOpacity="0.24" />
+          <stop offset="100%" stopColor="#DDD6FE" stopOpacity="0.1" />
         </linearGradient>
         <linearGradient id="sceneFoot" x2="0" y2="1">
           <stop stopColor="#101C2D" />
@@ -638,15 +879,15 @@ function MotionCanvas({
             })()}
 
             {sceneId === "ambiguous-shadow" && (() => {
-              // Beat A (0..0.38): Seamless integrated Fly-in-Room 3D documentary plate + callouts
-              // Beat B (0.34..1.0): Smooth cross-dissolve into crisp 1m vs 3m height ambiguity proof
+              // Beat A (0..0.38): Unified 3D Isometric Glass Corner Room + animated vector fly
+              // Beat B (0.34..1.0): Seamless dissolve of walls into analytical 1m vs 3m height ambiguity proof
               const cutProgress = smoothStep(0.32, 0.42, localT);
               const beatAOp = e * (1 - cutProgress);
               const beatBOp = e * cutProgress;
               const flyPhase = reactionPhase(beats.find((beat) => beat.target === "fly")?.at, sceneSeconds, 0.85);
               const flySwing = Math.sin(flyPhase * 4 * Math.PI) * Math.sin(flyPhase * Math.PI);
-              const flyX = 435 + flySwing * 7;
-              const flyY = 206 - Math.sin(flyPhase * Math.PI) * 5;
+              const flyX = 445 + flySwing * 7;
+              const flyY = 204 - Math.sin(flyPhase * Math.PI) * 5;
               const raysRx = beatReaction(beats, "rays", sceneSeconds, 0.9);
               const shadowRx = beatReaction(beats, "shadow", sceneSeconds, 0.9);
               const lowRx = beatReaction(beats, "lowFly", sceneSeconds, 0.85);
@@ -656,27 +897,37 @@ function MotionCanvas({
               const lowY = 218 - 7 * lowRx.pulse;
               const highX = 360 + highRx.wiggle * 5;
               const highY = 112 - 9 * highRx.pulse;
-              const imgZoom = 1.0 + localT * 0.09;
               return (
                 <g>
-                  {/* Integrated Fly-in-Room Artwork (melts seamlessly into #09101E via radialFeatherMask!) */}
-                  <g
-                    opacity={e * (1 - cutProgress * 0.84)}
-                    transform={`translate(${435 - cutProgress * 185} 215) scale(${imgZoom.toFixed(4)}) translate(-435 -215)`}
-                  >
-                    <image
-                      href="/illustrations/fly-room-3d.png"
-                      x="220"
-                      y="2"
-                      width="430"
-                      height="430"
-                      mask="url(#radialFeatherMask)"
-                    />
-                  </g>
-
-                  {/* BEAT A: Editorial Callouts directly over the Fly-in-Room scene */}
+                  {/* BEAT A: 3D Isometric Glass Corner Room + Vector Fly */}
                   {beatAOp > 0.01 && (
                     <g opacity={beatAOp}>
+                      {/* Isometric floor slab π with 3D bevel */}
+                      <polygon points="305,282 445,336 445,346 305,292" fill="#0B2239" stroke="#38BDF8" strokeOpacity="0.45" strokeWidth="1" />
+                      <polygon points="445,336 585,282 585,292 445,346" fill="#081A2C" stroke="#38BDF8" strokeOpacity="0.35" strokeWidth="1" />
+                      <polygon points="445,232 585,282 445,336 305,282" fill="url(#horizontalPlane)" stroke="#38BDF8" strokeWidth="2" />
+                      {[0.25, 0.5, 0.75].map((u) => (
+                        <React.Fragment key={"rgrid" + u}>
+                          <line x1={445 - 140 * u} y1={232 + 50 * u} x2={585 - 140 * u} y2={282 + 54 * u} stroke="#7DD3FC" strokeOpacity="0.16" strokeWidth="1" />
+                          <line x1={445 + 140 * u} y1={232 + 50 * u} x2={305 + 140 * u} y2={282 + 54 * u} stroke="#7DD3FC" strokeOpacity="0.16" strokeWidth="1" />
+                        </React.Fragment>
+                      ))}
+
+                      {/* Isometric room walls */}
+                      <polygon points="305,282 445,232 445,92 305,142" fill="url(#verticalPlane)" stroke="#F87171" strokeOpacity="0.55" strokeWidth="1.6" />
+                      <polygon points="445,232 585,282 585,142 445,92" fill="url(#horizontalPlane)" stroke="#64748B" strokeOpacity="0.45" strokeWidth="1.4" />
+                      <line x1="445" y1="92" x2="445" y2="232" stroke="#2DD4BF" strokeOpacity="0.65" strokeWidth="1.8" />
+
+                      {/* Overhead light cone + vertical light rays shimmer */}
+                      <polygon points="424,78 466,78 482,292 408,292" fill="url(#lightConeGrad)" opacity={0.55 + 0.45 * raysRx.pulse} />
+                      <ellipse cx="445" cy="78" rx="22" ry="6" fill="#FDE68A" fillOpacity={0.35 + 0.4 * raysRx.pulse} stroke="#FDE68A" strokeWidth="1.5" />
+                      <g opacity={0.22 + 0.65 * raysRx.pulse}>
+                        <line x1="429" y1="84" x2="429" y2="284" stroke="#FDE68A" strokeWidth={1.5 + 1.4 * raysRx.pulse} strokeDasharray="5 5" />
+                        <line x1="445" y1="78" x2="445" y2="292" stroke="#FDE68A" strokeWidth={2 + 1.8 * raysRx.pulse} strokeDasharray="6 4" />
+                        <line x1="461" y1="84" x2="461" y2="284" stroke="#FDE68A" strokeWidth={1.5 + 1.4 * raysRx.pulse} strokeDasharray="5 5" />
+                      </g>
+
+                      {/* Left editorial typography */}
                       <text x="58" y="138" fontSize="13" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
                         EXPERIÊNCIA MENTAL
                       </text>
@@ -710,14 +961,9 @@ function MotionCanvas({
                         uma sombra vertical no chão (π).
                       </text>
 
-                      {/* Vertical light rays shimmer when prof mentions "raios verticais" */}
-                      <g opacity={0.18 + 0.65 * raysRx.pulse}>
-                        <line x1="418" y1="88" x2="418" y2="278" stroke="#FDE68A" strokeWidth={1.6 + 1.5 * raysRx.pulse} strokeDasharray="5 5" />
-                        <line x1="435" y1="76" x2="435" y2="288" stroke="#FDE68A" strokeWidth={2 + 2 * raysRx.pulse} strokeDasharray="6 4" />
-                        <line x1="452" y1="92" x2="452" y2="276" stroke="#FDE68A" strokeWidth={1.6 + 1.5 * raysRx.pulse} strokeDasharray="5 5" />
-                      </g>
-
-                      {/* Animated callout arrow pointing straight to the glowing fly in the artwork */}
+                      {/* Crisp vector golden fly + animated ring & callout */}
+                      <ellipse cx="445" cy="294" rx="18" ry="8" fill="url(#floorShadowGrad)" opacity={0.85} />
+                      <line x1={flyX} y1={flyY} x2="445" y2="292" stroke="#FDE68A" strokeWidth="1.8" strokeDasharray="4 4" />
                       <circle
                         cx={flyX}
                         cy={flyY}
@@ -727,34 +973,34 @@ function MotionCanvas({
                         strokeWidth="2.4"
                         strokeDasharray="6 4"
                       />
-                      <circle cx={flyX} cy={flyY} r={3 + 2.5 * Math.sin(flyPhase * Math.PI)} fill="#FDE68A" />
+                      {renderVectorFly(flyX, flyY, localT + flyPhase, 1 + 0.08 * Math.sin(flyPhase * Math.PI))}
                       <polyline
-                        points={(flyX + 19) + "," + (flyY - 11) + " 522,148 634,148"}
+                        points={(flyX + 19) + "," + (flyY - 11) + " 532,144 644,144"}
                         fill="none"
                         stroke="#FDE68A"
                         strokeWidth="2.2"
                       />
-                      <text x="526" y="140" fontSize="13.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                      <text x="536" y="136" fontSize="13.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
                         Mosca (A) no 3D
                       </text>
 
                       {/* Callout pointing straight to the floor shadow */}
                       <polyline
-                        points="435,288 518,288 628,288"
+                        points="445,292 528,292 638,292"
                         fill="none"
                         stroke={shadowRx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"}
                         strokeWidth={2.2 + 2.2 * shadowRx.pulse}
                         strokeDasharray="5 4"
                       />
-                      <circle cx="435" cy="288" r={6 + 3.5 * shadowRx.pulse} fill="#38BDF8" />
+                      <circle cx="445" cy="292" r={6 + 3.5 * shadowRx.pulse} fill="url(#sphereBlue)" />
                       <text
-                        x="522"
-                        y="280"
+                        x="532"
+                        y="284"
                         fontSize="13"
                         fontWeight="800"
                         fill="#7DD3FC"
                         fontFamily="var(--font-mono), monospace"
-                        transform={popTransform(575, 276, 1 + 0.05 * shadowRx.pulse)}
+                        transform={popTransform(585, 280, 1 + 0.05 * shadowRx.pulse)}
                       >
                         Sombra no chão π
                       </text>
@@ -764,32 +1010,55 @@ function MotionCanvas({
                   {/* BEAT B: Analytical 1m vs 3m Height Ambiguity Proof */}
                   {beatBOp > 0.01 && (
                     <g opacity={beatBOp}>
+                      {/* 3D isometric floor slab π with front bevel & perspective grid */}
+                      <polygon points="110,300 480,350 480,360 110,310" fill="#0B2239" stroke="#38BDF8" strokeOpacity="0.45" strokeWidth="1" />
+                      <polygon points="480,350 620,270 620,280 480,360" fill="#081A2C" stroke="#38BDF8" strokeOpacity="0.35" strokeWidth="1" />
                       <polygon
                         points="110,300 480,350 620,270 250,225"
-                        fill="rgba(56,189,248,0.16)"
+                        fill="url(#horizontalPlane)"
                         stroke="#38BDF8"
                         strokeWidth="2.2"
                       />
+                      {[0.25, 0.5, 0.75].map((u) => (
+                        <React.Fragment key={"pgrid" + u}>
+                          <line x1={110 + 370 * u} y1={300 + 50 * u} x2={250 + 370 * u} y2={225 + 45 * u} stroke="#7DD3FC" strokeOpacity="0.15" strokeWidth="1" />
+                          <line x1={110 + 140 * u} y1={300 - 75 * u} x2={480 + 140 * u} y2={350 - 80 * u} stroke="#7DD3FC" strokeOpacity="0.15" strokeWidth="1" />
+                        </React.Fragment>
+                      ))}
+                      {/* Volumetric light column & overhead ring */}
+                      <polygon points="342,68 378,68 394,288 326,288" fill="url(#lightConeGrad)" opacity={0.7} />
+                      <ellipse cx="360" cy="68" rx="18" ry="5" fill="#FDE68A" fillOpacity={0.35} stroke="#FDE68A" strokeWidth="1.2" />
+                      <ellipse cx="360" cy="291" rx="22" ry="9" fill="url(#floorShadowGrad)" opacity={0.88} />
+
                       <DiagramLabel x={454} y={351} width={183} color="#7DD3FC" connector="527,324 547,340 547,351">π · Plano horizontal</DiagramLabel>
                       <line x1="360" y1="68" x2="360" y2="288" stroke="#FDE68A" strokeWidth="2.5" strokeDasharray="7 5" />
                       <polygon points="360,280 353,266 367,266" fill="#FDE68A" />
+                      {/* Altitude gauge ticks */}
+                      <line x1="342" y1="218" x2="360" y2="218" stroke="#FCA5A5" strokeWidth="1.5" strokeDasharray="3 3" />
+                      <line x1="342" y1="112" x2="360" y2="112" stroke="#FDE68A" strokeWidth="1.5" strokeDasharray="3 3" />
+
                       <g transform={popTransform(430, 288, 1 + 0.05 * sameRx.pulse)}>
-                        <circle cx="360" cy="288" r={11 + 4 * sameRx.pulse} fill="#38BDF8" />
+                        <circle cx="360" cy="288" r={11 + 4 * sameRx.pulse} fill="url(#sphereBlue)" stroke="#E0F2FE" strokeWidth="1.5" />
                         <text x="380" y="294" fontSize="16" fontWeight="800" fill={sameRx.pulse > 0.05 ? "#BAE6FD" : "#7DD3FC"} fontFamily="var(--font-mono), monospace">
                           Sombra A (idêntica!)
                         </text>
                       </g>
-                      <circle cx={lowX} cy={lowY} r={11 + 3 * lowRx.pulse} fill="#F87171" />
+                      {renderVectorFly(lowX, lowY, localT + 0.2, 0.9 + 0.1 * lowRx.pulse)}
+                      <circle cx={lowX} cy={lowY} r={10 + 3 * lowRx.pulse} fill="url(#sphereRed)" fillOpacity={0.45} stroke="#FCA5A5" strokeWidth="1.8" />
                       <text x={lowX + 22} y={lowY + 4} fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
                         Mosca baixa (1m)
                       </text>
-                      <circle cx={highX} cy={highY} r={11 + 3 * highRx.pulse} fill="#F59E0B" />
+                      {renderVectorFly(highX, highY, localT + 0.7, 0.9 + 0.1 * highRx.pulse)}
+                      <circle cx={highX} cy={highY} r={10 + 3 * highRx.pulse} fill="url(#sphereGold)" fillOpacity={0.45} stroke="#FDE68A" strokeWidth="1.8" />
                       <text x={highX + 22} y={highY + 4} fontSize="15" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
                         Mosca alta (3m)
                       </text>
                       <g transform={popTransform(212, 91, 1 + 0.05 * sameRx.pulse, sameRx.wiggle * 2.2, sameRx.wiggle * 4, 0)}>
-                        <rect x="98" y="68" width="228" height="46" rx="12" fill="rgba(239,68,68,0.24)" stroke="#F87171" strokeWidth={2 + 1.8 * sameRx.pulse} />
-                        <text x="212" y="96" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FECACA" fontFamily="var(--font-mono), monospace">
+                        <rect x="86" y="68" width="246" height="46" rx="12" fill="rgba(239,68,68,0.24)" stroke="#F87171" strokeWidth={2 + 1.8 * sameRx.pulse} />
+                        <polygon points="108,82 117,99 99,99" fill="none" stroke="#FDE68A" strokeWidth="1.8" strokeLinejoin="round" />
+                        <line x1="108" y1="88" x2="108" y2="93" stroke="#FDE68A" strokeWidth="1.8" strokeLinecap="round" />
+                        <circle cx="108" cy="96" r="1" fill="#FDE68A" />
+                        <text x="219" y="96" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#FECACA" fontFamily="var(--font-mono), monospace">
                           1 PLANO PERDE A ALTURA!
                         </text>
                       </g>
@@ -938,16 +1207,8 @@ function MotionCanvas({
               const uniqRx = beatReaction(beats, "unique", sceneSeconds, 0.95);
               return (
                 <g opacity={e}>
-                  <g opacity={0.28 * e}>
-                    <image
-                      href="/illustrations/fly-room-3d.png"
-                      x="-40"
-                      y="40"
-                      width="340"
-                      height="340"
-                      mask="url(#radialFeatherMask)"
-                    />
-                  </g>
+                  {/* Subtle drafting corner brackets */}
+                  <path d="M 80 120 V 82 H 124 M 646 120 V 82 H 602 M 80 302 V 340 H 124 M 646 302 V 340 H 602" fill="none" stroke="#2DD4BF" strokeOpacity="0.45" strokeWidth="2.2" strokeLinecap="round" />
                   <g transform={popTransform(363, 211, 1 + 0.03 * pairRx.pulse)}>
                     <rect
                       x="98"
@@ -955,12 +1216,14 @@ function MotionCanvas({
                       width="530"
                       height="230"
                       rx="24"
-                      fill="rgba(9,16,30,0.78)"
+                      fill="rgba(9,16,30,0.82)"
                       stroke={uniqRx.pulse > 0.05 ? "#5EEAD4" : "#2DD4BF"}
                       strokeWidth={2.4 + 2.4 * Math.max(pairRx.pulse, uniqRx.pulse)}
                     />
-                    <text x="363" y="148" textAnchor="middle" fontSize="15" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
-                      RESUMO DO EPISÓDIO 01 ✓
+                    <circle cx="255" cy="143" r="9" fill="rgba(45,212,191,0.2)" stroke="#2DD4BF" strokeWidth="1.6" />
+                    <path d="M 251 143 L 254 146 L 260 139" fill="none" stroke="#2DD4BF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <text x="373" y="148" textAnchor="middle" fontSize="15" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                      RESUMO DO EPISÓDIO 01
                     </text>
                     <text
                       x="363"
@@ -1123,34 +1386,43 @@ function MotionCanvas({
               const wallRx = beatReaction(beats, "wall", sceneSeconds, 0.85);
               const plus5Rx = beatReaction(beats, "plus5", sceneSeconds, 0.9);
               const horizRx = beatReaction(beats, "horizontal", sceneSeconds, 0.9);
-              const ax = 213 + 250 * e + plus5Rx.wiggle * 4;
-              const ay = 185 - 3 * plus5Rx.pulse;
+              const ax = 220 + 245 * e + plus5Rx.wiggle * 4;
+              const ay = 172 - 3 * plus5Rx.pulse;
+              const projY = 266;
               return (
                 <g opacity={e}>
-                  <text x="360" y="76" textAnchor="middle" fontSize="18" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
+                  <text x="360" y="72" textAnchor="middle" fontSize="18" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
                     2ª COORDENADA · AFASTAMENTO (Y = +5)
                   </text>
-                  {/* Wall π' fixed on left */}
-                  <g transform={popTransform(204, 222, 1 + 0.035 * wallRx.pulse)}>
-                    <rect x="195" y="110" width="18" height="225" rx="4" fill="#F87171" stroke={wallRx.pulse > 0.05 ? "#FEE2E2" : "none"} strokeWidth={2 * wallRx.pulse} />
-                    <text x="180" y="226" textAnchor="end" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                  {/* Isometric 3D cutaway: π' wall + π gridded floor slab */}
+                  <g transform={popTransform(216, 178, 1 + 0.03 * wallRx.pulse)}>
+                    <polygon points="182,114 252,86 252,238 182,266" fill="url(#verticalPlane)" stroke="#F87171" strokeWidth={2.2 + 1.8 * wallRx.pulse} />
+                    <line x1="217" y1="100" x2="217" y2="252" stroke="#FCA5A5" strokeOpacity="0.16" strokeWidth="1" />
+                    <text x="168" y="192" textAnchor="end" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
                       Parede π&apos;
                     </text>
                   </g>
-                  {/* Floor line */}
-                  <line x1="120" y1="255" x2="600" y2="255" stroke="#38BDF8" strokeWidth="3" />
-                  {/* Elastic distance arrow stretching +5 forward */}
-                  <line x1="213" y1="185" x2={ax} y2="185" stroke={plus5Rx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"} strokeWidth={6 + 2.5 * plus5Rx.pulse} strokeLinecap="round" />
-                  <circle cx={ax} cy={ay} r={12 + 3 * plus5Rx.pulse} fill="#FDE68A" />
+                  <polygon points="182,266 520,286 520,295 182,275" fill="#0B2239" stroke="#38BDF8" strokeOpacity="0.4" strokeWidth="1" />
+                  <polygon points="520,286 590,256 590,265 520,295" fill="#081A2C" stroke="#38BDF8" strokeOpacity="0.3" strokeWidth="1" />
+                  <polygon points="182,266 252,238 590,256 520,286" fill="url(#horizontalPlane)" stroke="#38BDF8" strokeWidth="2.2" />
+                  <line x1="182" y1="266" x2="252" y2="238" stroke="#2DD4BF" strokeWidth="3.5" strokeLinecap="round" />
+                  <path d="M 218 232 L 218 252 L 242 254" fill="none" stroke="#5EEAD4" strokeWidth="1.8" />
+
+                  {/* Caliper measurement arrow +5 */}
+                  <line x1="220" y1="172" x2={ax} y2="172" stroke={plus5Rx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"} strokeWidth={5.5 + 2.5 * plus5Rx.pulse} strokeLinecap="round" />
+                  <polygon points={`${ax - 10},166 ${ax},172 ${ax - 10},178`} fill="#BAE6FD" />
+                  <ellipse cx={ax} cy={projY + 3} rx="14" ry="5.5" fill="url(#floorShadowGrad)" opacity={0.8} />
+                  <line x1={ax} y1={ay} x2={ax} y2={projY} stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
+                  <circle cx={ax} cy={ay} r={12 + 3 * plus5Rx.pulse} fill="url(#sphereGold)" stroke="#FFF7D6" strokeWidth="1.5" />
                   <text x={ax + 18} y={ay + 5} fontSize="17" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
-                  <line x1={ax} y1={ay} x2={ax} y2="255" stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
-                  <g transform={popTransform(213 + 250 * e, 255, horizRx.scale)}>
-                    <circle cx={ax} cy="255" r={9 + 3.5 * horizRx.pulse} fill={horizRx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"} />
-                    <text x={ax} y="284" textAnchor="middle" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+
+                  <g transform={popTransform(ax, projY, horizRx.scale)}>
+                    <circle cx={ax} cy={projY} r={9 + 3.5 * horizRx.pulse} fill={horizRx.pulse > 0.05 ? "#BAE6FD" : "url(#sphereBlue)"} stroke="#E0F2FE" strokeWidth="1.4" />
+                    <text x={ax} y="318" textAnchor="middle" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
                       Projeção A (afast. +5)
                     </text>
                   </g>
-                  <text x="338" y="168" textAnchor="middle" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                  <text x="355" y="142" textAnchor="middle" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
                     ← Distância até π&apos; = +5 →
                   </text>
                 </g>
@@ -1162,27 +1434,31 @@ function MotionCanvas({
               const plus3Rx = beatReaction(beats, "plus3", sceneSeconds, 0.9);
               const vertRx = beatReaction(beats, "vertical", sceneSeconds, 0.9);
               const ptX = 410 + plus3Rx.wiggle * 4;
-              const ptY = 275 - 140 * e - 3 * plus3Rx.pulse;
+              const ptY = 278 - 144 * e - 3 * plus3Rx.pulse;
               return (
                 <g opacity={e}>
-                  <text x="360" y="76" textAnchor="middle" fontSize="18" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">
+                  <text x="360" y="72" textAnchor="middle" fontSize="18" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">
                     3ª COORDENADA · COTA (Z = +3)
                   </text>
-                  {/* Floor π */}
-                  <rect x="130" y="275" width="460" height="16" rx="4" fill="#38BDF8" />
-                  <text x="580" y="314" textAnchor="end" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                  {/* Isometric 3D cutaway: π gridded floor slab + π' wall */}
+                  <polygon points="155,292 268,248 268,98 155,142" fill="url(#verticalPlane)" stroke="#F87171" strokeWidth="2.2" />
+                  <polygon points="155,292 460,312 460,321 155,301" fill="#0B2239" stroke="#38BDF8" strokeOpacity="0.4" strokeWidth="1" />
+                  <polygon points="460,312 572,268 572,277 460,321" fill="#081A2C" stroke="#38BDF8" strokeOpacity="0.3" strokeWidth="1" />
+                  <polygon points="155,292 268,248 572,268 460,312" fill="url(#horizontalPlane)" stroke="#38BDF8" strokeWidth="2.2" />
+                  <line x1="155" y1="292" x2="268" y2="248" stroke="#2DD4BF" strokeWidth="3.5" strokeLinecap="round" />
+                  <text x="568" y="340" textAnchor="end" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
                     Chão π (Cota = 0)
                   </text>
-                  {/* Wall line */}
-                  <line x1="250" y1="100" x2="250" y2="355" stroke="#F87171" strokeWidth="3" />
                   {/* Altitude vector rising +3 */}
-                  <line x1="410" y1="275" x2="410" y2={ptY} stroke={altRx.pulse > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={6 + 2.8 * altRx.pulse} strokeLinecap="round" />
-                  <circle cx={ptX} cy={ptY} r={12 + 3 * plus3Rx.pulse} fill="#FDE68A" />
+                  <ellipse cx={ptX} cy="285" rx="14" ry="5.5" fill="url(#floorShadowGrad)" opacity={0.8} />
+                  <line x1="410" y1="282" x2="410" y2={ptY} stroke={altRx.pulse > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={5.5 + 2.5 * altRx.pulse} strokeLinecap="round" />
+                  <polygon points={`404,${ptY + 12} 410,${ptY + 2} 416,${ptY + 12}`} fill="#FEE2E2" />
+                  <circle cx={ptX} cy={ptY} r={12 + 3 * plus3Rx.pulse} fill="url(#sphereGold)" stroke="#FFF7D6" strokeWidth="1.5" />
                   <text x={ptX + 18} y={ptY + 5} fontSize="17" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
-                  <line x1={ptX} y1={ptY} x2="250" y2={ptY} stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
+                  <line x1={ptX} y1={ptY} x2="244" y2={ptY} stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
                   <g transform={popTransform(215, ptY, vertRx.scale)}>
-                    <circle cx="250" cy={ptY} r={9 + 3.5 * vertRx.pulse} fill={vertRx.pulse > 0.05 ? "#FEE2E2" : "#F87171"} />
-                    <text x="234" y={ptY + 5} textAnchor="end" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                    <circle cx="244" cy={ptY} r={9 + 3.5 * vertRx.pulse} fill={vertRx.pulse > 0.05 ? "#FEE2E2" : "url(#sphereRed)"} stroke="#FEE2E2" strokeWidth="1.4" />
+                    <text x="150" y={ptY + 5} textAnchor="end" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
                       A&apos; (cota +3)
                     </text>
                   </g>
@@ -1213,9 +1489,12 @@ function MotionCanvas({
               return (
                 <g opacity={e}>
                   <g transform={popTransform(360, 74, 1 + 0.045 * trapRx.pulse, trapRx.wiggle * 1.8, trapRx.wiggle * 4, 0)}>
-                    <rect x="98" y="54" width="524" height="40" rx="11" fill={`rgba(245,158,11,${(0.22 + 0.16 * trapRx.pulse).toFixed(2)})`} stroke="#F59E0B" strokeWidth={1.6 + 2 * trapRx.pulse} />
-                    <text x="360" y="79" textAnchor="middle" fontSize="14.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
-                      ⚡ A PEGADINHA #1: NA ÉPURA, +Y (AFASTAMENTO) DESCE!
+                    <rect x="92" y="54" width="536" height="40" rx="11" fill={`rgba(245,158,11,${(0.22 + 0.16 * trapRx.pulse).toFixed(2)})`} stroke="#F59E0B" strokeWidth={1.6 + 2 * trapRx.pulse} />
+                    <polygon points="116,66 124,81 108,81" fill="none" stroke="#FDE68A" strokeWidth="1.7" strokeLinejoin="round" />
+                    <line x1="116" y1="71" x2="116" y2="75" stroke="#FDE68A" strokeWidth="1.7" strokeLinecap="round" />
+                    <circle cx="116" cy="78" r="0.9" fill="#FDE68A" />
+                    <text x="370" y="79" textAnchor="middle" fontSize="14.2" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                      A PEGADINHA #1: NA ÉPURA, +Y (AFASTAMENTO) DESCE!
                     </text>
                   </g>
                   <line x1="100" y1="215" x2="610" y2="215" stroke={foldRx.pulse > 0.05 ? "#99F6E4" : "#2DD4BF"} strokeWidth={4 + 2.8 * foldRx.pulse} />
@@ -1255,23 +1534,28 @@ function MotionCanvas({
                   <text x="360" y="66" textAnchor="middle" fontSize="17" fontWeight="800" fill="#F59E0B" fontFamily="var(--font-mono), monospace">
                     OS 4 DIEDROS · SENTIDO ANTI-HORÁRIO ↺
                   </text>
-                  <line x1="360" y1="92" x2="360" y2="368" stroke="#F87171" strokeWidth={4 + 2.5 * crossRx.pulse} />
-                  <line x1="150" y1="230" x2="570" y2="230" stroke="#38BDF8" strokeWidth={4 + 2.5 * crossRx.pulse} />
-                  <circle cx="360" cy="230" r={5 + 4 * crossRx.pulse} fill="#FDE68A" opacity={0.4 + 0.6 * crossRx.pulse} />
-                  {/* Counter-clockwise arc arrow */}
+                  {/* 3D Isometric intersecting gridded planes π and π' */}
+                  <polygon points="150,256 320,188 570,218 400,286" fill="url(#horizontalPlane)" stroke="#38BDF8" strokeOpacity="0.65" strokeWidth={1.8 + 1.4 * crossRx.pulse} />
+                  <polygon points="318,92 402,102 402,354 318,344" fill="url(#verticalPlane)" stroke="#F87171" strokeOpacity="0.65" strokeWidth={1.8 + 1.4 * crossRx.pulse} />
+                  <line x1="360" y1="92" x2="360" y2="368" stroke="#F87171" strokeWidth={3.6 + 2 * crossRx.pulse} />
+                  <line x1="150" y1="230" x2="570" y2="230" stroke="#38BDF8" strokeWidth={3.6 + 2 * crossRx.pulse} />
+                  <line x1="318" y1="222" x2="402" y2="238" stroke="#2DD4BF" strokeWidth="4" strokeLinecap="round" />
+                  <circle cx="360" cy="230" r={6 + 4 * crossRx.pulse} fill="url(#sphereTeal)" />
+                  {/* Counter-clockwise orbital arc */}
                   <g transform={popTransform(360, 230, 1 + 0.04 * turnRx.pulse, -10 * turnRx.pulse)}>
                     <path
-                      d="M 440 185 A 95 95 0 1 0 438 275"
+                      d="M 442 185 A 95 95 0 1 0 438 275"
                       fill="none"
                       stroke={turnRx.pulse > 0.05 ? "#FDE68A" : "#F59E0B"}
                       strokeWidth={3.5 + 2.5 * turnRx.pulse}
                       strokeDasharray="8 5"
                     />
+                    <polygon points="432,179 448,185 438,195" fill="#FDE68A" />
                   </g>
-                  <text x="462" y="152" fontSize="22" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace" transform={popTransform(485, 145, fourRx.scale)}>1º D</text>
-                  <text x="205" y="152" fontSize="22" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace" transform={popTransform(228, 145, fourRx.scale)}>2º D</text>
-                  <text x="205" y="316" fontSize="22" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace" transform={popTransform(228, 309, fourRx.scale)}>3º D</text>
-                  <text x="462" y="316" fontSize="22" fontWeight="800" fill="#F59E0B" fontFamily="var(--font-mono), monospace" transform={popTransform(485, 309, fourRx.scale)}>4º D</text>
+                  <text x="476" y="152" fontSize="22" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace" transform={popTransform(499, 145, fourRx.scale)}>1º D</text>
+                  <text x="195" y="152" fontSize="22" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace" transform={popTransform(218, 145, fourRx.scale)}>2º D</text>
+                  <text x="195" y="316" fontSize="22" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace" transform={popTransform(218, 309, fourRx.scale)}>3º D</text>
+                  <text x="476" y="316" fontSize="22" fontWeight="800" fill="#F59E0B" fontFamily="var(--font-mono), monospace" transform={popTransform(499, 309, fourRx.scale)}>4º D</text>
                 </g>
               );
             })()}
@@ -1395,9 +1679,26 @@ function MotionCanvas({
                       ? `PISO FRONTAL (πA) DESCENDO: ${Math.round(foldDeg)}°`
                       : `PISO TRASEIRO (πP) SUBINDO: ${Math.round(foldDeg)}°`}
               </text>
+              {/* 3D axonometric glass planes extruding depth (+34, -18) behind π' and rotating π */}
+              {(() => {
+                const dx = 34;
+                const dy = -18;
+                const backEdgeX = cx - len * Math.cos(rad);
+                const backEdgeY = cy - len * Math.sin(rad);
+                const frontEdgeX = cx + len * Math.cos(rad);
+                const frontEdgeY = cy + len * Math.sin(rad);
+                return (
+                  <g>
+                    <polygon points={`${cx},88 ${cx + dx},${88 + dy} ${cx + dx},${362 + dy} ${cx},362`} fill="url(#verticalPlane)" stroke="#F87171" strokeOpacity="0.45" strokeWidth="1.4" />
+                    <polygon points={`${backEdgeX},${backEdgeY} ${backEdgeX + dx},${backEdgeY + dy} ${cx + dx},${cy + dy} ${cx},${cy}`} fill="url(#horizontalPlane)" stroke="#2DD4BF" strokeOpacity="0.48" strokeWidth="1.4" />
+                    <polygon points={`${cx},${cy} ${cx + dx},${cy + dy} ${frontEdgeX + dx},${frontEdgeY + dy} ${frontEdgeX},${frontEdgeY}`} fill="url(#horizontalPlane)" stroke="#38BDF8" strokeOpacity="0.52" strokeWidth="1.4" />
+                    <line x1={cx} y1={cy} x2={cx + dx} y2={cy + dy} stroke="#2DD4BF" strokeWidth="3.2" strokeLinecap="round" />
+                  </g>
+                );
+              })()}
               {/* Fixed PV */}
               <line x1={cx} y1="88" x2={cx} y2="362" stroke={Math.max(planesRx.pulse, wallRx.pulse) > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={4.5 + 2.8 * Math.max(planesRx.pulse, wallRx.pulse)} />
-              <text x={cx + 12} y="102" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">π&apos;S (Fixo)</text>
+              <text x={cx + 42} y="102" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">π&apos;S (Fixo)</text>
               <text x={cx + 12} y="356" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">π&apos;I (Fixo)</text>
               {sqRx.pulse > 0.05 && (
                 <rect x={cx} y={cy - 22} width="22" height="22" fill="rgba(253,230,138,0.2)" stroke="#FDE68A" strokeWidth={2.2 * sqRx.pulse} opacity={sqRx.pulse} />
@@ -1419,7 +1720,7 @@ function MotionCanvas({
                 stroke={Math.max(frontPulse, planesRx.pulse, turnRx.pulse) > 0.05 ? "#BAE6FD" : "#38BDF8"}
                 strokeWidth={4.5 + 2.5 * Math.max(frontPulse, planesRx.pulse, turnRx.pulse)}
               />
-              {/* Front compass arc */}
+              {/* Front compass arc + degree ticks */}
               <path
                 d={`M ${cx + 96} ${cy} A 96 96 0 0 1 ${cx} ${cy + 96}`}
                 fill="none"
@@ -1435,12 +1736,13 @@ function MotionCanvas({
                 strokeWidth={(sceneId === "back-up" ? 4 : 2) + 3 * Math.max(backPulse, turnRx.pulse)}
                 strokeDasharray="6 4"
               />
-              {/* LT Hinge */}
+              {/* LT Mechanical Hinge Collar */}
+              <circle cx={cx} cy={cy} r={(sceneId === "hinge" ? 17 : 11) + 4 * Math.max(hingeRx.pulse, sqRx.pulse)} fill="none" stroke="#5EEAD4" strokeOpacity="0.45" strokeWidth="1.6" />
               <circle
                 cx={cx}
                 cy={cy}
-                r={(sceneId === "hinge" ? 13 : 8) + 4 * Math.max(hingeRx.pulse, sqRx.pulse)}
-                fill={hingeRx.pulse > 0.05 ? "#FDE68A" : "#2DD4BF"}
+                r={(sceneId === "hinge" ? 12 : 7.5) + 3.5 * Math.max(hingeRx.pulse, sqRx.pulse)}
+                fill={hingeRx.pulse > 0.05 ? "url(#sphereGold)" : "url(#sphereTeal)"}
                 stroke="#FFFFFF"
                 strokeWidth="2"
               />
@@ -1460,7 +1762,9 @@ function MotionCanvas({
                 cx={frontX}
                 cy={frontY}
                 r={10 + 3.5 * frontPulse + 2.5 * (sceneId === "front-down" ? landsPulse : 0)}
-                fill="#38BDF8"
+                fill="url(#sphereBlue)"
+                stroke="#E0F2FE"
+                strokeWidth="1.4"
               />
               <text x={frontX + 14} y={frontY + 6} fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
                 πA (+Y desce!)
@@ -1481,7 +1785,9 @@ function MotionCanvas({
                 cx={backX}
                 cy={backY}
                 r={10 + 3.5 * backPulse + 2.5 * (sceneId === "back-up" ? landsPulse : 0)}
-                fill="#2DD4BF"
+                fill="url(#sphereTeal)"
+                stroke="#CCFBF1"
+                strokeWidth="1.4"
               />
               <text x={backX - 14} y={backY - 8} textAnchor="end" fontSize="15" fontWeight="800" fill="#99F6E4" fontFamily="var(--font-mono), monospace">
                 πP (−Y sobe!)
@@ -1575,6 +1881,12 @@ function MotionCanvas({
               const b24Glow = Math.max(biRx.pulse, b24Rx.pulse);
               return (
                 <>
+                  {/* 45° Bisector glass wedges & protractor arc */}
+                  <polygon points="255,214 375,94 375,214" fill="url(#bisectorGoldGrad)" opacity={0.45 + 0.5 * b13Glow} />
+                  <polygon points="255,214 135,334 135,214" fill="url(#bisectorGoldGrad)" opacity={0.45 + 0.5 * b13Glow} />
+                  <polygon points="255,214 135,94 255,94" fill="url(#bisectorVioletGrad)" opacity={0.45 + 0.5 * b24Glow} />
+                  <polygon points="255,214 375,334 255,334" fill="url(#bisectorVioletGrad)" opacity={0.45 + 0.5 * b24Glow} />
+                  <path d="M 295 214 A 40 40 0 0 0 283 186" fill="none" stroke="#FDE68A" strokeWidth={1.8 + 1.5 * angRx.pulse} />
                   <line x1="255" y1="74" x2="255" y2="354" stroke="#F87171" strokeWidth="3" />
                   <line x1="115" y1="214" x2="395" y2="214" stroke="#38BDF8" strokeWidth="3" />
                   <line x1="135" y1="334" x2="375" y2="94" stroke={b13Glow > 0.05 ? "#FFF7D6" : "#F59E0B"} strokeWidth={(sceneId === "b13" ? 5.5 : 3) + 2.5 * b13Glow} strokeDasharray="8 5" />
@@ -1733,8 +2045,9 @@ function MotionCanvas({
                       <line x1="255" y1="272" x2="505" y2="356" stroke={colRx.pulse > 0.05 ? "#BAE6FD" : "#38BDF8"} strokeWidth={5 + 2.6 * colRx.pulse} />
                       <g transform={popTransform(188, 138, 1 + 0.045 * Math.max(noTriRx.pulse, parRx.pulse), noTriRx.wiggle * 2.2, noTriRx.wiggle * 4, 0)}>
                         <rect x="108" y="102" width="160" height="72" rx="14" fill="rgba(52,211,153,0.18)" stroke={parRx.pulse > 0.05 ? "#FDE68A" : "#34D399"} strokeWidth={2 + 2 * Math.max(noTriRx.pulse, parRx.pulse)} />
-                        <text x="188" y="128" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                          ✗ SEM TRIÂNGULO
+                        <path d="M 119 119 L 127 127 M 127 119 L 119 127" stroke="#FCA5A5" strokeWidth="2.2" strokeLinecap="round" />
+                        <text x="195" y="128" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                          SEM TRIÂNGULO
                         </text>
                         <text x="188" y="154" textAnchor="middle" fontSize="12.5" fontWeight="800" fill={parRx.pulse > 0.05 ? "#FDE68A" : "#A7F3D0"} fontFamily="var(--font-mono), monospace">
                           RETA // AO β₁₃!
@@ -1788,11 +2101,18 @@ function MotionCanvas({
                     <rect x="92" y="88" width="230" height="252" rx="20" fill="rgba(15,23,42,0.82)" stroke="#F87171" strokeWidth={2.2 + 2.4 * yRx.pulse} />
                     <text x="207" y="124" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">GAMES &amp; WEBGL (Y-UP)</text>
                     <text x="207" y="148" textAnchor="middle" fontSize="12" fill="#CBD5E1">Unity · Three.js · OpenGL</text>
-                    <text x="207" y="232" textAnchor="middle" fontSize="34" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">Y = Altura ↑</text>
+                    <text x="207" y="198" textAnchor="middle" fontSize="32" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">Y = Altura ↑</text>
+                    {/* Mini 3D isometric Y-Up axis gizmo + XZ floor */}
+                    <polygon points="155,294 207,276 259,294 207,312" fill="rgba(248,113,113,0.16)" stroke="#FCA5A5" strokeOpacity="0.6" strokeWidth="1.2" />
+                    <line x1="207" y1="294" x2="207" y2="236" stroke="#F87171" strokeWidth="3" strokeLinecap="round" />
+                    <polygon points="203,242 207,233 211,242" fill="#F87171" />
+                    <line x1="207" y1="294" x2="255" y2="294" stroke="#2DD4BF" strokeWidth="2.5" strokeLinecap="round" />
+                    <line x1="207" y1="294" x2="178" y2="309" stroke="#38BDF8" strokeWidth="2.5" strokeLinecap="round" />
+                    <circle cx="207" cy="294" r="3.5" fill="#FDE68A" />
                   </g>
 
                   <g transform={popTransform(358, 214, 1 + 0.08 * Math.max(yRx.pulse, zRx.pulse), 12 * Math.max(yRx.wiggle, zRx.wiggle))}>
-                    <circle cx="358" cy="214" r="30" fill="#F59E0B" />
+                    <circle cx="358" cy="214" r="30" fill="url(#sphereGold)" stroke="#FFF7D6" strokeWidth="1.5" />
                     <text x="358" y="220" textAnchor="middle" fontSize="16" fontWeight="800" fill="#1C1917" fontFamily="var(--font-mono), monospace">Y ⇄ Z</text>
                   </g>
 
@@ -1800,7 +2120,14 @@ function MotionCanvas({
                     <rect x="394" y="88" width="230" height="252" rx="20" fill="rgba(15,23,42,0.82)" stroke="#38BDF8" strokeWidth={2.2 + 2.4 * zRx.pulse} />
                     <text x="509" y="124" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">UERJ / GD / CAD (Z-UP)</text>
                     <text x="509" y="148" textAnchor="middle" fontSize="12" fill="#CBD5E1">Monge · Blender · Engenharia</text>
-                    <text x="509" y="232" textAnchor="middle" fontSize="34" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">Z = Cota ↑</text>
+                    <text x="509" y="198" textAnchor="middle" fontSize="32" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">Z = Cota ↑</text>
+                    {/* Mini 3D isometric Z-Up axis gizmo + XY floor */}
+                    <polygon points="457,294 509,276 561,294 509,312" fill="rgba(56,189,248,0.18)" stroke="#7DD3FC" strokeOpacity="0.6" strokeWidth="1.2" />
+                    <line x1="509" y1="294" x2="509" y2="236" stroke="#38BDF8" strokeWidth="3" strokeLinecap="round" />
+                    <polygon points="505,242 509,233 513,242" fill="#38BDF8" />
+                    <line x1="509" y1="294" x2="557" y2="294" stroke="#2DD4BF" strokeWidth="2.5" strokeLinecap="round" />
+                    <line x1="509" y1="294" x2="480" y2="309" stroke="#F87171" strokeWidth="2.5" strokeLinecap="round" />
+                    <circle cx="509" cy="294" r="3.5" fill="#FDE68A" />
                   </g>
                 </>
               );
@@ -1828,9 +2155,11 @@ function MotionCanvas({
                     </g>
                     {/* Live animated RGB axes projected straight onto the monitor */}
                     <line x1="128" y1="308" x2={128 + 160 * e} y2="308" stroke="#2DD4BF" strokeWidth="4" strokeLinecap="round" />
+                    <polygon points={`${120 + 160 * e},303 ${129 + 160 * e},308 ${120 + 160 * e},313`} fill="#2DD4BF" />
                     <text x="296" y="314" fontSize="14" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">+X</text>
                     <g transform={popTransform(128, 240, 1 + 0.05 * yRx.pulse)}>
                       <line x1="128" y1="308" x2="128" y2={308 - 118 * e} stroke={yRx.pulse > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={4.5 + 3 * yRx.pulse} strokeLinecap="round" />
+                      <polygon points={`122,${316 - 118 * e} 128,${304 - 118 * e} 134,${316 - 118 * e}`} fill="#FCA5A5" />
                       <text x="128" y="176" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">+Y Altura</text>
                     </g>
                     <g transform={popTransform(105, 330, 1 + 0.05 * zRx.pulse)}>
@@ -1839,7 +2168,9 @@ function MotionCanvas({
                         +Z Prof.
                       </text>
                     </g>
+                    <circle cx="128" cy="308" r="5" fill="url(#sphereGold)" />
                   </g>
+                  <path d="M 30 98 V 74 H 56 M 402 370 V 394 H 376" fill="none" stroke="#F87171" strokeOpacity="0.55" strokeWidth="2" strokeLinecap="round" />
 
                   {/* Right Integrated Motion Typography */}
                   <line x1="428" y1="106" x2={428 + 64 * e} y2="106" stroke="#F87171" strokeWidth="4" strokeLinecap="round" />
@@ -1891,11 +2222,13 @@ function MotionCanvas({
                     <g transform={popTransform(135, 220, 1 + 0.05 * zGlow)}>
                       <line x1="112" y1="305" x2="112" y2={305 - 175 * e} stroke={zGlow > 0.05 ? "#FEE2E2" : "#F87171"} strokeWidth={5.5 + 3 * zGlow} strokeLinecap="round" />
                       <polygon points={`112,${295 - 175 * e} 102,${312 - 175 * e} 122,${312 - 175 * e}`} fill="#F87171" />
+                      <circle cx="112" cy="305" r="5" fill="url(#sphereGold)" />
                       <text x="128" y={310 - 175 * e} fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
                         +Z COTA ↑
                       </text>
                     </g>
                   </g>
+                  <path d="M 56 80 V 56 H 82 M 396 380 V 404 H 370" fill="none" stroke="#38BDF8" strokeOpacity="0.55" strokeWidth="2" strokeLinecap="round" />
 
                   {/* Right Integrated Motion Typography */}
                   <line x1="428" y1="106" x2={428 + 64 * e} y2="106" stroke="#38BDF8" strokeWidth="4" strokeLinecap="round" />
@@ -1964,29 +2297,7 @@ function MotionCanvas({
           const phase = reactionPhase(beat.at, sceneSeconds);
           if (!beat.mark || phase <= 0 || phase >= 1) return null;
           const [x, y] = beat.mark;
-          const fade = Math.sin(Math.PI * phase);
-          return (
-            <g key={index}>
-              <circle
-                cx={x}
-                cy={y}
-                r={10 + phase * 18}
-                fill="none"
-                stroke={episode.themeAccent}
-                strokeWidth={1.6 + 2.6 * (1 - phase)}
-                opacity={fade * 0.85}
-              />
-              <circle
-                cx={x}
-                cy={y}
-                r={16 + phase * 30}
-                fill="none"
-                stroke="#FDE68A"
-                strokeWidth={1.2}
-                opacity={fade * 0.42}
-              />
-            </g>
-          );
+          return <BeatEffect key={index} fx={beat.fx} x={x} y={y} phase={phase} accent={episode.themeAccent} />;
         })}
       </g>
 
@@ -2025,20 +2336,30 @@ export function MotionVideoPlayer({
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [expandedFullscreen, setExpandedFullscreen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [scrubPreview, setScrubPreview] = useState<{
+    ratio: number;
+    time: number;
+    sceneIndex: number;
+    label: string;
+    isTouch: boolean;
+  } | null>(null);
   const isFullscreen = nativeFullscreen || expandedFullscreen;
 
   // Netflix-style Up-Next countdown at the end of each episode
   const [upNextVisible, setUpNextVisible] = useState(false);
   const [upNextProgress, setUpNextProgress] = useState(0); // 0 -> 1 over 6 seconds
+  const idleCursor = isFullscreen && isPlaying && !controlsVisible && !upNextVisible;
 
   // Smoothed real-time lip-sync state (ZERO jitter!)
   const [mouth, setMouth] = useState<MouthFrame>("closed");
   const [energy, setEnergy] = useState(0);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const timelineRef = useRef<HTMLDivElement | null>(null);
   const controlTimer = useRef<number | undefined>(undefined);
   const controlsHoverRef = useRef(false);
   const scrubbingRef = useRef(false);
+  const lastPointerRef = useRef<{ x: number; y: number } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -2223,8 +2544,13 @@ export function MotionVideoPlayer({
     if (!audio) return;
     ensureAudioAnalyser();
     const context = audioCtxRef.current;
-    if (context?.state === "suspended") void context.resume().catch(() => {});
-    if (sound) playSound(sound);
+    if (context?.state === "suspended") {
+      void context.resume().then(() => {
+        if (sound) playSound(sound);
+      }).catch(() => {});
+    } else if (sound) {
+      playSound(sound);
+    }
     void audio.play().catch(() => {});
   }, [ensureAudioAnalyser, playSound]);
 
@@ -2302,22 +2628,50 @@ export function MotionVideoPlayer({
     }
   }, []);
 
+  const updateScrubPreview = useCallback((clientX: number, isTouch: boolean) => {
+    const el = timelineRef.current;
+    if (!el || effectiveDuration <= 0) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const time = ratio * effectiveDuration;
+    let idx = scenes.findIndex((s) => time >= s.startSec && time < s.endSec);
+    if (idx === -1) idx = time >= (scenes[scenes.length - 1]?.startSec ?? 0) ? scenes.length - 1 : 0;
+    const scene = scenes[idx] ?? scenes[0];
+    setScrubPreview({
+      ratio,
+      time,
+      sceneIndex: idx,
+      label: scene.label,
+      isTouch,
+    });
+  }, [effectiveDuration, scenes]);
+
   useEffect(() => {
     if (!isFullscreen || upNextVisible) {
       controlsHoverRef.current = false;
       scrubbingRef.current = false;
+      lastPointerRef.current = null;
       return () => window.clearTimeout(controlTimer.current);
     }
     revealControls();
-    const handlePointer = () => revealControls();
-    window.addEventListener("mousemove", handlePointer, { passive: true });
-    window.addEventListener("pointermove", handlePointer, { passive: true });
-    window.addEventListener("touchstart", handlePointer, { passive: true });
+    const handlePointerMove = (event: MouseEvent | PointerEvent) => {
+      const prev = lastPointerRef.current;
+      if (prev && Math.abs(event.clientX - prev.x) <= 1 && Math.abs(event.clientY - prev.y) <= 1) {
+        return;
+      }
+      lastPointerRef.current = { x: event.clientX, y: event.clientY };
+      revealControls();
+    };
+    const handleTouch = () => revealControls();
+    window.addEventListener("mousemove", handlePointerMove, { passive: true });
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    window.addEventListener("touchstart", handleTouch, { passive: true });
     return () => {
       window.clearTimeout(controlTimer.current);
-      window.removeEventListener("mousemove", handlePointer);
-      window.removeEventListener("pointermove", handlePointer);
-      window.removeEventListener("touchstart", handlePointer);
+      window.removeEventListener("mousemove", handlePointerMove);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("touchstart", handleTouch);
     };
   }, [isFullscreen, isPlaying, upNextVisible, revealControls]);
 
@@ -2339,25 +2693,39 @@ export function MotionVideoPlayer({
 
   useEffect(() => {
     if (!expandedFullscreen) return;
-    const originalOverflow = document.body.style.overflow;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalDocOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = originalOverflow; };
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalDocOverflow;
+    };
   }, [expandedFullscreen]);
 
   const toggleFullscreen = useCallback(async () => {
-    const player = stageRef.current;
+    const player = stageRef.current as (HTMLDivElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+    }) | null;
     if (!player) return;
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void> | void;
+    };
     if (expandedFullscreen) {
       setExpandedFullscreen(false);
-    } else if (document.fullscreenElement === player) {
-      await document.exitFullscreen().catch(() => {});
+    } else if (document.fullscreenElement === player || doc.webkitFullscreenElement === player) {
+      if (document.exitFullscreen) await document.exitFullscreen().catch(() => {});
+      else if (doc.webkitExitFullscreen) await Promise.resolve(doc.webkitExitFullscreen()).catch(() => {});
     } else {
       try {
-        if (!player.requestFullscreen) {
+        if (player.requestFullscreen) {
+          await player.requestFullscreen();
+        } else if (player.webkitRequestFullscreen) {
+          await Promise.resolve(player.webkitRequestFullscreen());
+        } else {
           setExpandedFullscreen(true);
-          return;
         }
-        await player.requestFullscreen();
       } catch {
         setExpandedFullscreen(true);
       }
@@ -2424,8 +2792,7 @@ export function MotionVideoPlayer({
           data-video-player
           data-fullscreen={isFullscreen || undefined}
           data-expanded={expandedFullscreen || undefined}
-          data-idle-cursor={isFullscreen && isPlaying && !controlsVisible && !upNextVisible ? "true" : undefined}
-          onPointerMove={isFullscreen ? () => revealControls() : undefined}
+          data-idle-cursor={idleCursor ? "true" : undefined}
           onTouchStart={isFullscreen ? () => revealControls() : undefined}
           onClick={isFullscreen ? (event) => {
             if (event.target === event.currentTarget) revealControls();
@@ -2436,6 +2803,7 @@ export function MotionVideoPlayer({
             ref={audioRef}
             src={VIDEO_EPISODES[0].audioSrc}
             preload="metadata"
+            playsInline
             onEnded={() => {
               setIsPlaying(false);
               setControlsVisible(false);
@@ -2477,7 +2845,7 @@ export function MotionVideoPlayer({
                   if (isFullscreen && isPlaying) revealControls();
                   else togglePlay();
                 }}
-                className="absolute inset-0 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-400"
+                className={`absolute inset-0 ${idleCursor ? "cursor-none" : "cursor-pointer"} focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-400`}
               >
                 {!isPlaying && (
                   <span className={styles.playBadge}>
@@ -2499,7 +2867,7 @@ export function MotionVideoPlayer({
                   <div className="w-full max-w-md rounded-2xl border border-white/20 bg-slate-900/95 p-4 sm:p-5 shadow-2xl space-y-3.5 text-white">
                     <div className="flex items-center justify-between text-[11px] font-mono font-bold text-amber-300">
                       <span className="inline-flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5" />
+                        <SkipForward className="w-3.5 h-3.5" />
                         PRÓXIMO EPISÓDIO EM{" "}
                         {Math.max(1, Math.ceil((1 - upNextProgress) * 6))}S
                       </span>
@@ -2604,28 +2972,76 @@ export function MotionVideoPlayer({
             onFocusCapture={isFullscreen ? () => revealControls() : undefined}
           >
             <div className="space-y-1">
-              <div className={styles.timeline}>
+              <div
+                ref={timelineRef}
+                className={styles.timeline}
+                onPointerMove={(event) => {
+                  updateScrubPreview(event.clientX, event.pointerType !== "mouse");
+                  if (isFullscreen) revealControls();
+                }}
+                onPointerLeave={() => {
+                  if (!scrubbingRef.current) setScrubPreview(null);
+                }}
+              >
+                {scrubPreview && (
+                  <div
+                    data-scrub-tooltip
+                    data-touch={scrubPreview.isTouch ? "true" : undefined}
+                    className={styles.scrubTooltip}
+                    style={{ left: `${Math.min(90, Math.max(10, scrubPreview.ratio * 100))}%` }}
+                  >
+                    <span className="font-mono text-[10px] font-extrabold text-amber-300">
+                      {scrubPreview.sceneIndex + 1}.
+                    </span>
+                    <span className="truncate text-[11px] font-bold text-white">
+                      {scrubPreview.label}
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-sky-300">
+                      {formatTime(scrubPreview.time)}
+                    </span>
+                  </div>
+                )}
                 <div className={styles.track} aria-hidden="true">
-                  <span className={styles.played} style={{ width: progress * 100 + "%" }} />
-                  {scenes.slice(1).map((scene) => (
-                    <span key={scene.id} className={styles.marker} style={{ left: Math.min(99, scene.startSec / effectiveDuration * 100) + "%" }} />
-                  ))}
+                  {scenes.map((scene, idx) => {
+                    const span = Math.max(0.2, scene.endSec - scene.startSec);
+                    const widthPct = (span / Math.max(0.2, effectiveDuration)) * 100;
+                    const playedInSeg = Math.max(0, Math.min(1, (currentTime - scene.startSec) / span)) * 100;
+                    const hoveredTime = scrubPreview?.time ?? -1;
+                    const hoverInSeg =
+                      scrubPreview ? Math.max(0, Math.min(1, (hoveredTime - scene.startSec) / span)) * 100 : 0;
+                    return (
+                      <span
+                        key={scene.id}
+                        className={styles.segment}
+                        data-hovered={scrubPreview?.sceneIndex === idx ? "true" : undefined}
+                        style={{ width: `${widthPct}%` }}
+                      >
+                        {hoverInSeg > 0 && (
+                          <span className={styles.segmentHover} style={{ width: `${hoverInSeg}%` }} />
+                        )}
+                        <span className={styles.segmentPlayed} style={{ width: `${playedInSeg}%` }} />
+                      </span>
+                    );
+                  })}
                 </div>
                 <input
                   type="range"
                   min={0}
                   max={1000}
                   value={Math.round(progress * 1000)}
-                  onPointerDown={() => {
+                  onPointerDown={(event) => {
                     scrubbingRef.current = true;
+                    updateScrubPreview(event.clientX, event.pointerType !== "mouse");
                     if (isFullscreen) revealControls(true);
                   }}
                   onPointerUp={() => {
                     scrubbingRef.current = false;
+                    setScrubPreview(null);
                     if (isFullscreen) revealControls(false);
                   }}
                   onPointerCancel={() => {
                     scrubbingRef.current = false;
+                    setScrubPreview(null);
                     if (isFullscreen) revealControls(false);
                   }}
                   onClick={(event) => event.stopPropagation()}
@@ -2709,13 +3125,13 @@ export function MotionVideoPlayer({
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
-                {/* Volume Control (Mute toggle + Slider) */}
+              <div className="flex items-center gap-1.5">
+                {/* Volume Control (Mute toggle + Desktop Slider) */}
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/5 border border-white/10">
                   <button
                     type="button"
                     onClick={() => setIsMuted((m) => !m)}
-                    className="text-slate-300 hover:text-white transition"
+                    className="min-w-[26px] min-h-[26px] flex items-center justify-center text-slate-300 hover:text-white transition"
                     title={isMuted || volume === 0 ? "Ativar som" : "Silenciar"}
                     aria-label={isMuted || volume === 0 ? "Ativar som" : "Silenciar"}
                   >
@@ -2736,7 +3152,7 @@ export function MotionVideoPlayer({
                       if (v > 0 && isMuted) setIsMuted(false);
                     }}
                     aria-label="Volume do vídeo"
-                    className="w-16 sm:w-20 h-1.5 accent-sky-400 cursor-pointer rounded-lg"
+                    className="hidden sm:block w-16 sm:w-20 h-1.5 accent-sky-400 cursor-pointer rounded-lg"
                   />
                 </div>
 
@@ -2842,7 +3258,7 @@ export function MotionVideoPlayer({
                   }`}
                 >
                   {active && isPlaying ? (
-                    "▶"
+                    <Play className="w-3.5 h-3.5 fill-current" />
                   ) : watched ? (
                     <CheckCircle2 className="w-4 h-4" />
                   ) : (

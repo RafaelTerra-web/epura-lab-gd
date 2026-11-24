@@ -31,7 +31,6 @@ import {
   Play,
   Plus,
   Share2,
-  Sparkles,
   Trash2,
   Volume2,
   VolumeX,
@@ -558,7 +557,7 @@ export function LabStudio({
           {/* Line / Multi-point Geometric Insight Banner (UERJ Ex. 1 & Ex. 2 magic!) */}
           {lineAnalysis && segments.length > 0 && (
             <div className="rounded-2xl border border-amber-300/80 dark:border-amber-700/60 bg-amber-50/90 dark:bg-amber-950/30 p-3.5 flex items-start gap-3">
-              <Sparkles className="w-5 h-5 text-bisector shrink-0 mt-0.5" />
+              <Compass className="w-5 h-5 text-bisector shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <div className="text-xs font-extrabold uppercase tracking-wide text-bisector dark:text-amber-300">
                   Interpretação Geométrica · {lineAnalysis.summaryTitle}
@@ -587,7 +586,7 @@ export function LabStudio({
                 </div>
                 <div className="text-[11px] text-ink-500 dark:text-slate-400">
                   {voice.engine === "gemini-3.8"
-                    ? `✦ ${voice.modelUsed}`
+                    ? voice.modelUsed
                     : "Gemini 3.8 TTS · ouça a leitura da cena"}
                 </div>
               </div>
@@ -813,7 +812,7 @@ export function LabStudio({
 
                   {selectedInfo.bisectorLabel && (
                     <div className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-bisector-light text-bisector dark:bg-amber-950/60 dark:text-amber-300">
-                      ✦ {selectedInfo.bisectorLabel}
+                      {selectedInfo.bisectorLabel}
                     </div>
                   )}
 

@@ -142,7 +142,7 @@ export const VIDEO_EPISODES: VideoEpisode[] = [
         id: "trap-y",
         startSec: 80,
         endSec: 105,
-        label: "⚡ A Pegadinha do +Y na Épura!",
+        label: "A Pegadinha do +Y na Épura!",
         subtitle:
           "Na épura 2D, Cota (+) sobe para A', mas Afastamento (+) DESCE abaixo da LT para A!",
       },

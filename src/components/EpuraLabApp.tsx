@@ -31,11 +31,12 @@ import {
   BookOpen,
   Compass,
   GraduationCap,
+  Layers,
   MessageSquare,
   Moon,
+  Play,
   Ruler,
   SlidersHorizontal,
-  Sparkles,
   Sun,
   X,
 } from "lucide-react";
@@ -454,7 +455,7 @@ export function EpuraLabApp() {
           <div className="rounded-2xl border border-ph/25 bg-gradient-to-r from-paper-50 via-ph-light/50 to-paper-50 dark:from-blueprint-900 dark:via-sky-950/40 dark:to-blueprint-900 p-3.5 sm:p-4 shadow-draft flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-ph/15 text-ph dark:text-sky-300 flex items-center justify-center shrink-0 mt-0.5">
-                <Sparkles className="w-4 h-4" />
+                <Layers className="w-4 h-4" />
               </div>
               <div className="space-y-0.5">
                 <div className="text-xs sm:text-sm font-extrabold text-ink-900 dark:text-white">
@@ -471,9 +472,9 @@ export function EpuraLabApp() {
               <button
                 type="button"
                 onClick={() => setSection("lessons")}
-                className="px-3 py-1.5 rounded-xl bg-ph hover:bg-ph-dark text-white text-xs font-bold transition"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ph hover:bg-ph-dark text-white text-xs font-bold transition"
               >
-                ▶ Aulas em Vídeo (Motion)
+                <Play className="w-3.5 h-3.5 fill-current" /> Aulas em Vídeo (Motion)
               </button>
               <button
                 type="button"

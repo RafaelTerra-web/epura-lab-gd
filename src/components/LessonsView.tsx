@@ -9,14 +9,16 @@ import { ConceptAnatomyStage } from "./ConceptAnatomyStage";
 import { AxisParallelWidget } from "./AxisParallelWidget";
 import { MotionVideoPlayer } from "./MotionVideoPlayer";
 import {
+  AlertTriangle,
   ArrowLeftRight,
   ArrowRight,
   BookOpen,
   CheckCircle2,
   Compass,
   Film,
+  Layers,
   Lightbulb,
-  Sparkles,
+  Target,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -121,7 +123,7 @@ export function LessonsView({
             },
             {
               id: "anatomy" as const,
-              icon: Sparkles,
+              icon: Layers,
               title: "O que é o quê?",
               sub: "Animações interativas dos 5 pilares",
               accent: "text-ph dark:text-sky-400",
@@ -406,7 +408,7 @@ export function LessonsView({
             {/* Key Takeaways Checklist */}
             <section className="rounded-2xl bg-paper-100/90 dark:bg-blueprint-950 border border-paper-300/70 dark:border-blueprint-800 p-4 space-y-2.5">
               <div className="text-xs font-extrabold uppercase tracking-wider text-lt dark:text-teal-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
+                <Target className="w-3.5 h-3.5" />
                 O que você precisa dominar neste capítulo
               </div>
               <ul className="space-y-2">
@@ -428,8 +430,9 @@ export function LessonsView({
             {active.xyzNote && (
               <section className="rounded-2xl border-2 border-pv/35 bg-pv-light/50 dark:bg-red-950/25 p-4 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-pv dark:text-red-300">
-                    ⚡ Respondendo sua dúvida da Aula 1: XYZ confunde?
+                  <span className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-pv dark:text-red-300">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    Respondendo sua dúvida da Aula 1: XYZ confunde?
                   </span>
                   <button
                     type="button"

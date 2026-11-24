@@ -380,7 +380,7 @@ export function DrawingKitView({
               {item.summary}
             </p>
             <div className="pt-2 border-t border-paper-200 dark:border-blueprint-800 text-[11px] text-lt dark:text-teal-300 font-medium">
-              ✦ Dica prática: {item.uerjTip}
+              Dica prática: {item.uerjTip}
             </div>
           </div>
         ))}

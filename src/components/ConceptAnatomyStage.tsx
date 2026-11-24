@@ -5,13 +5,14 @@ import { classifyPoint, formatPointCoords, formatSigned } from "@/lib/gd-math";
 import { ProfessorAvatar } from "./ProfessorAvatar";
 import { TtsModelTier, VoiceState } from "@/lib/voice";
 import {
+  AlertTriangle,
   ArrowRight,
   Compass,
+  Layers,
   Minus,
   Pause,
   Play,
   Plus,
-  Sparkles,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -284,7 +285,7 @@ export function ConceptAnatomyStage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-ph dark:text-sky-400">
-            <Sparkles className="w-3.5 h-3.5" />
+            <Layers className="w-3.5 h-3.5" />
             Palco Animado · &ldquo;O que é o quê?&rdquo;
           </div>
           <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink-900 dark:text-white mt-0.5">
@@ -349,7 +350,7 @@ export function ConceptAnatomyStage({
         <div className="rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-100/80 dark:bg-blueprint-950 p-3 flex flex-col justify-between gap-2 relative overflow-hidden">
           <div className="flex items-center justify-between text-[11px] font-mono font-bold px-1">
             <span style={{ color: active.color }}>
-              ✦ FOCO: {active.title.toUpperCase()}
+              FOCO · {active.title.toUpperCase()}
             </span>
             <span className="text-ink-500 dark:text-slate-400">
               {activeId === "diedros"
@@ -1155,7 +1156,7 @@ export function ConceptAnatomyStage({
                 </div>
                 <div className="text-[11px] font-mono text-ink-500 dark:text-slate-400">
                   {voice.engine === "gemini-3.8"
-                    ? `✦ ${voice.modelUsed}`
+                    ? voice.modelUsed
                     : "Gemini 3.8 TTS · fallback pt-BR"}
                 </div>
               </div>
@@ -1210,8 +1211,9 @@ export function ConceptAnatomyStage({
               </div>
 
               <div className="p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/35 border border-amber-300/70 dark:border-amber-700/60 space-y-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-wider text-bisector dark:text-amber-300">
-                  ⚡ Atenção / Pegadinha
+                <div className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-bisector dark:text-amber-300">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  Atenção / Pegadinha
                 </div>
                 <p className="text-xs text-ink-700 dark:text-amber-100 leading-relaxed">
                   {active.watchOut}

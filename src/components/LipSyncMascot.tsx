@@ -23,7 +23,7 @@ export function LipSyncMascot({
   mouth,
   energy,
   isPlaying,
-  label = "Prof. Mongezinho",
+  label = "Prof. Monge",
 }: LipSyncMascotProps) {
   const [blinking, setBlinking] = useState(false);
 
@@ -51,7 +51,7 @@ export function LipSyncMascot({
     <div role="img" aria-label={label} className="flex flex-col items-center">
       <div
         className={
-          "relative w-full aspect-square rounded-[2.2cqw] overflow-hidden border-2 bg-[#FEF7E0] shadow-xl " +
+          "relative w-full aspect-square rounded-[1.3cqw] overflow-hidden border bg-[#FEF7E0] shadow-lg " +
           (isPlaying && energy > 0.06 ? "border-amber-300" : "border-white/25")
         }
       >
@@ -66,13 +66,13 @@ export function LipSyncMascot({
             style={{ opacity: activeSprite === frame.id ? 1 : 0 }}
           />
         ))}
-        <div aria-hidden="true" className="absolute inset-x-[15%] bottom-[5%] h-[12%] flex items-end justify-center gap-[5%]">
+        <div aria-hidden="true" className="absolute inset-x-[16%] bottom-[5%] h-[11%] flex items-end justify-center gap-[5%]">
           {[0.45, 0.85, 0.65, 1, 0.55].map((level, index) => (
-            <span key={index} className="w-[5%] rounded-full bg-ph/90" style={{ height: 21 + Math.min(65, energy * 160 * level) + "%" }} />
+            <span key={index} className="w-[6%] rounded-full bg-ph/90" style={{ height: 22 + Math.min(64, energy * 160 * level) + "%" }} />
           ))}
         </div>
       </div>
-      <span aria-hidden="true" className="mt-[0.55cqw] whitespace-nowrap rounded-full border border-white/15 bg-slate-950/85 px-[1cqw] py-[0.18cqw] font-mono text-[1.15cqw] leading-tight font-bold text-amber-200">
+      <span aria-hidden="true" className="mt-[0.3cqw] whitespace-nowrap rounded-full border border-white/15 bg-slate-950/85 px-[0.55cqw] py-[0.12cqw] font-mono text-[0.78cqw] leading-tight font-bold text-amber-200">
         {label}
       </span>
     </div>
