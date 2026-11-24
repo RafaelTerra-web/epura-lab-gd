@@ -4,9 +4,11 @@ import React, { useEffect, useState } from "react";
 import {
   GDPoint,
   GDSegment,
+  POINT_COLORS,
   SCENE_PRESETS,
   ScenePreset,
 } from "@/lib/gd-math";
+import { LabSpotlight, TutorDirectorCommand } from "@/lib/director";
 import {
   DEFAULT_PROGRESS,
   getMasteryRank,
@@ -20,12 +22,14 @@ import { LessonsView } from "./LessonsView";
 import { PracticeArena } from "./PracticeArena";
 import { DrawingKitView } from "./DrawingKitView";
 import { TutorDrawer } from "./TutorDrawer";
+import { LiveProfessorSidebar } from "./LiveProfessorSidebar";
 import { ProfessorAvatar } from "./ProfessorAvatar";
 import {
   Award,
   BookOpen,
   Compass,
   GraduationCap,
+  MessageSquare,
   Moon,
   Ruler,
   SlidersHorizontal,
@@ -51,17 +55,26 @@ export function EpuraLabApp() {
   const [showBisectors, setShowBisectors] = useState<boolean>(false);
 
   const [showIntroTip, setShowIntroTip] = useState(true);
+  const [liveChatOpen, setLiveChatOpen] = useState(false);
+  const [spotlight, setSpotlight] = useState<LabSpotlight | null>(null);
+  const [cameraCommand, setCameraCommand] = useState<{
+    preset: "iso" | "profile" | "front" | "top";
+    seq: number;
+  } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<"tutor" | "profile" | "settings">(
-    "tutor"
+    "settings"
   );
 
   const voice = useProfessorVoice();
 
-  // Hydrate user progress from localStorage
+  // Hydrate user progress from localStorage + open live sidebar by default on wide desktop
   useEffect(() => {
     const loaded = loadProgress();
     setProgress(loaded);
+    if (typeof window !== "undefined" && window.innerWidth >= 1280) {
+      setLiveChatOpen(true);
+    }
     setHydrated(true);
   }, []);
 
@@ -94,6 +107,65 @@ export function EpuraLabApp() {
     setSegments(preset.segments.map((s) => ({ ...s })));
     setShowBisectors(Boolean(preset.showBisectors));
     setFoldAngle(0);
+    setSpotlight(null);
+  };
+
+  const handleExecuteDirector = (cmd: TutorDirectorCommand) => {
+    // Switch to Lab view so the student immediately watches the 3D/2D circling!
+    setSection("lab");
+
+    if (cmd.presetId) {
+      const preset = SCENE_PRESETS.find((p) => p.id === cmd.presetId);
+      if (preset) {
+        setActivePresetId(preset.id);
+        setPoints(preset.points.map((p) => ({ ...p })));
+        setSegments(preset.segments.map((s) => ({ ...s })));
+        setShowBisectors(Boolean(preset.showBisectors));
+      }
+    } else if (cmd.points && cmd.points.length > 0) {
+      setActivePresetId(null);
+      const nextPts: GDPoint[] = cmd.points.slice(0, 5).map((p, idx) => ({
+        id: `dir-${idx}-${p.label}`,
+        label: p.label || String.fromCharCode(65 + idx),
+        x: Math.max(-5, Math.min(5, p.x)),
+        y: Math.max(-5, Math.min(5, p.y)),
+        z: Math.max(-5, Math.min(5, p.z)),
+        color: POINT_COLORS[idx % POINT_COLORS.length],
+      }));
+      setPoints(nextPts);
+      if (cmd.connectLine && nextPts.length >= 2) {
+        setSegments([
+          {
+            id: "dir-r",
+            fromId: nextPts[0].id,
+            toId: nextPts[1].id,
+            label: "r",
+            extendLine: true,
+          },
+        ]);
+      } else {
+        setSegments([]);
+      }
+    }
+
+    if (typeof cmd.showBisectors === "boolean") {
+      setShowBisectors(cmd.showBisectors);
+    }
+    if (typeof cmd.showXYZ === "boolean") {
+      updatePrefs({ showXYZ: cmd.showXYZ });
+    }
+    if (typeof cmd.foldAngle === "number") {
+      setFoldAngle(Math.max(0, Math.min(90, cmd.foldAngle)));
+    }
+    if (cmd.cameraPreset) {
+      setCameraCommand((prev) => ({
+        preset: cmd.cameraPreset!,
+        seq: (prev?.seq ?? 0) + 1,
+      }));
+    }
+    if (cmd.spotlight) {
+      setSpotlight({ ...cmd.spotlight });
+    }
   };
 
   const handleOpenInLab = (payload: {
@@ -316,21 +388,29 @@ export function EpuraLabApp() {
               <SlidersHorizontal className="w-4 h-4" />
             </button>
 
-            {/* Prof. Monge Tutor CTA */}
+            {/* Live Professor Chat Sidebar Toggle */}
             <button
               type="button"
-              onClick={() => openDrawer("tutor")}
-              className="inline-flex items-center gap-2 p-1 sm:pl-1 sm:pr-3.5 rounded-full border border-ph/30 bg-ph-light/80 dark:bg-sky-950/60 hover:bg-ph-light text-ph dark:text-sky-300 text-xs font-bold transition"
+              onClick={() => setLiveChatOpen((v) => !v)}
+              className={`inline-flex items-center gap-2 p-1 sm:pl-1 sm:pr-3.5 rounded-full border text-xs font-bold transition ${
+                liveChatOpen
+                  ? "border-ph bg-ph text-white shadow-sm"
+                  : "border-ph/30 bg-ph-light/80 dark:bg-sky-950/60 hover:bg-ph-light text-ph dark:text-sky-300"
+              }`}
+              title="Abrir/fechar Chat ao Vivo com o Professor"
             >
               <ProfessorAvatar professor="monge" size="sm" className="w-7 h-7" />
-              <span className="hidden sm:inline">Prof. Monge</span>
+              <span className="hidden sm:inline">
+                {liveChatOpen ? "Chat ao Vivo ●" : "Chat ao Vivo"}
+              </span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* ---- MAIN CONTENT WORKSPACE ---- */}
-      <main className="flex-1 max-w-[1440px] w-full mx-auto px-3 sm:px-6 pt-4 pb-24 lg:pb-10 space-y-4">
+      {/* ---- MAIN CONTENT WORKSPACE + DOCKED LIVE PROFESSOR SIDEBAR ---- */}
+      <div className="flex-1 max-w-[1620px] w-full mx-auto px-3 sm:px-6 pt-4 pb-24 lg:pb-10 flex items-start gap-4">
+        <main className="flex-1 min-w-0 space-y-4">
         {/* Welcome / Quick-Start Banner (Dismissible) */}
         {showIntroTip && section === "lab" && (
           <div className="rounded-2xl border border-ph/25 bg-gradient-to-r from-paper-50 via-ph-light/50 to-paper-50 dark:from-blueprint-900 dark:via-sky-950/40 dark:to-blueprint-900 p-3.5 sm:p-4 shadow-draft flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -405,6 +485,10 @@ export function EpuraLabApp() {
             voiceRate={progress.preferences.voiceRate}
             customApiKey={progress.preferences.customGeminiKey}
             ttsModelTier={progress.preferences.ttsModelTier}
+            spotlight={spotlight}
+            onClearSpotlight={() => setSpotlight(null)}
+            cameraCommand={cameraCommand}
+            sidebarOpen={liveChatOpen}
             onSaveSnapshot={handleSaveSnapshot}
             activePresetId={activePresetId}
             onLoadPreset={handleLoadPreset}
@@ -450,7 +534,20 @@ export function EpuraLabApp() {
             ttsModelTier={progress.preferences.ttsModelTier}
           />
         )}
-      </main>
+        </main>
+
+        {/* DOCKED LIVE PROFESSOR CHAT SIDEBAR (Side-by-side on Desktop, Non-blocking Half-Sheet on Mobile) */}
+        <LiveProfessorSidebar
+          open={liveChatOpen}
+          onClose={() => setLiveChatOpen(false)}
+          contextPoints={points}
+          onExecuteDirector={handleExecuteDirector}
+          voice={voice}
+          voiceRate={progress.preferences.voiceRate}
+          customApiKey={progress.preferences.customGeminiKey}
+          ttsModelTier={progress.preferences.ttsModelTier}
+        />
+      </div>
 
       {/* ---- MOBILE-ONLY NATIVE BOTTOM TAB BAR ---- */}
       <nav
@@ -486,16 +583,24 @@ export function EpuraLabApp() {
             );
           })}
 
-          {/* 5th Mobile Tab: Tutor / Settings */}
+          {/* 5th Mobile Tab: Live Professor Chat */}
           <button
             type="button"
-            onClick={() => openDrawer("tutor")}
-            className="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl text-ink-500 dark:text-slate-400 font-semibold"
+            onClick={() => setLiveChatOpen((v) => !v)}
+            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition ${
+              liveChatOpen
+                ? "text-ph dark:text-sky-400 font-extrabold"
+                : "text-ink-500 dark:text-slate-400 font-semibold"
+            }`}
           >
-            <span className="px-3 py-1 rounded-full">
-              <SlidersHorizontal className="w-4 h-4" />
+            <span
+              className={`px-3 py-1 rounded-full transition ${
+                liveChatOpen ? "bg-ph-light dark:bg-sky-950" : ""
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
             </span>
-            <span className="text-[10px] leading-none">Tutor</span>
+            <span className="text-[10px] leading-none">Prof.</span>
           </button>
         </div>
       </nav>

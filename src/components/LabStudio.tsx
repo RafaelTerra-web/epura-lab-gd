@@ -18,6 +18,7 @@ import { Scene3D } from "./Scene3D";
 import { Epura2D } from "./Epura2D";
 import { ProfessorAvatar } from "./ProfessorAvatar";
 import { TtsModelTier, VoiceState } from "@/lib/voice";
+import { LabSpotlight } from "@/lib/director";
 import {
   BookmarkPlus,
   Compass,
@@ -51,6 +52,10 @@ interface LabStudioProps {
   voiceRate: number;
   customApiKey?: string;
   ttsModelTier: TtsModelTier;
+  spotlight?: LabSpotlight | null;
+  onClearSpotlight?: () => void;
+  cameraCommand?: { preset: "iso" | "profile" | "front" | "top"; seq: number } | null;
+  sidebarOpen?: boolean;
   onSaveSnapshot: (name: string, pts: GDPoint[]) => void;
   activePresetId: string | null;
   onLoadPreset: (preset: ScenePreset) => void;
@@ -74,6 +79,10 @@ export function LabStudio({
   voiceRate,
   customApiKey,
   ttsModelTier,
+  spotlight = null,
+  onClearSpotlight,
+  cameraCommand = null,
+  sidebarOpen = false,
   onSaveSnapshot,
   activePresetId,
   onLoadPreset,
@@ -298,8 +307,14 @@ export function LabStudio({
         ))}
       </div>
 
-      {/* MAIN WORKBENCH GRID: Desktop = 2-canvas + right inspector; Mobile = stacked thumb-friendly */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_348px] gap-4 items-start">
+      {/* MAIN WORKBENCH GRID: Adapts smoothly when the Live Professor Sidebar is docked open */}
+      <div
+        className={`grid grid-cols-1 gap-4 items-start ${
+          sidebarOpen
+            ? "2xl:grid-cols-[1fr_320px]"
+            : "lg:grid-cols-[1fr_348px]"
+        }`}
+      >
         {/* LEFT COLUMN: 3D + 2D Synchronized Canvases + Rebatimento Bar */}
         <div className="space-y-3">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
@@ -318,6 +333,8 @@ export function LabStudio({
                 showXYZ={showXYZ}
                 showBisectors={showBisectors}
                 dark={dark}
+                spotlight={spotlight}
+                cameraCommand={cameraCommand}
                 onSelectPoint={setSelectedId}
                 className={
                   mobileView === "split"
@@ -341,6 +358,8 @@ export function LabStudio({
                 showXYZ={showXYZ}
                 dark={dark}
                 interactive
+                spotlight={spotlight}
+                onClearSpotlight={onClearSpotlight}
                 onSelectPoint={setSelectedId}
                 onUpdatePoint={updatePoint}
                 className="h-full"

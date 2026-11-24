@@ -9,6 +9,7 @@ import {
   getProjectionLabels,
   NotationMode,
 } from "@/lib/gd-math";
+import { LabSpotlight } from "@/lib/director";
 import { Eye, RotateCcw } from "lucide-react";
 
 interface Scene3DProps {
@@ -21,6 +22,8 @@ interface Scene3DProps {
   showBisectors: boolean;
   showDiedroLabels?: boolean;
   dark?: boolean;
+  spotlight?: LabSpotlight | null;
+  cameraCommand?: { preset: "iso" | "profile" | "front" | "top"; seq: number } | null;
   onSelectPoint?: (id: string) => void;
   className?: string;
 }
@@ -144,6 +147,8 @@ export function Scene3D({
   showBisectors,
   showDiedroLabels = true,
   dark = false,
+  spotlight = null,
+  cameraCommand = null,
   className = "",
 }: Scene3DProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -191,6 +196,12 @@ export function Scene3D({
       s.targetRadius = 17.5;
     }
   };
+
+  // Respond to external camera preset commands from the Live Professor Copilot
+  useEffect(() => {
+    if (!cameraCommand) return;
+    applyCameraPreset(cameraCommand.preset);
+  }, [cameraCommand]);
 
   // Auto-glide toward frontal view when user reaches 90° fold
   const prevFoldRef = useRef(foldAngle);
@@ -875,7 +886,123 @@ export function Scene3D({
         }
       }
     });
-  }, [points, segments, selectedPointId, foldAngle, notation, showXYZ, showBisectors, showDiedroLabels, dark]);
+    // ---- 9. LIVE PROFESSOR 3D SPOTLIGHT / BEACON RING ----
+    if (spotlight && spotlight.target !== "none") {
+      const targetPt =
+        points.find((p) => p.label === spotlight.pointLabel) ?? points[0];
+      const highlightColor = 0xf59e0b; // glowing studio amber-gold
+
+      const addBeaconRing = (
+        parent: THREE.Group,
+        pos: THREE.Vector3,
+        radius = 0.58,
+        rotX = 0
+      ) => {
+        const torus = new THREE.Mesh(
+          new THREE.TorusGeometry(radius, 0.065, 16, 40),
+          new THREE.MeshBasicMaterial({
+            color: highlightColor,
+            transparent: true,
+            opacity: 0.95,
+          })
+        );
+        torus.position.copy(pos);
+        torus.rotation.x = rotX;
+        parent.add(torus);
+
+        const outer = new THREE.Mesh(
+          new THREE.TorusGeometry(radius + 0.22, 0.03, 12, 40),
+          new THREE.MeshBasicMaterial({
+            color: 0xea580c,
+            transparent: true,
+            opacity: 0.55,
+          })
+        );
+        outer.position.copy(pos);
+        outer.rotation.x = rotX;
+        parent.add(outer);
+      };
+
+      if (spotlight.target === "lt") {
+        dynamicGroup.add(
+          makeCylinderSegment(
+            new THREE.Vector3(-HALF - 0.5, 0, 0),
+            new THREE.Vector3(HALF + 0.5, 0, 0),
+            0.14,
+            highlightColor,
+            0.85
+          )
+        );
+      } else if (spotlight.target === "origin") {
+        addBeaconRing(dynamicGroup, new THREE.Vector3(0, 0, 0), 0.72, 0);
+        addBeaconRing(dynamicGroup, new THREE.Vector3(0, 0, 0), 0.72, Math.PI / 2);
+      } else if (targetPt) {
+        const ltPt = new THREE.Vector3(targetPt.x, 0, 0);
+        const pvPt = new THREE.Vector3(targetPt.x, targetPt.z, 0);
+        const phPt = new THREE.Vector3(targetPt.x, 0, targetPt.y);
+        const spPt = new THREE.Vector3(targetPt.x, targetPt.z, targetPt.y);
+
+        if (spotlight.target === "abscissa") {
+          dynamicGroup.add(
+            makeCylinderSegment(
+              new THREE.Vector3(0, 0, 0),
+              ltPt,
+              0.12,
+              highlightColor,
+              0.92
+            )
+          );
+          addBeaconRing(dynamicGroup, ltPt, 0.52, 0);
+        } else if (spotlight.target === "cota") {
+          dynamicGroup.add(
+            makeCylinderSegment(ltPt, pvPt, 0.095, highlightColor, 0.92)
+          );
+          addBeaconRing(dynamicGroup, pvPt, 0.58, 0);
+        } else if (spotlight.target === "afastamento") {
+          horizontalGroup.add(
+            makeCylinderSegment(ltPt, phPt, 0.095, highlightColor, 0.92)
+          );
+          addBeaconRing(horizontalGroup, phPt, 0.58, Math.PI / 2);
+        } else if (spotlight.target === "point_space") {
+          addBeaconRing(dynamicGroup, spPt, 0.65, 0);
+          addBeaconRing(dynamicGroup, spPt, 0.65, Math.PI / 2);
+        } else if (spotlight.target === "coincident") {
+          addBeaconRing(dynamicGroup, pvPt, 0.72, 0);
+          addBeaconRing(horizontalGroup, phPt, 0.72, Math.PI / 2);
+        } else if (spotlight.target === "line" && points.length >= 2) {
+          const a = points[0];
+          const b = points[points.length - 1];
+          dynamicGroup.add(
+            makeCylinderSegment(
+              new THREE.Vector3(a.x, a.z, a.y),
+              new THREE.Vector3(b.x, b.z, b.y),
+              0.11,
+              highlightColor,
+              0.88 * spaceFade
+            )
+          );
+          dynamicGroup.add(
+            makeCylinderSegment(
+              new THREE.Vector3(a.x, a.z, 0),
+              new THREE.Vector3(b.x, b.z, 0),
+              0.085,
+              highlightColor,
+              0.85
+            )
+          );
+          horizontalGroup.add(
+            makeCylinderSegment(
+              new THREE.Vector3(a.x, 0, a.y),
+              new THREE.Vector3(b.x, 0, b.y),
+              0.085,
+              highlightColor,
+              0.85
+            )
+          );
+        }
+      }
+    }
+  }, [points, segments, selectedPointId, foldAngle, notation, showXYZ, showBisectors, showDiedroLabels, dark, spotlight]);
 
   if (webglError) {
     return (
@@ -973,18 +1100,25 @@ export function Scene3D({
         </div>
       </div>
 
-      {/* Subtle bottom interaction hint */}
-      <div className="pointer-events-none absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px]">
-        <span
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md backdrop-blur-sm ${
-            dark
-              ? "bg-blueprint-900/70 text-slate-400"
-              : "bg-paper-50/80 text-ink-500"
-          }`}
-        >
-          <Eye className="w-3 h-3" />
-          Arraste para girar · Pinça/Scroll para zoom
-        </span>
+      {/* Subtle bottom interaction hint + Active Professor Spotlight Ribbon */}
+      <div className="pointer-events-none absolute bottom-2.5 left-3 right-3 flex items-center justify-between gap-2 text-[11px]">
+        {spotlight && spotlight.target !== "none" ? (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500 text-ink-900 font-bold shadow-md animate-fade-up max-w-full truncate">
+            <span className="w-2 h-2 rounded-full bg-white animate-ping shrink-0" />
+            <span className="truncate">{spotlight.caption}</span>
+          </span>
+        ) : (
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md backdrop-blur-sm ${
+              dark
+                ? "bg-blueprint-900/70 text-slate-400"
+                : "bg-paper-50/80 text-ink-500"
+            }`}
+          >
+            <Eye className="w-3 h-3" />
+            Arraste para girar · Pinça/Scroll para zoom
+          </span>
+        )}
       </div>
     </div>
   );

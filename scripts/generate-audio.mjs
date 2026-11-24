@@ -200,7 +200,8 @@ async function main() {
         console.error(
           "\nVerifique créditos/faturamento da chave em https://ai.studio/projects e rode novamente: npm run generate:audio"
         );
-        process.exit(1);
+        process.exitCode = 1;
+        return;
       }
       continue;
     }

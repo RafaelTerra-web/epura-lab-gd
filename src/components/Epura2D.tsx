@@ -9,6 +9,7 @@ import {
   getProjectionLabels,
   NotationMode,
 } from "@/lib/gd-math";
+import { LabSpotlight } from "@/lib/director";
 
 interface Epura2DProps {
   points: GDPoint[];
@@ -18,6 +19,8 @@ interface Epura2DProps {
   showXYZ?: boolean;
   dark?: boolean;
   interactive?: boolean;
+  spotlight?: LabSpotlight | null;
+  onClearSpotlight?: () => void;
   onUpdatePoint?: (id: string, patch: Partial<Pick<GDPoint, "x" | "y" | "z">>) => void;
   onSelectPoint?: (id: string) => void;
   // Special mode for "Desenhe a Épura" interactive placement exercise:
@@ -64,6 +67,8 @@ export function Epura2D({
   showXYZ = true,
   dark = false,
   interactive = true,
+  spotlight = null,
+  onClearSpotlight,
   onUpdatePoint,
   onSelectPoint,
   placementMode,
@@ -700,6 +705,227 @@ export function Epura2D({
             );
           })}
 
+        {/* ---- LIVE PROFESSOR SPOTLIGHT / HAND-DRAWN CIRCLING LAYER ---- */}
+        {!placementMode && spotlight && spotlight.target !== "none" && (() => {
+          const tPt =
+            points.find((p) => p.label === spotlight.pointLabel) ?? points[0];
+          const hlStroke = "#EA580C";
+          const hlGlow = "rgba(245, 158, 11, 0.22)";
+
+          // Hand-sketched organic double loop ellipse helper
+          const renderChalkCircle = (
+            cx: number,
+            cy: number,
+            rx: number,
+            ry: number,
+            keyStr: string
+          ) => (
+            <g key={keyStr} pointerEvents="none">
+              <ellipse
+                cx={cx}
+                cy={cy}
+                rx={rx + 5}
+                ry={ry + 5}
+                fill={hlGlow}
+                className="animate-radar"
+              />
+              <ellipse
+                cx={cx}
+                cy={cy}
+                rx={rx}
+                ry={ry}
+                fill="none"
+                stroke={hlStroke}
+                strokeWidth={3.4}
+                strokeLinecap="round"
+                transform={`rotate(-4 ${cx} ${cy})`}
+                className="animate-draw-stroke"
+              />
+              <ellipse
+                cx={cx + 1.5}
+                cy={cy - 1}
+                rx={rx + 3}
+                ry={ry + 2}
+                fill="none"
+                stroke="#F59E0B"
+                strokeWidth={1.6}
+                strokeDasharray="10 6"
+                transform={`rotate(5 ${cx} ${cy})`}
+                opacity={0.9}
+              />
+            </g>
+          );
+
+          let calloutX = ORIGIN_X;
+          let calloutY = PAD_Y + 32;
+          const shapes: React.ReactNode[] = [];
+
+          if (spotlight.target === "lt") {
+            shapes.push(
+              <rect
+                key="lt-band"
+                x={PAD_X - 14}
+                y={ORIGIN_Y - 12}
+                width={PLOT_W + 28}
+                height={24}
+                rx={12}
+                fill={hlGlow}
+                stroke={hlStroke}
+                strokeWidth={3}
+                className="animate-draw-stroke"
+              />
+            );
+            calloutX = ORIGIN_X;
+            calloutY = ORIGIN_Y - 38;
+          } else if (spotlight.target === "origin") {
+            shapes.push(renderChalkCircle(ORIGIN_X, ORIGIN_Y, 26, 26, "orig"));
+            calloutX = ORIGIN_X;
+            calloutY = ORIGIN_Y - 52;
+          } else if (spotlight.target === "line" && points.length >= 2) {
+            const a = points[0];
+            const b = points[points.length - 1];
+            shapes.push(
+              <g key="line-hl" pointerEvents="none">
+                <line
+                  x1={toSvgX(a.x)}
+                  y1={toSvgYForCota(a.z)}
+                  x2={toSvgX(b.x)}
+                  y2={toSvgYForCota(b.z)}
+                  stroke="#F59E0B"
+                  strokeWidth={8}
+                  strokeLinecap="round"
+                  opacity={0.45}
+                  className="animate-draw-stroke"
+                />
+                <line
+                  x1={toSvgX(a.x)}
+                  y1={toSvgYForAfast(a.y)}
+                  x2={toSvgX(b.x)}
+                  y2={toSvgYForAfast(b.y)}
+                  stroke="#F59E0B"
+                  strokeWidth={8}
+                  strokeLinecap="round"
+                  opacity={0.45}
+                  className="animate-draw-stroke"
+                />
+              </g>
+            );
+            calloutX = (toSvgX(a.x) + toSvgX(b.x)) / 2;
+            calloutY = PAD_Y + 34;
+          } else if (tPt) {
+            const sx = toSvgX(tPt.x);
+            const pvY = toSvgYForCota(tPt.z);
+            const phY = toSvgYForAfast(tPt.y);
+
+            if (spotlight.target === "abscissa") {
+              const topY = Math.min(ORIGIN_Y, pvY, phY) - 14;
+              const botY = Math.max(ORIGIN_Y, pvY, phY) + 14;
+              shapes.push(
+                <line
+                  key="abs-bar"
+                  x1={ORIGIN_X}
+                  y1={ORIGIN_Y}
+                  x2={sx}
+                  y2={ORIGIN_Y}
+                  stroke={hlStroke}
+                  strokeWidth={6}
+                  strokeLinecap="round"
+                  opacity={0.85}
+                  className="animate-draw-stroke"
+                />
+              );
+              shapes.push(
+                renderChalkCircle(
+                  sx,
+                  (topY + botY) / 2,
+                  22,
+                  Math.max(30, (botY - topY) / 2),
+                  "lc-oval"
+                )
+              );
+              calloutX = sx;
+              calloutY = Math.max(PAD_Y + 28, topY - 18);
+            } else if (spotlight.target === "cota") {
+              shapes.push(
+                <line
+                  key="cota-bar"
+                  x1={sx}
+                  y1={ORIGIN_Y}
+                  x2={sx}
+                  y2={pvY}
+                  stroke={hlStroke}
+                  strokeWidth={5.5}
+                  strokeLinecap="round"
+                  opacity={0.8}
+                  className="animate-draw-stroke"
+                />
+              );
+              shapes.push(renderChalkCircle(sx, pvY, 24, 22, "cota-ring"));
+              calloutX = sx;
+              calloutY = pvY < ORIGIN_Y ? Math.max(PAD_Y + 26, pvY - 40) : Math.min(VIEW_H - PAD_Y - 26, pvY + 42);
+            } else if (spotlight.target === "afastamento") {
+              shapes.push(
+                <line
+                  key="afast-bar"
+                  x1={sx}
+                  y1={ORIGIN_Y}
+                  x2={sx}
+                  y2={phY}
+                  stroke={hlStroke}
+                  strokeWidth={5.5}
+                  strokeLinecap="round"
+                  opacity={0.8}
+                  className="animate-draw-stroke"
+                />
+              );
+              shapes.push(renderChalkCircle(sx, phY, 24, 22, "afast-ring"));
+              calloutX = sx;
+              calloutY = phY > ORIGIN_Y ? Math.min(VIEW_H - PAD_Y - 24, phY + 42) : Math.max(PAD_Y + 26, phY - 40);
+            } else if (spotlight.target === "coincident") {
+              shapes.push(renderChalkCircle(sx, pvY, 34, 26, "coinc-ring"));
+              calloutX = sx;
+              calloutY = Math.max(PAD_Y + 28, pvY - 46);
+            } else if (spotlight.target === "point_space") {
+              shapes.push(renderChalkCircle(sx, pvY, 21, 21, "sp-pv"));
+              shapes.push(renderChalkCircle(sx, phY, 21, 21, "sp-ph"));
+              calloutX = sx;
+              calloutY = PAD_Y + 32;
+            }
+          }
+
+          const clampedX = Math.max(PAD_X + 125, Math.min(VIEW_W - PAD_X - 125, calloutX));
+          const clampedY = Math.max(PAD_Y + 22, Math.min(VIEW_H - PAD_Y - 18, calloutY));
+
+          return (
+            <g key={`${spotlight.target}-${spotlight.caption}`}>
+              {shapes}
+              <g pointerEvents="none" className="animate-fade-up">
+                <rect
+                  x={clampedX - 122}
+                  y={clampedY - 14}
+                  width={244}
+                  height={28}
+                  rx={10}
+                  fill="#1C1917"
+                  stroke="#F59E0B"
+                  strokeWidth={1.8}
+                />
+                <text
+                  x={clampedX}
+                  y={clampedY + 4}
+                  textAnchor="middle"
+                  fontSize="10.5"
+                  fontWeight="800"
+                  fill="#FEF3C7"
+                  fontFamily="var(--font-sans), sans-serif"
+                >
+                  ✦ {spotlight.caption.slice(0, 36)}
+                </text>
+              </g>
+            </g>
+          );
+        })()}
+
         {/* ---- INTERACTIVE PLACEMENT MODE (DESENHE A ÉPURA) ---- */}
         {placementMode && (
           <g>
@@ -849,6 +1075,16 @@ export function Epura2D({
           </g>
         )}
       </svg>
+      {/* Active Spotlight Clear Pill */}
+      {spotlight && spotlight.target !== "none" && onClearSpotlight && (
+        <button
+          type="button"
+          onClick={onClearSpotlight}
+          className="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-lg bg-ink-900/90 text-amber-200 border border-amber-400/60 text-[10.5px] font-bold shadow hover:bg-ink-900 transition"
+        >
+          Limpar destaque ✕
+        </button>
+      )}
     </div>
   );
 }
