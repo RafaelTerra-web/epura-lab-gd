@@ -78,67 +78,39 @@ export function useProfessorVoice(): VoiceState {
         v.lang.toLowerCase().startsWith("pt")
       );
 
-      const pickVoice = (who: "monge" | "epura") => {
+      const pickVoice = () => {
         if (ptVoices.length === 0) return undefined;
-        const preferred =
-          who === "epura"
-            ? ptVoices.find((v) =>
-                /francisca|maria|luciana|google|female|fem/i.test(v.name)
-              )
-            : ptVoices.find((v) =>
-                /antonio|daniel|felipe|google|male|masc/i.test(v.name)
-              );
+        const preferred = ptVoices.find((v) =>
+          /antonio|daniel|felipe|google|male|masc/i.test(v.name)
+        );
         return preferred || ptVoices[0];
       };
 
-      // Support dialogue lines like "Prof. Monge: ... \n Profa. Épura: ..."
-      const turns: Array<{ who: "monge" | "epura"; line: string }> =
-        professor === "dialogue"
-          ? text
-              .split(/\n+/)
-              .map((l) => l.trim())
-              .filter(Boolean)
-              .map((line) => {
-                if (/^profa\.?\s*[eé]pura\s*:/i.test(line)) {
-                  return {
-                    who: "epura" as const,
-                    line: line.replace(/^profa\.?\s*[eé]pura\s*:/i, "").trim(),
-                  };
-                }
-                return {
-                  who: "monge" as const,
-                  line: line.replace(/^prof\.?\s*monge\s*:/i, "").trim(),
-                };
-              })
-          : [{ who: professor, line: text }];
+      const cleanText = text
+        .replace(/^prof\.?\s*monge\s*:/gim, "")
+        .replace(/^profa\.?\s*[eé]pura\s*:/gim, "")
+        .trim();
 
       setEngine("browser");
-      setModelUsed("pt-BR Web Speech");
+      setModelUsed("pt-BR Web Speech (Masc.)");
       setSpeakingId(id);
+      setActiveSpeaker("monge");
 
-      const speakIndex = (idx: number) => {
-        if (cancelledRef.current || idx >= turns.length) {
-          setSpeakingId(null);
-          setActiveSpeaker(null);
-          return;
-        }
-        const turn = turns[idx];
-        setActiveSpeaker(turn.who);
-        const u = new SpeechSynthesisUtterance(turn.line);
-        u.lang = "pt-BR";
-        u.rate = Math.max(0.75, Math.min(1.4, rate));
-        u.pitch = turn.who === "epura" ? 1.09 : 0.93;
-        const v = pickVoice(turn.who);
-        if (v) u.voice = v;
-        u.onend = () => speakIndex(idx + 1);
-        u.onerror = () => {
-          setSpeakingId(null);
-          setActiveSpeaker(null);
-        };
-        window.speechSynthesis.speak(u);
+      const u = new SpeechSynthesisUtterance(cleanText);
+      u.lang = "pt-BR";
+      u.rate = Math.max(0.75, Math.min(1.4, rate));
+      u.pitch = 0.92;
+      const v = pickVoice();
+      if (v) u.voice = v;
+      u.onend = () => {
+        setSpeakingId(null);
+        setActiveSpeaker(null);
       };
-
-      speakIndex(0);
+      u.onerror = () => {
+        setSpeakingId(null);
+        setActiveSpeaker(null);
+      };
+      window.speechSynthesis.speak(u);
     },
     []
   );

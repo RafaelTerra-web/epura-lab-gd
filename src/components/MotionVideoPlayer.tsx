@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { VIDEO_EPISODES, VideoEpisode } from "@/lib/video-episodes";
+import {
+  EpisodeTimingsMap,
+  VIDEO_EPISODES,
+  VideoEpisode,
+  VideoSceneCue,
+} from "@/lib/video-episodes";
 import { LipSyncMascot, MouthFrame } from "./LipSyncMascot";
 import { GDPoint, GDSegment } from "@/lib/gd-math";
 import {
@@ -39,20 +44,237 @@ function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - c, 3);
 }
 
-// Procedural 60fps 16:9 SVG Motion Graphics Renderer (viewBox 800 x 450)
+/**
+ * Hand-choreographed 16:9 60fps Motion Graphics Renderer (viewBox 800 x 450)
+ * Every single sceneId maps 1:1 to the EXACT spoken studio scene in `timings.json`!
+ */
 function MotionCanvas({
   episode,
-  progress,
-  sceneIndex,
+  sceneId,
   localT,
+  progress,
 }: {
   episode: VideoEpisode;
-  progress: number;
-  sceneIndex: number;
+  sceneId: string;
   localT: number;
+  progress: number;
 }) {
-  const e = easeOutCubic(Math.min(1, localT * 2.2));
-  const kenBurns = 1 + progress * 0.045;
+  const e = easeOutCubic(Math.min(1, localT * 2.6));
+  const eSlow = easeOutCubic(Math.min(1, localT * 1.15));
+  const subtleZoom = 1 + progress * 0.025;
+
+  // Helper for reusable animated Diedro profile + live Epura pair
+  const renderDiedroFocus = (
+    diedro: 1 | 2 | 3 | 4,
+    showRuleFooter = false
+  ) => {
+    const specs = {
+      1: {
+        dx: 88,
+        dy: -72,
+        col: "#38BDF8",
+        title: "1º DIEDRO (+ ; +)",
+        pvY: -58,
+        phY: 62,
+        pvTxt: "A' ACIMA (+)",
+        phTxt: "A ABAIXO (+)",
+        badge: "Lados OPOSTOS · Observador aqui!",
+      },
+      2: {
+        dx: -88,
+        dy: -72,
+        col: "#2DD4BF",
+        title: "2º DIEDRO (− ; +)",
+        pvY: -68,
+        phY: -34,
+        pvTxt: "A' ACIMA (+)",
+        phTxt: "A ACIMA (−)",
+        badge: "AMBAS ACIMA da Linha de Terra!",
+      },
+      3: {
+        dx: -88,
+        dy: 72,
+        col: "#F87171",
+        title: "3º DIEDRO (− ; −)",
+        pvY: 58,
+        phY: -62,
+        pvTxt: "A' ABAIXO (−)",
+        phTxt: "A ACIMA (−)",
+        badge: "Espelho do 1º: A sobe e A' desce!",
+      },
+      4: {
+        dx: 88,
+        dy: 72,
+        col: "#F59E0B",
+        title: "4º DIEDRO (+ ; −)",
+        pvY: 36,
+        phY: 70,
+        pvTxt: "A' ABAIXO (−)",
+        phTxt: "A ABAIXO (+)",
+        badge: "ÍMPARES = Opostos · PARES = Mesmo Lado!",
+      },
+    }[diedro];
+
+    return (
+      <g opacity={e}>
+        {[
+          { d: 1, x: 245, y: 74, w: 145, h: 126, col: "#38BDF8", lbl: "1º D (+;+)" },
+          { d: 2, x: 100, y: 74, w: 145, h: 126, col: "#2DD4BF", lbl: "2º D (−;+)" },
+          { d: 3, x: 100, y: 200, w: 145, h: 126, col: "#F87171", lbl: "3º D (−;−)" },
+          { d: 4, x: 245, y: 200, w: 145, h: 126, col: "#F59E0B", lbl: "4º D (+;−)" },
+        ].map((q) => (
+          <g key={q.d}>
+            <rect
+              x={q.x}
+              y={q.y}
+              width={q.w}
+              height={q.h}
+              rx="12"
+              fill={q.col}
+              fillOpacity={diedro === q.d ? 0.26 : 0.04}
+              stroke={diedro === q.d ? q.col : "rgba(255,255,255,0.12)"}
+              strokeWidth={diedro === q.d ? 2.6 : 1}
+            />
+            <text
+              x={q.x + 72}
+              y={q.y + 28}
+              textAnchor="middle"
+              fontSize="13"
+              fontWeight="800"
+              fill={q.col}
+              fontFamily="var(--font-mono), monospace"
+            >
+              {q.lbl}
+            </text>
+          </g>
+        ))}
+
+        {/* π' and π axes */}
+        <line x1="245" y1="62" x2="245" y2="338" stroke="#F87171" strokeWidth="3.5" />
+        <line x1="88" y1="200" x2="402" y2="200" stroke="#38BDF8" strokeWidth="3.5" />
+        <circle cx="245" cy="200" r="6" fill="#2DD4BF" />
+
+        {/* Projecting rays from (A) */}
+        <line
+          x1={245 + specs.dx}
+          y1={200 + specs.dy}
+          x2={245}
+          y2={200 + specs.dy}
+          stroke="#38BDF8"
+          strokeDasharray="5 4"
+          strokeWidth="2"
+        />
+        <line
+          x1={245 + specs.dx}
+          y1={200 + specs.dy}
+          x2={245 + specs.dx}
+          y2={200}
+          stroke="#F87171"
+          strokeDasharray="5 4"
+          strokeWidth="2"
+        />
+        <circle
+          cx={245 + specs.dx}
+          cy={200 + specs.dy}
+          r="11"
+          fill={specs.col}
+          stroke="#FFFFFF"
+          strokeWidth="2"
+        />
+        <text
+          x={245 + specs.dx + (specs.dx > 0 ? 16 : -34)}
+          y={204 + specs.dy}
+          fontSize="15"
+          fontWeight="800"
+          fill="#FFFFFF"
+          fontFamily="var(--font-mono), monospace"
+        >
+          (A)
+        </text>
+        <circle cx="245" cy={200 + specs.dy} r="6.5" fill="#F87171" />
+        <circle cx={245 + specs.dx} cy="200" r="6.5" fill="#38BDF8" />
+
+        {/* Right Card: Exact Épura 2D result */}
+        <rect
+          x="432"
+          y="74"
+          width="210"
+          height="252"
+          rx="18"
+          fill="rgba(15,23,42,0.85)"
+          stroke={specs.col}
+          strokeWidth="2.2"
+        />
+        <text
+          x="537"
+          y="104"
+          textAnchor="middle"
+          fontSize="13"
+          fontWeight="800"
+          fill={specs.col}
+          fontFamily="var(--font-mono), monospace"
+        >
+          {specs.title}
+        </text>
+        <line x1="452" y1="200" x2="622" y2="200" stroke="#2DD4BF" strokeWidth="3.2" />
+        <text x="618" y="192" textAnchor="end" fontSize="11" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+          LT
+        </text>
+        <line
+          x1="505"
+          y1={200 + Math.min(0, specs.pvY, specs.phY)}
+          x2="505"
+          y2={200 + Math.max(0, specs.pvY, specs.phY)}
+          stroke="#94A3B8"
+          strokeDasharray="5 4"
+          strokeWidth="2"
+        />
+        <circle cx="505" cy={200 + specs.pvY * e} r="8" fill="#F87171" />
+        <text
+          x="520"
+          y={205 + specs.pvY * e}
+          fontSize="12.5"
+          fontWeight="800"
+          fill="#FCA5A5"
+          fontFamily="var(--font-mono), monospace"
+        >
+          {specs.pvTxt}
+        </text>
+        <circle cx="505" cy={200 + specs.phY * e} r="8" fill="#38BDF8" />
+        <text
+          x="520"
+          y={205 + specs.phY * e}
+          fontSize="12.5"
+          fontWeight="800"
+          fill="#7DD3FC"
+          fontFamily="var(--font-mono), monospace"
+        >
+          {specs.phTxt}
+        </text>
+
+        <rect
+          x="100"
+          y="344"
+          width="542"
+          height="36"
+          rx="10"
+          fill={showRuleFooter ? "rgba(245,158,11,0.22)" : "rgba(30,41,59,0.85)"}
+          stroke={specs.col}
+        />
+        <text
+          x="371"
+          y="367"
+          textAnchor="middle"
+          fontSize="13.5"
+          fontWeight="800"
+          fill="#FEF3C7"
+          fontFamily="var(--font-mono), monospace"
+        >
+          ✦ {specs.badge}
+        </text>
+      </g>
+    );
+  };
 
   return (
     <svg
@@ -61,12 +283,12 @@ function MotionCanvas({
       preserveAspectRatio="xMidYMid slice"
     >
       <defs>
-        <radialGradient id="studioGlow" cx="45%" cy="42%" r="65%">
-          <stop offset="0%" stopColor="#182A4A" />
+        <radialGradient id="studioGlowV2" cx="45%" cy="42%" r="68%">
+          <stop offset="0%" stopColor="#172A4A" />
           <stop offset="100%" stopColor="#09101E" />
         </radialGradient>
         <pattern
-          id="studioGrid"
+          id="studioGridV2"
           width="32"
           height="32"
           patternUnits="userSpaceOnUse"
@@ -74,666 +296,399 @@ function MotionCanvas({
           <path
             d="M 32 0 L 0 0 0 32"
             fill="none"
-            stroke="rgba(148,163,184,0.09)"
+            stroke="rgba(148,163,184,0.085)"
             strokeWidth="1"
           />
         </pattern>
       </defs>
 
-      {/* Cinema Studio Blueprint Backdrop */}
-      <rect width="800" height="450" fill="url(#studioGlow)" />
-      <rect width="800" height="450" fill="url(#studioGrid)" />
+      <rect width="800" height="450" fill="url(#studioGlowV2)" />
+      <rect width="800" height="450" fill="url(#studioGridV2)" />
 
-      {/* Subtle Corner Viewfinder Brackets (Video Edit Aesthetic) */}
+      {/* Minimalist cinema crop marks */}
       <g stroke="rgba(255,255,255,0.16)" strokeWidth="1.5" fill="none">
-        <path d="M22 44 V22 H44" />
-        <path d="M778 44 V22 H756" />
-        <path d="M22 406 V428 H44" />
+        <path d="M20 42 V20 H42" />
+        <path d="M780 42 V20 H758" />
+        <path d="M20 408 V430 H42" />
       </g>
 
-      {/* Main Kinetic Stage Group (gentle Ken Burns motion) */}
       <g
-        transform={`translate(400 225) scale(${kenBurns.toFixed(4)}) translate(-400 -225)`}
+        transform={`translate(400 225) scale(${subtleZoom.toFixed(4)}) translate(-400 -225)`}
       >
-        {/* ================= EPISODE 01: PROBLEMA DE MONGE ================= */}
+        {/* =================== EPISODE 01: MONGE =================== */}
         {episode.id === "ep01-monge" && (
           <>
-            {sceneIndex === 0 && (
+            {sceneId === "intro" && (
               <g opacity={e}>
                 <rect
-                  x="130"
-                  y="110"
-                  width="460"
-                  height="210"
+                  x="96"
+                  y="95"
+                  width="530"
+                  height="230"
                   rx="24"
                   fill="rgba(56,189,248,0.08)"
                   stroke="#38BDF8"
-                  strokeWidth="1.5"
+                  strokeWidth="1.8"
                 />
-                <text
-                  x="166"
-                  y="158"
-                  fontSize="16"
-                  fontWeight="800"
-                  fill="#38BDF8"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  EPISÓDIO 01 · MÉTODO DE MONGE
+                <text x="134" y="146" fontSize="15" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
+                  EPISÓDIO 01 · GEOMETRIA DESCRITIVA · UERJ
                 </text>
-                <text
-                  x="166"
-                  y="214"
-                  fontSize="40"
-                  fontWeight="800"
-                  fill="#F8FAFC"
-                  fontFamily="var(--font-display), serif"
-                >
-                  Por que projetar
+                <text x="134" y="204" fontSize="39" fontWeight="800" fill="#F8FAFC" fontFamily="var(--font-display), serif">
+                  Do Espaço 3D para a
                 </text>
-                <text
-                  x="166"
-                  y="262"
-                  fontSize="40"
-                  fontWeight="800"
-                  fill="#FDE68A"
-                  fontFamily="var(--font-display), serif"
-                >
-                  3D em 2D?
+                <text x="134" y="252" fontSize="39" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-display), serif">
+                  Folha Plana 2D
                 </text>
                 <line
-                  x1="166"
-                  y1="286"
-                  x2={166 + 340 * e}
-                  y2="286"
+                  x1="134"
+                  y1="278"
+                  x2={134 + 380 * e}
+                  y2="278"
                   stroke="#2DD4BF"
                   strokeWidth="4"
                   strokeLinecap="round"
                 />
+                <text x="134" y="306" fontSize="14" fill="#CBD5E1">
+                  Precisão exata para reconstruir qualquer ponto no espaço!
+                </text>
               </g>
             )}
 
-            {sceneIndex === 1 && (
-              <g>
-                {/* Only Horizontal Floor π */}
+            {sceneId === "ambiguous-shadow" && (
+              <g opacity={e}>
+                {/* Room floor π only */}
                 <polygon
-                  points="130,300 470,350 610,270 270,225"
+                  points="110,300 480,350 620,270 250,225"
                   fill="rgba(56,189,248,0.16)"
                   stroke="#38BDF8"
-                  strokeWidth="2"
+                  strokeWidth="2.2"
                 />
-                <text
-                  x="510"
-                  y="316"
-                  fontSize="16"
-                  fontWeight="800"
-                  fill="#38BDF8"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  π (Chão)
+                <text x="515" y="316" fontSize="15" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
+                  π (Plano Horizontal)
                 </text>
-                {/* Single ambiguous vertical ray */}
-                <line
-                  x1="365"
-                  y1="88"
-                  x2="365"
-                  y2="288"
-                  stroke="#FDE68A"
-                  strokeWidth="2.5"
-                  strokeDasharray="7 5"
-                />
-                {/* Shadow on floor */}
-                <circle cx="365" cy="288" r="10" fill="#38BDF8" />
-                <text
-                  x="384"
-                  y="294"
-                  fontSize="16"
-                  fontWeight="800"
-                  fill="#38BDF8"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  Sombra A (igual!)
+                {/* Vertical rays from above */}
+                <line x1="360" y1="68" x2="360" y2="288" stroke="#FDE68A" strokeWidth="2.5" strokeDasharray="7 5" />
+                <polygon points="360,280 353,266 367,266" fill="#FDE68A" />
+                {/* Shared ambiguous shadow */}
+                <circle cx="360" cy="288" r="11" fill="#38BDF8" />
+                <text x="380" y="294" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                  Sombra A (idêntica!)
                 </text>
-                {/* Two points at different heights casting same shadow */}
-                <circle
-                  cx="365"
-                  cy={195 - Math.sin(localT * Math.PI * 3) * 16}
-                  r="11"
-                  fill="#F87171"
-                />
-                <text
-                  x="385"
-                  y={198 - Math.sin(localT * Math.PI * 3) * 16}
-                  fontSize="15"
-                  fontWeight="800"
-                  fill="#FCA5A5"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  (A₁) altura baixa?
+                {/* Low fly (1m) vs High fly (3m) */}
+                <circle cx="360" cy={218 - Math.sin(localT * 6) * 8} r="11" fill="#F87171" />
+                <text x="382" y={222 - Math.sin(localT * 6) * 8} fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                  Mosca baixa (1m)
                 </text>
-                <circle
-                  cx="365"
-                  cy={115 + Math.sin(localT * Math.PI * 3) * 16}
-                  r="11"
-                  fill="#F59E0B"
-                />
-                <text
-                  x="385"
-                  y={119 + Math.sin(localT * Math.PI * 3) * 16}
-                  fontSize="15"
-                  fontWeight="800"
-                  fill="#FDE68A"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  (A₂) altura alta?
+                <circle cx="360" cy={112 + Math.sin(localT * 6) * 8} r="11" fill="#F59E0B" />
+                <text x="382" y={116 + Math.sin(localT * 6) * 8} fontSize="15" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                  Mosca alta (3m)
                 </text>
-                <rect
-                  x="132"
-                  y="72"
-                  width="180"
-                  height="42"
-                  rx="12"
-                  fill="rgba(239,68,68,0.22)"
-                  stroke="#F87171"
-                />
-                <text
-                  x="222"
-                  y="98"
-                  textAnchor="middle"
-                  fontSize="14"
-                  fontWeight="800"
-                  fill="#FECACA"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  1 PLANO = AMBÍGUO!
+                <rect x="108" y="68" width="218" height="46" rx="12" fill="rgba(239,68,68,0.22)" stroke="#F87171" />
+                <text x="217" y="96" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FECACA" fontFamily="var(--font-mono), monospace">
+                  1 PLANO PERDE A ALTURA!
                 </text>
               </g>
             )}
 
-            {sceneIndex >= 2 && (
-              <g>
-                {/* Vertical Wall π' slides in */}
+            {sceneId === "two-planes" && (
+              <g opacity={e}>
+                {/* Vertical Wall π' sliding in */}
                 <polygon
-                  points={`240,${70 + (1 - e) * 40} 580,${115 + (1 - e) * 40} 580,275 240,230`}
+                  points={`230,${65 + (1 - e) * 35} 570,${110 + (1 - e) * 35} 570,270 230,225`}
                   fill="rgba(248,113,113,0.16)"
                   stroke="#F87171"
-                  strokeWidth="2"
+                  strokeWidth="2.2"
                 />
+                <text x="246" y="102" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                  π&apos; (Plano Vertical)
+                </text>
                 {/* Horizontal Floor π */}
                 <polygon
-                  points="240,230 580,275 450,355 110,310"
+                  points="230,225 570,270 440,355 100,310"
                   fill="rgba(56,189,248,0.16)"
                   stroke="#38BDF8"
-                  strokeWidth="2"
+                  strokeWidth="2.2"
                 />
-                {/* Linha de Terra LT */}
-                <line
-                  x1="225"
-                  y1="228"
-                  x2="595"
-                  y2="277"
-                  stroke="#2DD4BF"
-                  strokeWidth={sceneIndex === 3 ? 5.5 : 3.5}
-                />
-                <text
-                  x="602"
-                  y="282"
-                  fontSize="16"
-                  fontWeight="800"
-                  fill="#2DD4BF"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  LT
+                <text x="415" y="344" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                  π (Plano Horizontal)
                 </text>
-                {/* Spatial Point (A) locked by 2 orthogonal rays */}
-                <line
-                  x1="340"
-                  y1="175"
-                  x2="405"
-                  y2="140"
-                  stroke="#38BDF8"
-                  strokeWidth="2.5"
-                  strokeDasharray="6 4"
-                />
-                <line
-                  x1="340"
-                  y1="175"
-                  x2="340"
-                  y2="290"
-                  stroke="#F87171"
-                  strokeWidth="2.5"
-                  strokeDasharray="6 4"
-                />
-                <line
-                  x1="405"
-                  y1="140"
-                  x2="405"
-                  y2="252"
-                  stroke="#F87171"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
-                />
-                <line
-                  x1="340"
-                  y1="290"
-                  x2="405"
-                  y2="252"
-                  stroke="#38BDF8"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
-                />
-                <circle cx="340" cy="175" r="11" fill="#FDE68A" />
-                <text
-                  x="302"
-                  y="170"
-                  fontSize="17"
-                  fontWeight="800"
-                  fill="#FDE68A"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  (A)
+                {/* 90° Right-angle badge */}
+                <rect x="498" y="216" width="54" height="32" rx="8" fill="#0F172A" stroke="#2DD4BF" strokeWidth="2" />
+                <text x="525" y="237" textAnchor="middle" fontSize="14" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                  90°
                 </text>
-                <circle cx="405" cy="140" r="8" fill="#F87171" />
-                <text
-                  x="420"
-                  y="142"
-                  fontSize="16"
-                  fontWeight="800"
-                  fill="#FCA5A5"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  A&apos; (em π&apos;)
+                {/* Orthogonal projecting rays */}
+                <line x1="335" y1="168" x2="405" y2="132" stroke="#38BDF8" strokeWidth="3" strokeDasharray="6 4" />
+                <line x1="335" y1="168" x2="335" y2="288" stroke="#F87171" strokeWidth="3" strokeDasharray="6 4" />
+                <circle cx="335" cy="168" r="12" fill="#FDE68A" />
+                <text x="292" y="164" fontSize="18" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
+                <circle cx="405" cy="132" r="9" fill="#F87171" />
+                <text x="422" y="137" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (Vertical)</text>
+                <circle cx="335" cy="288" r="9" fill="#38BDF8" />
+                <text x="218" y="296" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (Horizontal)</text>
+              </g>
+            )}
+
+            {sceneId === "lt-and-notation" && (
+              <g opacity={e}>
+                {/* Bold Glowing Linha de Terra */}
+                <line x1="100" y1="142" x2="620" y2="142" stroke="#2DD4BF" strokeWidth="6" strokeLinecap="round" />
+                <line x1="104" y1="152" x2="142" y2="152" stroke="#2DD4BF" strokeWidth="3" />
+                <line x1="578" y1="152" x2="616" y2="152" stroke="#2DD4BF" strokeWidth="3" />
+                <text x="360" y="114" textAnchor="middle" fontSize="22" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                  LINHA DE TERRA (LT) — O &ldquo;RODAPÉ&rdquo;
                 </text>
-                <circle cx="340" cy="290" r="8" fill="#38BDF8" />
-                <text
-                  x="244"
-                  y="302"
-                  fontSize="16"
-                  fontWeight="800"
-                  fill="#7DD3FC"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  A (em π)
-                </text>
-                {sceneIndex === 3 && (
-                  <g>
-                    <rect
-                      x="110"
-                      y="58"
-                      width="330"
-                      height="44"
-                      rx="12"
-                      fill="rgba(45,212,191,0.18)"
-                      stroke="#2DD4BF"
-                    />
-                    <text
-                      x="275"
-                      y="85"
-                      textAnchor="middle"
-                      fontSize="15"
-                      fontWeight="800"
-                      fill="#99F6E4"
-                      fontFamily="var(--font-mono), monospace"
-                    >
-                      1 PONTO (A) ⇄ 2 PROJEÇÕES (A e A&apos;)
+                {/* 3 Notation Cards */}
+                {[
+                  { x: 92, col: "#FDE68A", sym: "(A)", name: "Ponto no Espaço", sub: "Sempre entre parênteses" },
+                  { x: 274, col: "#38BDF8", sym: "A", name: "Proj. Horizontal", sub: "No chão π (sem linha)" },
+                  { x: 456, col: "#F87171", sym: "A'", name: "Proj. Vertical", sub: "Na parede π' (com apóstrofo)" },
+                ].map((c, idx) => (
+                  <g key={idx}>
+                    <rect x={c.x} y="196" width="166" height="148" rx="18" fill="rgba(15,23,42,0.85)" stroke={c.col} strokeWidth="2.2" />
+                    <text x={c.x + 83} y="246" textAnchor="middle" fontSize="36" fontWeight="800" fill={c.col} fontFamily="var(--font-mono), monospace">
+                      {c.sym}
+                    </text>
+                    <text x={c.x + 83} y="286" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FFFFFF">
+                      {c.name}
+                    </text>
+                    <text x={c.x + 83} y="312" textAnchor="middle" fontSize="11.5" fill="#CBD5E1">
+                      {c.sub}
                     </text>
                   </g>
-                )}
+                ))}
+              </g>
+            )}
+
+            {sceneId === "takeaway" && (
+              <g opacity={e}>
+                <rect x="98" y="96" width="530" height="230" rx="24" fill="rgba(45,212,191,0.1)" stroke="#2DD4BF" strokeWidth="2.4" />
+                <text x="363" y="148" textAnchor="middle" fontSize="15" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                  RESUMO DO EPISÓDIO 01 ✓
+                </text>
+                <text x="363" y="210" textAnchor="middle" fontSize="32" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-mono), monospace">
+                  1 Ponto <tspan fill="#FDE68A">(A)</tspan> ⇄ 2 Projeções
+                </text>
+                <text x="363" y="256" textAnchor="middle" fontSize="22" fontWeight="800" fill="#CBD5E1" fontFamily="var(--font-mono), monospace">
+                  <tspan fill="#38BDF8">A</tspan> (avanço/lado) + <tspan fill="#F87171">A&apos;</tspan> (altura)
+                </text>
+                <text x="363" y="298" textAnchor="middle" fontSize="15" fontWeight="700" fill="#99F6E4">
+                  Posição 100% única e reconstruível no espaço 3D!
+                </text>
               </g>
             )}
           </>
         )}
 
-        {/* ================= EPISODE 02: COORDENADAS & XYZ ================= */}
+        {/* =================== EPISODE 02: COORDENADAS =================== */}
         {episode.id === "ep02-coordenadas" && (
           <>
-            {sceneIndex <= 1 && (
-              <g>
-                <text
-                  x="360"
-                  y="112"
-                  textAnchor="middle"
-                  fontSize="15"
-                  fontWeight="800"
-                  fill="#94A3B8"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  CONVENÇÃO BRASILEIRA · ORDEM ALFABÉTICA (X ; Y ; Z)
+            {sceneId === "intro" && (
+              <g opacity={e}>
+                <text x="360" y="102" textAnchor="middle" fontSize="15" fontWeight="800" fill="#94A3B8" fontFamily="var(--font-mono), monospace">
+                  CONVENÇÃO BRASILEIRA (UERJ) · ORDEM ALFABÉTICA
                 </text>
-                <text
-                  x="360"
-                  y="168"
-                  textAnchor="middle"
-                  fontSize="44"
-                  fontWeight="800"
-                  fill="#F8FAFC"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  (A)(
-                  <tspan fill="#2DD4BF">+2</tspan>;{" "}
-                  <tspan fill="#38BDF8">+5</tspan>;{" "}
-                  <tspan fill="#F87171">+3</tspan>)
+                <text x="360" y="166" textAnchor="middle" fontSize="48" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-mono), monospace">
+                  (A)(<tspan fill="#2DD4BF">+2</tspan>; <tspan fill="#38BDF8">+5</tspan>; <tspan fill="#F87171">+3</tspan>)
                 </text>
                 {[
-                  {
-                    x: 92,
-                    col: "#2DD4BF",
-                    num: "1º · X",
-                    name: "ABSCISSA",
-                    desc: "Anda sobre a LT",
-                    delay: 0.0,
-                  },
-                  {
-                    x: 280,
-                    col: "#38BDF8",
-                    num: "2º · Y",
-                    name: "AFASTAMENTO",
-                    desc: "Frente/trás de π'",
-                    delay: 0.25,
-                  },
-                  {
-                    x: 468,
-                    col: "#F87171",
-                    num: "3º · Z",
-                    name: "COTA",
-                    desc: "Altura acima de π",
-                    delay: 0.5,
-                  },
-                ].map((card, i) => {
-                  const op =
-                    sceneIndex === 0
-                      ? e
-                      : easeOutCubic(Math.max(0, (localT - card.delay) * 2.5));
-                  return (
-                    <g
-                      key={i}
-                      opacity={op}
-                      transform={`translate(0 ${(1 - op) * 22})`}
-                    >
-                      <rect
-                        x={card.x}
-                        y="206"
-                        width="172"
-                        height="122"
-                        rx="16"
-                        fill="rgba(15,23,42,0.75)"
-                        stroke={card.col}
-                        strokeWidth="2"
-                      />
-                      <text
-                        x={card.x + 86}
-                        y="240"
-                        textAnchor="middle"
-                        fontSize="16"
-                        fontWeight="800"
-                        fill={card.col}
-                        fontFamily="var(--font-mono), monospace"
-                      >
-                        {card.num}
-                      </text>
-                      <text
-                        x={card.x + 86}
-                        y="272"
-                        textAnchor="middle"
-                        fontSize="17"
-                        fontWeight="800"
-                        fill="#FFFFFF"
-                      >
-                        {card.name}
-                      </text>
-                      <text
-                        x={card.x + 86}
-                        y="302"
-                        textAnchor="middle"
-                        fontSize="12"
-                        fill="#CBD5E1"
-                      >
-                        {card.desc}
-                      </text>
-                    </g>
-                  );
-                })}
+                  { x: 88, col: "#2DD4BF", k: "AB · 1º (X)", t: "Abscissa" },
+                  { x: 274, col: "#38BDF8", k: "AF · 2º (Y)", t: "Afastamento" },
+                  { x: 460, col: "#F87171", k: "CO · 3º (Z)", t: "Cota" },
+                ].map((b, i) => (
+                  <g key={i}>
+                    <rect x={b.x} y="210" width="172" height="106" rx="16" fill="rgba(15,23,42,0.85)" stroke={b.col} strokeWidth="2.2" />
+                    <text x={b.x + 86} y="250" textAnchor="middle" fontSize="15" fontWeight="800" fill={b.col} fontFamily="var(--font-mono), monospace">{b.k}</text>
+                    <text x={b.x + 86} y="286" textAnchor="middle" fontSize="20" fontWeight="800" fill="#FFFFFF">{b.t}</text>
+                  </g>
+                ))}
               </g>
             )}
 
-            {sceneIndex >= 2 && (
-              <g>
-                {/* Live Animated Folding Trap Visual */}
-                <line
-                  x1="110"
-                  y1="215"
-                  x2="585"
-                  y2="215"
-                  stroke="#2DD4BF"
-                  strokeWidth="4"
-                />
-                <text
-                  x="595"
-                  y="221"
-                  fontSize="18"
-                  fontWeight="800"
-                  fill="#2DD4BF"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  LT
+            {sceneId === "abscissa" && (
+              <g opacity={e}>
+                <text x="360" y="88" textAnchor="middle" fontSize="18" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                  1ª COORDENADA · ABSCISSA (X = +2)
                 </text>
-                {/* Linha de chamada at x = +2 */}
-                <line
-                  x1="360"
-                  y1="115"
-                  x2="360"
-                  y2="345"
-                  stroke="#94A3B8"
-                  strokeWidth="2"
-                  strokeDasharray="6 5"
-                />
+                {/* Ruler LT */}
+                <line x1="100" y1="215" x2="620" y2="215" stroke="#2DD4BF" strokeWidth="4" />
+                {[-3, -2, -1, 0, 1, 2, 3].map((v) => (
+                  <g key={v}>
+                    <line x1={360 + v * 68} y1="205" x2={360 + v * 68} y2="225" stroke="#2DD4BF" strokeWidth={v === 0 ? 3.5 : 2} />
+                    <text x={360 + v * 68} y="246" textAnchor="middle" fontSize="14" fontWeight="800" fill={v === 2 ? "#FDE68A" : "#94A3B8"} fontFamily="var(--font-mono), monospace">
+                      {v > 0 ? `+${v}` : v}
+                    </text>
+                  </g>
+                ))}
+                {/* Animated arrow from 0 to +2 */}
+                <line x1="360" y1="215" x2={360 + 136 * e} y2="215" stroke="#F59E0B" strokeWidth="8" strokeLinecap="round" />
+                {/* Vertical Linha de Chamada */}
+                <line x1="496" y1={215 - 110 * e} x2="496" y2={215 + 115 * e} stroke="#FDE68A" strokeWidth="2.5" strokeDasharray="6 5" />
+                <text x="510" y="130" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                  Linha de Chamada (0.5 HB)
+                </text>
+                <text x="360" y="346" textAnchor="middle" fontSize="14" fill="#CBD5E1">
+                  Positivo (+) anda para a DIREITA · Negativo (−) anda para a ESQUERDA
+                </text>
+              </g>
+            )}
+
+            {sceneId === "afastamento" && (
+              <g opacity={e}>
+                <text x="360" y="76" textAnchor="middle" fontSize="18" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
+                  2ª COORDENADA · AFASTAMENTO (Y = +5)
+                </text>
+                {/* Wall π' fixed on left */}
+                <rect x="195" y="110" width="18" height="225" rx="4" fill="#F87171" />
+                <text x="180" y="226" textAnchor="end" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                  Parede π&apos;
+                </text>
+                {/* Floor line */}
+                <line x1="120" y1="255" x2="600" y2="255" stroke="#38BDF8" strokeWidth="3" />
+                {/* Elastic distance arrow stretching +5 forward */}
+                <line x1="213" y1="185" x2={213 + 250 * e} y2="185" stroke="#38BDF8" strokeWidth="6" strokeLinecap="round" />
+                <circle cx={213 + 250 * e} cy="185" r="12" fill="#FDE68A" />
+                <text x={213 + 250 * e + 18} y="190" fontSize="17" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
+                <line x1={213 + 250 * e} y1="185" x2={213 + 250 * e} y2="255" stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
+                <circle cx={213 + 250 * e} cy="255" r="9" fill="#38BDF8" />
+                <text x={213 + 250 * e} y="284" textAnchor="middle" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                  Projeção A (afast. +5)
+                </text>
+                <text x="338" y="168" textAnchor="middle" fontSize="16" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                  ← Distância até π&apos; = +5 →
+                </text>
+              </g>
+            )}
+
+            {sceneId === "cota" && (
+              <g opacity={e}>
+                <text x="360" y="76" textAnchor="middle" fontSize="18" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">
+                  3ª COORDENADA · COTA (Z = +3)
+                </text>
+                {/* Floor π */}
+                <rect x="130" y="275" width="460" height="16" rx="4" fill="#38BDF8" />
+                <text x="580" y="314" textAnchor="end" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                  Chão π (Cota = 0)
+                </text>
+                {/* Wall line */}
+                <line x1="250" y1="100" x2="250" y2="355" stroke="#F87171" strokeWidth="3" />
+                {/* Altitude vector rising +3 */}
+                <line x1="410" y1="275" x2="410" y2={275 - 140 * e} stroke="#F87171" strokeWidth="6" strokeLinecap="round" />
+                <circle cx="410" cy={275 - 140 * e} r="12" fill="#FDE68A" />
+                <text x="428" y={280 - 140 * e} fontSize="17" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">(A)</text>
+                <line x1="410" y1={275 - 140 * e} x2="250" y2={275 - 140 * e} stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
+                <circle cx="250" cy={275 - 140 * e} r="9" fill="#F87171" />
+                <text x="234" y={280 - 140 * e} textAnchor="end" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                  A&apos; (cota +3)
+                </text>
+                <text x="430" y="218" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                  ↑ ALTURA = +3
+                </text>
+              </g>
+            )}
+
+            {sceneId === "trap-y" && (
+              <g opacity={e}>
+                <rect x="98" y="54" width="524" height="40" rx="11" fill="rgba(245,158,11,0.22)" stroke="#F59E0B" />
+                <text x="360" y="79" textAnchor="middle" fontSize="14.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                  ⚡ A PEGADINHA #1: NA ÉPURA, +Y (AFASTAMENTO) DESCE!
+                </text>
+                <line x1="100" y1="215" x2="610" y2="215" stroke="#2DD4BF" strokeWidth="4" />
+                <text x="618" y="220" fontSize="16" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">LT</text>
+                <line x1="360" y1="115" x2="360" y2="352" stroke="#94A3B8" strokeDasharray="6 5" strokeWidth="2" />
                 {/* Cota +3 UP */}
-                <line
-                  x1="360"
-                  y1="215"
-                  x2="360"
-                  y2={215 - 92 * e}
-                  stroke="#F87171"
-                  strokeWidth="5"
-                />
-                <circle cx="360" cy={215 - 92 * e} r="10" fill="#F87171" />
-                <text
-                  x="382"
-                  y={220 - 92 * e}
-                  fontSize="18"
-                  fontWeight="800"
-                  fill="#FCA5A5"
-                  fontFamily="var(--font-mono), monospace"
-                >
+                <line x1="360" y1="215" x2="360" y2={215 - 88 * e} stroke="#F87171" strokeWidth="5.5" />
+                <circle cx="360" cy={215 - 88 * e} r="10" fill="#F87171" />
+                <text x="380" y={220 - 88 * e} fontSize="17" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
                   A&apos; · Cota +3 SOBE ↑
                 </text>
-
                 {/* Afastamento +5 DOWN */}
-                <line
-                  x1="360"
-                  y1="215"
-                  x2="360"
-                  y2={215 + 122 * e}
-                  stroke="#38BDF8"
-                  strokeWidth="5"
-                />
-                <circle cx="360" cy={215 + 122 * e} r="10" fill="#38BDF8" />
-                <text
-                  x="382"
-                  y={220 + 122 * e}
-                  fontSize="18"
-                  fontWeight="800"
-                  fill="#7DD3FC"
-                  fontFamily="var(--font-mono), monospace"
-                >
+                <line x1="360" y1="215" x2="360" y2={215 + 125 * e} stroke="#38BDF8" strokeWidth="5.5" />
+                <circle cx="360" cy={215 + 125 * e} r="10" fill="#38BDF8" />
+                <text x="380" y={220 + 125 * e} fontSize="17" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
                   A · Afast. +5 DESCE ↓
-                </text>
-
-                <rect
-                  x="110"
-                  y="62"
-                  width="465"
-                  height="38"
-                  rx="10"
-                  fill="rgba(245,158,11,0.18)"
-                  stroke="#F59E0B"
-                />
-                <text
-                  x="342"
-                  y="86"
-                  textAnchor="middle"
-                  fontSize="14"
-                  fontWeight="800"
-                  fill="#FDE68A"
-                  fontFamily="var(--font-mono), monospace"
-                >
-                  ⚡ A PEGADINHA: NA ÉPURA, +Y (AFASTAMENTO) VAI PARA BAIXO!
                 </text>
               </g>
             )}
           </>
         )}
 
-        {/* ================= EPISODE 03: OS 4 DIEDROS ================= */}
-        {episode.id === "ep03-diedros" && (() => {
-          const activeD =
-            sceneIndex === 0
-              ? 1
-              : Math.min(4, Math.floor(localT * 4) + 1);
-          const coords = [
-            { d: 1, dx: 95, dy: -75, col: "#38BDF8", sign: "(+; +)", pvY: -55, phY: 55 },
-            { d: 2, dx: -95, dy: -75, col: "#2DD4BF", sign: "(−; +)", pvY: -65, phY: -32 },
-            { d: 3, dx: -95, dy: 75, col: "#F87171", sign: "(−; −)", pvY: 55, phY: -55 },
-            { d: 4, dx: 95, dy: 75, col: "#F59E0B", sign: "(+; −)", pvY: 65, phY: 32 },
-          ];
-          const cur = coords[activeD - 1];
-          return (
-            <g>
-              {/* Left: 4 Quadrant Cross */}
-              {[
-                { d: 1, x: 260, y: 78, w: 150, h: 132, col: "#38BDF8", lbl: "1º D (+;+)" },
-                { d: 2, x: 110, y: 78, w: 150, h: 132, col: "#2DD4BF", lbl: "2º D (−;+)" },
-                { d: 3, x: 110, y: 210, w: 150, h: 132, col: "#F87171", lbl: "3º D (−;−)" },
-                { d: 4, x: 260, y: 210, w: 150, h: 132, col: "#F59E0B", lbl: "4º D (+;−)" },
-              ].map((q) => (
-                <g key={q.d}>
-                  <rect
-                    x={q.x}
-                    y={q.y}
-                    width={q.w}
-                    height={q.h}
-                    rx="12"
-                    fill={q.col}
-                    fillOpacity={activeD === q.d ? 0.24 : 0.05}
-                    stroke={activeD === q.d ? q.col : "rgba(255,255,255,0.12)"}
-                    strokeWidth={activeD === q.d ? 2.5 : 1}
-                  />
-                  <text
-                    x={q.x + 75}
-                    y={q.y + 30}
-                    textAnchor="middle"
-                    fontSize="14"
-                    fontWeight="800"
-                    fill={q.col}
-                    fontFamily="var(--font-mono), monospace"
-                  >
-                    {q.lbl}
-                  </text>
-                </g>
-              ))}
-              <line x1="260" y1="68" x2="260" y2="352" stroke="#F87171" strokeWidth="3.5" />
-              <line x1="100" y1="210" x2="420" y2="210" stroke="#38BDF8" strokeWidth="3.5" />
-              <circle cx={260 + cur.dx} cy={210 + cur.dy} r="11" fill={cur.col} />
-              <text
-                x={260 + cur.dx + 16}
-                y={214 + cur.dy}
-                fontSize="15"
-                fontWeight="800"
-                fill="#FFFFFF"
-                fontFamily="var(--font-mono), monospace"
-              >
-                (A)
-              </text>
+        {/* =================== EPISODE 03: 4 DIEDROS =================== */}
+        {episode.id === "ep03-diedros" && (
+          <>
+            {sceneId === "intro" && (
+              <g opacity={e}>
+                <text x="360" y="66" textAnchor="middle" fontSize="17" fontWeight="800" fill="#F59E0B" fontFamily="var(--font-mono), monospace">
+                  OS 4 DIEDROS · SENTIDO ANTI-HORÁRIO ↺
+                </text>
+                <line x1="360" y1="92" x2="360" y2="368" stroke="#F87171" strokeWidth="4" />
+                <line x1="150" y1="230" x2="570" y2="230" stroke="#38BDF8" strokeWidth="4" />
+                {/* Counter-clockwise arc arrow */}
+                <path
+                  d="M 440 185 A 95 95 0 1 0 438 275"
+                  fill="none"
+                  stroke="#F59E0B"
+                  strokeWidth="3.5"
+                  strokeDasharray="8 5"
+                />
+                <text x="462" y="152" fontSize="22" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">1º D</text>
+                <text x="205" y="152" fontSize="22" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">2º D</text>
+                <text x="205" y="316" fontSize="22" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">3º D</text>
+                <text x="462" y="316" fontSize="22" fontWeight="800" fill="#F59E0B" fontFamily="var(--font-mono), monospace">4º D</text>
+              </g>
+            )}
+            {sceneId === "d1" && renderDiedroFocus(1)}
+            {sceneId === "d2" && renderDiedroFocus(2)}
+            {sceneId === "d3" && renderDiedroFocus(3)}
+            {sceneId === "d4-rule" && renderDiedroFocus(4, true)}
+          </>
+        )}
 
-              {/* Right: Live Epura Result */}
-              <rect
-                x="455"
-                y="78"
-                width="175"
-                height="264"
-                rx="16"
-                fill="rgba(15,23,42,0.8)"
-                stroke={cur.col}
-                strokeWidth="2"
-              />
-              <text
-                x="542"
-                y="108"
-                textAnchor="middle"
-                fontSize="13"
-                fontWeight="800"
-                fill={cur.col}
-                fontFamily="var(--font-mono), monospace"
-              >
-                ÉPURA · {activeD}º DIEDRO
-              </text>
-              <line x1="478" y1="210" x2="606" y2="210" stroke="#2DD4BF" strokeWidth="3" />
-              <line
-                x1="542"
-                y1={210 + Math.min(0, cur.pvY, cur.phY)}
-                x2="542"
-                y2={210 + Math.max(0, cur.pvY, cur.phY)}
-                stroke="#94A3B8"
-                strokeDasharray="5 4"
-                strokeWidth="2"
-              />
-              <circle cx="542" cy={210 + cur.pvY} r="8" fill="#F87171" />
-              <text x="556" y={215 + cur.pvY} fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                A&apos;
-              </text>
-              <circle cx="542" cy={210 + cur.phY} r="8" fill="#38BDF8" />
-              <text x="526" y={215 + cur.phY} textAnchor="end" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                A
-              </text>
-              <text
-                x="542"
-                y="324"
-                textAnchor="middle"
-                fontSize="12"
-                fontWeight="700"
-                fill="#E2E8F0"
-              >
-                {activeD % 2 === 1 ? "Lados OPOSTOS da LT" : "MESMO lado da LT"}
-              </text>
-            </g>
-          );
-        })()}
-
-        {/* ================= EPISODE 04: REBATIMENTO 90° ================= */}
+        {/* =================== EPISODE 04: REBATIMENTO 90° =================== */}
         {episode.id === "ep04-rebatimento" && (() => {
+          const cx = 340;
+          const cy = 225;
+          const len = 135;
           const foldDeg =
-            sceneIndex === 0 ? 0 : sceneIndex === 1 ? easeOutCubic(localT) * 90 : 90;
+            sceneId === "intro" || sceneId === "hinge"
+              ? 0
+              : sceneId === "front-down" || sceneId === "back-up"
+                ? eSlow * 90
+                : 90;
           const rad = (foldDeg * Math.PI) / 180;
-          const cx = 330;
-          const cy = 220;
-          const len = 130;
+
+          if (sceneId === "chamada") {
+            return (
+              <g opacity={e}>
+                <text x="360" y="76" textAnchor="middle" fontSize="18" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                  ÉPURA PRONTA: A LINHA DE CHAMADA (90° À LT)
+                </text>
+                <line x1="110" y1="220" x2="610" y2="220" stroke="#2DD4BF" strokeWidth="4.5" />
+                <line x1="360" y1="118" x2="360" y2="338" stroke="#FDE68A" strokeWidth="3.5" strokeDasharray="7 5" />
+                <rect x="360" y="200" width="20" height="20" fill="none" stroke="#FDE68A" strokeWidth="2" />
+                <circle cx="360" cy="128" r="10" fill="#F87171" />
+                <text x="380" y="134" fontSize="18" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (mesma abscissa X!)</text>
+                <circle cx="360" cy="326" r="10" fill="#38BDF8" />
+                <text x="380" y="332" fontSize="18" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (mesma abscissa X!)</text>
+              </g>
+            );
+          }
+
           return (
-            <g>
-              <text
-                x="330"
-                y="62"
-                textAnchor="middle"
-                fontSize="18"
-                fontWeight="800"
-                fill="#2DD4BF"
-                fontFamily="var(--font-mono), monospace"
-              >
-                REBATIMENTO CONTÍNUO: {Math.round(foldDeg)}°
+            <g opacity={e}>
+              <text x="340" y="62" textAnchor="middle" fontSize="17" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                {sceneId === "intro"
+                  ? "NO ESPAÇO: π E π' FORMAM 90°"
+                  : sceneId === "hinge"
+                    ? "DOBRADIÇA NA LT · GIRO HORÁRIO DE 90°"
+                    : sceneId === "front-down"
+                      ? `PISO FRONTAL (πA) DESCENDO: ${Math.round(foldDeg)}°`
+                      : `PISO TRASEIRO (πP) SUBINDO: ${Math.round(foldDeg)}°`}
               </text>
               {/* Fixed PV */}
-              <line x1={cx} y1={85} x2={cx} y2={355} stroke="#F87171" strokeWidth="4.5" />
-              <text x={cx + 12} y={98} fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                π&apos; (Fixo)
-              </text>
+              <line x1={cx} y1="88" x2={cx} y2="362" stroke="#F87171" strokeWidth="4.5" />
+              <text x={cx + 12} y="102" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">π&apos;S (Fixo)</text>
+              <text x={cx + 12} y="356" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">π&apos;I (Fixo)</text>
               {/* Folding PH */}
               <line
                 x1={cx - len * Math.cos(rad)}
@@ -743,270 +698,289 @@ function MotionCanvas({
                 stroke="#38BDF8"
                 strokeWidth="4.5"
               />
-              {/* Compass Arcs */}
+              {/* Front compass arc */}
               <path
-                d={`M ${cx + 92} ${cy} A 92 92 0 0 1 ${cx} ${cy + 92}`}
+                d={`M ${cx + 96} ${cy} A 96 96 0 0 1 ${cx} ${cy + 96}`}
                 fill="none"
-                stroke="#F59E0B"
-                strokeWidth="2.5"
+                stroke="#38BDF8"
+                strokeWidth={sceneId === "front-down" ? 4 : 2}
                 strokeDasharray="6 4"
               />
+              {/* Back compass arc */}
               <path
-                d={`M ${cx - 92} ${cy} A 92 92 0 0 1 ${cx} ${cy - 92}`}
+                d={`M ${cx - 96} ${cy} A 96 96 0 0 1 ${cx} ${cy - 96}`}
                 fill="none"
                 stroke="#2DD4BF"
-                strokeWidth="2.5"
+                strokeWidth={sceneId === "back-up" ? 4 : 2}
                 strokeDasharray="6 4"
               />
-              {/* LT hinge */}
-              <circle cx={cx} cy={cy} r="9" fill="#2DD4BF" />
-              {/* A' fixed */}
-              <circle cx={cx} cy={cy - 78} r="9" fill="#F87171" />
-              <text x={cx - 32} y={cy - 73} fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                A&apos;
+              {/* LT Hinge */}
+              <circle cx={cx} cy={cy} r={sceneId === "hinge" ? 13 : 8} fill="#2DD4BF" stroke="#FFFFFF" strokeWidth="2" />
+              {/* Front point A (+Y) */}
+              <circle cx={cx + 96 * Math.cos(rad)} cy={cy + 96 * Math.sin(rad)} r="10" fill="#38BDF8" />
+              <text x={cx + 96 * Math.cos(rad) + 14} y={cy + 96 * Math.sin(rad) + 6} fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                πA (+Y desce!)
               </text>
-              {/* A swinging along compass arc! */}
-              <circle
-                cx={cx + 92 * Math.cos(rad)}
-                cy={cy + 92 * Math.sin(rad)}
-                r="10"
-                fill="#38BDF8"
-              />
-              <text
-                x={cx + 92 * Math.cos(rad) + 16}
-                y={cy + 92 * Math.sin(rad) + 6}
-                fontSize="16"
-                fontWeight="800"
-                fill="#7DD3FC"
-                fontFamily="var(--font-mono), monospace"
-              >
-                A (+Y gira p/ baixo!)
+              {/* Back point B (-Y) */}
+              <circle cx={cx - 96 * Math.cos(rad)} cy={cy - 96 * Math.sin(rad)} r="10" fill="#2DD4BF" />
+              <text x={cx - 96 * Math.cos(rad) - 14} y={cy - 96 * Math.sin(rad) - 8} textAnchor="end" fontSize="15" fontWeight="800" fill="#99F6E4" fontFamily="var(--font-mono), monospace">
+                πP (−Y sobe!)
               </text>
             </g>
           );
         })()}
 
-        {/* ================= EPISODE 05: BISSETORES ================= */}
+        {/* =================== EPISODE 05: BISSETORES =================== */}
         {episode.id === "ep05-bissetores" && (
-          <g>
-            {/* Cross + 45° Bisectors */}
-            <line x1="270" y1="75" x2="270" y2="355" stroke="#F87171" strokeWidth="3" />
-            <line x1="125" y1="215" x2="415" y2="215" stroke="#38BDF8" strokeWidth="3" />
-            {/* β13 */}
-            <line
-              x1="150"
-              y1="335"
-              x2="390"
-              y2="95"
-              stroke="#F59E0B"
-              strokeWidth={sceneIndex === 1 ? 5 : 2.5}
-              strokeDasharray="8 5"
-            />
-            <text x="396" y="96" fontSize="15" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
-              β₁₃ (45°)
-            </text>
-            {/* β24 */}
-            <line
-              x1="150"
-              y1="95"
-              x2="390"
-              y2="335"
-              stroke="#A78BFA"
-              strokeWidth={sceneIndex === 2 ? 5 : 2.5}
-              strokeDasharray="8 5"
-            />
-            <text x="115" y="92" fontSize="15" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace">
-              β₂₄ (45°)
-            </text>
+          <g opacity={e}>
+            {sceneId === "intro" && (
+              <>
+                <text x="360" y="130" textAnchor="middle" fontSize="16" fontWeight="800" fill="#A78BFA" fontFamily="var(--font-mono), monospace">
+                  EPISÓDIO 05 · NÍVEL PROVA UERJ
+                </text>
+                <text x="360" y="196" textAnchor="middle" fontSize="38" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
+                  Casos Especiais &amp; Bissetores
+                </text>
+                <text x="360" y="254" textAnchor="middle" fontSize="18" fontWeight="700" fill="#CBD5E1" fontFamily="var(--font-mono), monospace">
+                  Coordenada Zero · 1º Bissetor (β₁₃) · 2º Bissetor (β₂₄)
+                </text>
+              </>
+            )}
 
-            {/* Right: Epura Signature */}
-            <rect
-              x="462"
-              y="92"
-              width="176"
-              height="245"
-              rx="18"
-              fill="rgba(15,23,42,0.85)"
-              stroke={sceneIndex === 2 ? "#A78BFA" : "#F59E0B"}
-              strokeWidth="2.2"
-            />
-            <line x1="485" y1="215" x2="615" y2="215" stroke="#2DD4BF" strokeWidth="3" />
-            {sceneIndex === 0 && (
+            {sceneId === "zero-cota" && (
               <>
-                <circle cx="550" cy="215" r="9" fill="#F87171" />
-                <circle cx="550" cy="285" r="9" fill="#38BDF8" />
-                <text x="550" y="130" textAnchor="middle" fontSize="13" fontWeight="800" fill="#F8FAFC" fontFamily="var(--font-mono), monospace">
-                  Cota = 0 → A&apos; na LT
+                <text x="360" y="72" textAnchor="middle" fontSize="17" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">
+                  QUANDO UMA COORDENADA VALE ZERO!
                 </text>
+                <line x1="100" y1="220" x2="620" y2="220" stroke="#2DD4BF" strokeWidth="4" />
+                {/* Left: Cota = 0 */}
+                <line x1="210" y1="220" x2="210" y2="310" stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
+                <circle cx="210" cy="220" r="9" fill="#F87171" />
+                <text x="210" y="196" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; na LT (Cota=0)</text>
+                <circle cx="210" cy="310" r="9" fill="#38BDF8" />
+                <text x="210" y="338" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (em π)</text>
+                {/* Center: LT */}
+                <circle cx="360" cy="220" r="11" fill="#FDE68A" />
+                <text x="360" y="256" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">Na LT (0;0)</text>
+                {/* Right: Afast = 0 */}
+                <line x1="510" y1="130" x2="510" y2="220" stroke="#94A3B8" strokeDasharray="5 4" strokeWidth="2" />
+                <circle cx="510" cy="220" r="9" fill="#38BDF8" />
+                <text x="510" y="250" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">C na LT (Afast.=0)</text>
+                <circle cx="510" cy="130" r="9" fill="#F87171" />
+                <text x="510" y="110" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">C&apos; (em π&apos;)</text>
               </>
             )}
-            {sceneIndex === 1 && (
+
+            {(sceneId === "bisectors-intro" || sceneId === "b13" || sceneId === "b24") && (
               <>
-                <line x1="550" y1="145" x2="550" y2="285" stroke="#F59E0B" strokeDasharray="5 4" strokeWidth="2.5" />
-                <circle cx="550" cy="145" r="9" fill="#F87171" />
-                <circle cx="550" cy="285" r="9" fill="#38BDF8" />
-                <text x="550" y="122" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
-                  β₁₃ · SIMÉTRICOS!
-                </text>
-              </>
-            )}
-            {sceneIndex === 2 && (
-              <>
-                <circle
-                  cx="550"
-                  cy={152}
-                  r={16 + Math.sin(localT * Math.PI * 4) * 3}
-                  fill="rgba(167,139,250,0.3)"
-                  stroke="#A78BFA"
-                  strokeWidth="3"
-                />
-                <circle cx="550" cy="152" r="8" fill="#F87171" />
-                <text x="550" y="122" textAnchor="middle" fontSize="14" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace">
-                  β₂₄ · B ≡ B&apos; !
-                </text>
+                <line x1="255" y1="74" x2="255" y2="354" stroke="#F87171" strokeWidth="3" />
+                <line x1="115" y1="214" x2="395" y2="214" stroke="#38BDF8" strokeWidth="3" />
+                <line x1="135" y1="334" x2="375" y2="94" stroke="#F59E0B" strokeWidth={sceneId === "b13" ? 5.5 : 3} strokeDasharray="8 5" />
+                <text x="382" y="96" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">β₁₃ (45°)</text>
+                <line x1="135" y1="94" x2="375" y2="334" stroke="#A78BFA" strokeWidth={sceneId === "b24" ? 5.5 : 3} strokeDasharray="8 5" />
+                <text x="108" y="90" fontSize="14" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace">β₂₄ (45°)</text>
+
+                <rect x="445" y="88" width="195" height="250" rx="18" fill="rgba(15,23,42,0.88)" stroke={sceneId === "b24" ? "#A78BFA" : "#F59E0B"} strokeWidth="2.4" />
+                <line x1="468" y1="214" x2="618" y2="214" stroke="#2DD4BF" strokeWidth="3" />
+                {sceneId === "b13" && (
+                  <>
+                    <text x="542" y="118" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">1º BISSETOR (+3; +3)</text>
+                    <line x1="542" y1="146" x2="542" y2="282" stroke="#F59E0B" strokeDasharray="5 4" strokeWidth="2.5" />
+                    <circle cx="542" cy="146" r="9" fill="#F87171" />
+                    <text x="560" y="151" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (+3)</text>
+                    <circle cx="542" cy="282" r="9" fill="#38BDF8" />
+                    <text x="560" y="287" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (+3)</text>
+                    <text x="542" y="320" textAnchor="middle" fontSize="12" fontWeight="800" fill="#FDE68A">SIMÉTRICOS NA LT!</text>
+                  </>
+                )}
+                {sceneId === "b24" && (
+                  <>
+                    <text x="542" y="118" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace">2º BISSETOR (−3; +3)</text>
+                    <line x1="542" y1="150" x2="542" y2="214" stroke="#A78BFA" strokeDasharray="5 4" strokeWidth="2.5" />
+                    <circle cx="542" cy="150" r={15 + Math.sin(localT * 8) * 3} fill="rgba(167,139,250,0.28)" stroke="#A78BFA" strokeWidth="3" />
+                    <circle cx="542" cy="150" r="8" fill="#F87171" />
+                    <text x="542" y="264" textAnchor="middle" fontSize="19" fontWeight="800" fill="#DDD6FE" fontFamily="var(--font-mono), monospace">B ≡ B&apos; !</text>
+                    <text x="542" y="294" textAnchor="middle" fontSize="12" fontWeight="700" fill="#E9D5FF">COINCIDENTES!</text>
+                  </>
+                )}
+                {sceneId === "bisectors-intro" && (
+                  <>
+                    <text x="542" y="160" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">|Afast.| = |Cota|</text>
+                    <text x="542" y="256" textAnchor="middle" fontSize="13" fill="#CBD5E1">Cortam os diedros</text>
+                    <text x="542" y="278" textAnchor="middle" fontSize="13" fill="#CBD5E1">exatamente a 45°!</text>
+                  </>
+                )}
               </>
             )}
           </g>
         )}
 
-        {/* ================= EPISODE 06: UERJ EX. 1 E EX. 2 ================= */}
+        {/* =================== EPISODE 06: UERJ EX. 1 & EX. 2 =================== */}
         {episode.id === "ep06-uerj" && (
-          <g>
-            {sceneIndex <= 1 ? (
+          <g opacity={e}>
+            {sceneId === "intro" && (
               <>
-                <text x="340" y="72" textAnchor="middle" fontSize="15" fontWeight="800" fill="#FB7185" fontFamily="var(--font-mono), monospace">
-                  EXERCÍCIO 1 UERJ · (A)(+2;+5;+3) e (B)(−2;−5;−3)
+                <rect x="96" y="96" width="530" height="230" rx="24" fill="rgba(251,113,133,0.1)" stroke="#FB7185" strokeWidth="2" />
+                <text x="361" y="148" textAnchor="middle" fontSize="15" fontWeight="800" fill="#FB7185" fontFamily="var(--font-mono), monospace">
+                  SLIDE DA AULA 1 · UERJ
                 </text>
-                <line x1="110" y1="220" x2="570" y2="220" stroke="#2DD4BF" strokeWidth="4" />
-                {/* r' and r crossing EXACTLY at origin (340, 220)! */}
-                <line x1="220" y1="290" x2="460" y2="150" stroke="#F87171" strokeWidth="4" />
-                <line x1="220" y1="110" x2="460" y2="330" stroke="#38BDF8" strokeWidth="4" />
-                <circle cx="460" cy="150" r="8" fill="#F87171" />
-                <text x="476" y="154" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (+3)</text>
-                <circle cx="460" cy="330" r="8" fill="#38BDF8" />
-                <text x="476" y="334" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (+5)</text>
-                <circle cx="220" cy="290" r="8" fill="#F87171" />
-                <text x="150" y="294" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">B&apos; (−3)</text>
-                <circle cx="220" cy="110" r="8" fill="#38BDF8" />
-                <text x="150" y="114" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">B (−5)</text>
-                {/* Explosive Origin Highlight */}
-                <circle cx="340" cy="220" r={16 + e * 10} fill="rgba(245,158,11,0.22)" stroke="#F59E0B" strokeWidth="3" />
-                <circle cx="340" cy="220" r="7" fill="#FDE68A" />
-                <rect x="242" y="346" width="196" height="34" rx="10" fill="#F59E0B" />
-                <text x="340" y="368" textAnchor="middle" fontSize="13" fontWeight="800" fill="#1C1917" fontFamily="var(--font-mono), monospace">
-                  CRUZA A LT NA ORIGEM O!
+                <text x="361" y="200" textAnchor="middle" fontSize="34" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-display), serif">
+                  Resolução dos Exercícios 1 e 2
+                </text>
+                <text x="361" y="252" textAnchor="middle" fontSize="14" fontWeight="700" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                  Ex. 1: (A)(+2; +5; +3) e (B)(−2; −5; −3)
+                </text>
+                <text x="361" y="282" textAnchor="middle" fontSize="14" fontWeight="700" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                  Ex. 2: (A)(+1;+2;+3) · (B)(+2;+3;+4) · (C)(+3;+4;+5)
                 </text>
               </>
-            ) : (
+            )}
+
+            {(sceneId === "ex1-points" || sceneId === "ex1-line") && (
               <>
-                <text x="340" y="72" textAnchor="middle" fontSize="15" fontWeight="800" fill="#34D399" fontFamily="var(--font-mono), monospace">
-                  EXERCÍCIO 2 UERJ · PLOT TWIST: 3 PONTOS COLINEARES!
+                <text x="350" y="68" textAnchor="middle" fontSize="15" fontWeight="800" fill="#FB7185" fontFamily="var(--font-mono), monospace">
+                  EX. 1: (A)(+2; +5; +3) [1ºD] ⇄ (B)(−2; −5; −3) [3ºD]
                 </text>
-                <line x1="110" y1="225" x2="570" y2="225" stroke="#2DD4BF" strokeWidth="4" />
-                {/* Collinear +45° above & -45° below */}
-                <line x1="250" y1="175" x2="490" y2="95" stroke="#F87171" strokeWidth="4.5" />
-                <line x1="250" y1="275" x2="490" y2="355" stroke="#38BDF8" strokeWidth="4.5" />
+                <line x1="100" y1="218" x2="600" y2="218" stroke="#2DD4BF" strokeWidth="4" />
+                {sceneId === "ex1-line" && (
+                  <>
+                    <line x1="220" y1="288" x2={220 + 260 * e} y2={288 - 140 * e} stroke="#F87171" strokeWidth="4.5" />
+                    <line x1="220" y1="108" x2={220 + 260 * e} y2={108 + 220 * e} stroke="#38BDF8" strokeWidth="4.5" />
+                    <circle cx="350" cy="218" r={16 + Math.sin(localT * 8) * 4} fill="rgba(245,158,11,0.25)" stroke="#F59E0B" strokeWidth="3.2" />
+                    <circle cx="350" cy="218" r="7" fill="#FDE68A" />
+                    <rect x="235" y="346" width="230" height="34" rx="10" fill="#F59E0B" />
+                    <text x="350" y="368" textAnchor="middle" fontSize="13" fontWeight="800" fill="#1C1917" fontFamily="var(--font-mono), monospace">
+                      r e r&apos; CRUZAM NA ORIGEM O!
+                    </text>
+                  </>
+                )}
+                <line x1="480" y1="148" x2="480" y2="328" stroke="#94A3B8" strokeDasharray="4 4" strokeWidth="1.8" />
+                <line x1="220" y1="108" x2="220" y2="288" stroke="#94A3B8" strokeDasharray="4 4" strokeWidth="1.8" />
+                <circle cx="480" cy="148" r="8.5" fill="#F87171" />
+                <text x="496" y="153" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">A&apos; (+3)</text>
+                <circle cx="480" cy="328" r="8.5" fill="#38BDF8" />
+                <text x="496" y="333" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">A (+5)</text>
+                <circle cx="220" cy="288" r="8.5" fill="#F87171" />
+                <text x="148" y="293" fontSize="15" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">B&apos; (−3)</text>
+                <circle cx="220" cy="108" r="8.5" fill="#38BDF8" />
+                <text x="148" y="113" fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">B (−5)</text>
+              </>
+            )}
+
+            {(sceneId === "ex2-points" || sceneId === "ex2-collinear") && (
+              <>
+                <text x="355" y="68" textAnchor="middle" fontSize="15" fontWeight="800" fill="#34D399" fontFamily="var(--font-mono), monospace">
+                  {sceneId === "ex2-points"
+                    ? "EX. 2: (A)(1;2;3) · (B)(2;3;4) · (C)(3;4;5) — PASSO (+1;+1;+1)"
+                    : "EX. 2 · PLOT TWIST: NÃO É TRIÂNGULO — SÃO COLINEARES!"}
+                </text>
+                <line x1="100" y1="224" x2="600" y2="224" stroke="#2DD4BF" strokeWidth="4" />
+                {sceneId === "ex2-collinear" && (
+                  <>
+                    <line x1="255" y1="176" x2="505" y2="92" stroke="#F87171" strokeWidth="5" />
+                    <line x1="255" y1="272" x2="505" y2="356" stroke="#38BDF8" strokeWidth="5" />
+                    <rect x="108" y="102" width="160" height="72" rx="14" fill="rgba(52,211,153,0.18)" stroke="#34D399" strokeWidth="2" />
+                    <text x="188" y="128" textAnchor="middle" fontSize="13" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                      ✗ SEM TRIÂNGULO
+                    </text>
+                    <text x="188" y="154" textAnchor="middle" fontSize="12.5" fontWeight="800" fill="#A7F3D0" fontFamily="var(--font-mono), monospace">
+                      RETA // AO β₁₃!
+                    </text>
+                  </>
+                )}
                 {[
-                  { lbl: "A", x: 290, pvY: 162, phY: 288 },
-                  { lbl: "B", x: 370, pvY: 135, phY: 315 },
-                  { lbl: "C", x: 450, pvY: 108, phY: 342 },
+                  { lbl: "A", x: 300, pvY: 162, phY: 286 },
+                  { lbl: "B", x: 380, pvY: 135, phY: 313 },
+                  { lbl: "C", x: 460, pvY: 108, phY: 340 },
                 ].map((pt) => (
                   <g key={pt.lbl}>
-                    <line x1={pt.x} y1={pt.pvY} x2={pt.x} y2={pt.phY} stroke="#94A3B8" strokeDasharray="4 4" strokeWidth="1.5" />
-                    <circle cx={pt.x} cy={pt.pvY} r="8" fill="#F87171" />
-                    <text x={pt.x - 16} y={pt.pvY - 8} fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-                      {pt.lbl}&apos;
-                    </text>
-                    <circle cx={pt.x} cy={pt.phY} r="8" fill="#38BDF8" />
-                    <text x={pt.x - 16} y={pt.phY + 20} fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-                      {pt.lbl}
-                    </text>
+                    <line x1={pt.x} y1={pt.pvY} x2={pt.x} y2={pt.phY} stroke="#94A3B8" strokeDasharray="4 4" strokeWidth="1.6" />
+                    <circle cx={pt.x} cy={pt.pvY} r="8.5" fill="#F87171" />
+                    <text x={pt.x - 16} y={pt.pvY - 8} fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">{pt.lbl}&apos;</text>
+                    <circle cx={pt.x} cy={pt.phY} r="8.5" fill="#38BDF8" />
+                    <text x={pt.x - 16} y={pt.phY + 22} fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">{pt.lbl}</text>
                   </g>
                 ))}
-                <rect x="125" y="102" width="135" height="60" rx="12" fill="rgba(52,211,153,0.18)" stroke="#34D399" />
-                <text x="192" y="128" textAnchor="middle" fontSize="12" fontWeight="800" fill="#A7F3D0" fontFamily="var(--font-mono), monospace">
-                  Δ = (+1;+1;+1)
-                </text>
-                <text x="192" y="148" textAnchor="middle" fontSize="11" fontWeight="700" fill="#ECFDF5">
-                  Reta // ao β₁₃!
-                </text>
               </>
             )}
           </g>
         )}
 
-        {/* ================= EPISODE 07: Y-UP vs Z-UP ================= */}
+        {/* =================== EPISODE 07: Y-UP vs Z-UP =================== */}
         {episode.id === "ep07-yup-zup" && (
-          <g>
-            {/* Left Card: Games Y-Up */}
-            <rect
-              x="95"
-              y="88"
-              width="225"
-              height="250"
-              rx="20"
-              fill="rgba(248,113,113,0.12)"
-              stroke="#F87171"
-              strokeWidth="2"
-            />
-            <text x="207" y="122" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
-              COMPUTAÇÃO 3D (Y-UP)
-            </text>
-            <text x="207" y="144" textAnchor="middle" fontSize="11" fill="#CBD5E1">
-              Unity · Three.js · OpenGL
-            </text>
-            <line x1="207" y1="265" x2="207" y2="178" stroke="#F87171" strokeWidth="4.5" />
-            <text x="207" y="170" textAnchor="middle" fontSize="15" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">
-              +Y ALTURA ↑
-            </text>
-            <line x1="207" y1="265" x2="282" y2="255" stroke="#2DD4BF" strokeWidth="3.5" />
-            <text x="286" y="250" fontSize="12" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">+X</text>
-            <line x1="207" y1="265" x2="152" y2="305" stroke="#38BDF8" strokeWidth="4" />
-            <text x="148" y="322" textAnchor="middle" fontSize="13" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
-              +Z Profund.
-            </text>
+          <g opacity={e}>
+            {sceneId === "intro" && (
+              <>
+                <rect x="92" y="88" width="230" height="252" rx="20" fill="rgba(248,113,113,0.14)" stroke="#F87171" strokeWidth="2.2" />
+                <text x="207" y="124" textAnchor="middle" fontSize="14" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">GAMES &amp; WEBGL (Y-UP)</text>
+                <text x="207" y="148" textAnchor="middle" fontSize="12" fill="#CBD5E1">Unity · Three.js · OpenGL</text>
+                <text x="207" y="232" textAnchor="middle" fontSize="34" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">Y = Altura ↑</text>
 
-            {/* Center Swap Badge */}
-            <circle cx="358" cy="212" r="28" fill="#F59E0B" />
-            <text x="358" y="218" textAnchor="middle" fontSize="15" fontWeight="800" fill="#1C1917" fontFamily="var(--font-mono), monospace">
-              Y ⇄ Z
-            </text>
+                <circle cx="358" cy="214" r="30" fill="#F59E0B" />
+                <text x="358" y="220" textAnchor="middle" fontSize="16" fontWeight="800" fill="#1C1917" fontFamily="var(--font-mono), monospace">Y ⇄ Z</text>
 
-            {/* Right Card: GD Academic Z-Up */}
-            <rect
-              x="396"
-              y="88"
-              width="225"
-              height="250"
-              rx="20"
-              fill="rgba(56,189,248,0.14)"
-              stroke="#38BDF8"
-              strokeWidth="2"
-            />
-            <text x="508" y="122" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
-              GD / UERJ / CAD (Z-UP)
-            </text>
-            <text x="508" y="144" textAnchor="middle" fontSize="11" fill="#CBD5E1">
-              Monge · Blender · Engenharia
-            </text>
-            <line x1="508" y1="265" x2="508" y2="178" stroke="#F87171" strokeWidth="4.5" />
-            <text x="508" y="170" textAnchor="middle" fontSize="15" fontWeight="800" fill="#F87171" fontFamily="var(--font-mono), monospace">
-              +Z COTA ↑
-            </text>
-            <line x1="508" y1="265" x2="583" y2="255" stroke="#2DD4BF" strokeWidth="3.5" />
-            <text x="587" y="250" fontSize="12" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">+X</text>
-            <line x1="508" y1="265" x2="453" y2="305" stroke="#38BDF8" strokeWidth="4" />
-            <text x="456" y="322" textAnchor="middle" fontSize="13" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">
-              +Y Afastam.
-            </text>
+                <rect x="394" y="88" width="230" height="252" rx="20" fill="rgba(56,189,248,0.15)" stroke="#38BDF8" strokeWidth="2.2" />
+                <text x="509" y="124" textAnchor="middle" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">UERJ / GD / CAD (Z-UP)</text>
+                <text x="509" y="148" textAnchor="middle" fontSize="12" fill="#CBD5E1">Monge · Blender · Engenharia</text>
+                <text x="509" y="232" textAnchor="middle" fontSize="34" fontWeight="800" fill="#38BDF8" fontFamily="var(--font-mono), monospace">Z = Cota ↑</text>
+              </>
+            )}
 
-            {sceneIndex === 2 && (
-              <g>
-                <rect x="135" y="354" width="446" height="36" rx="10" fill="rgba(52,211,153,0.2)" stroke="#34D399" />
-                <text x="358" y="377" textAnchor="middle" fontSize="14" fontWeight="800" fill="#A7F3D0" fontFamily="var(--font-mono), monospace">
-                  GD (A)(+2; +5; +3) ⟹ Three.js Vector3(+2, +3, +5)
+            {sceneId === "cg-origin" && (
+              <>
+                <text x="360" y="74" textAnchor="middle" fontSize="17" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                  POR QUE JOGOS &amp; WEBGL SÃO Y-UP? (A TELA DO MONITOR!)
                 </text>
-              </g>
+                {/* Monitor Frame */}
+                <rect x="190" y="106" width="340" height="200" rx="16" fill="rgba(15,23,42,0.9)" stroke="#94A3B8" strokeWidth="3" />
+                <line x1="250" y1="268" x2="470" y2="268" stroke="#2DD4BF" strokeWidth="4" />
+                <text x="480" y="274" fontSize="15" fontWeight="800" fill="#2DD4BF" fontFamily="var(--font-mono), monospace">+X</text>
+                <line x1="250" y1="268" x2="250" y2="145" stroke="#F87171" strokeWidth="4.5" />
+                <text x="250" y="132" textAnchor="middle" fontSize="16" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">+Y (Altura da Tela!)</text>
+                {/* Z popping out */}
+                <line x1="250" y1="268" x2={250 - 70 * e} y2={268 + 65 * e} stroke="#38BDF8" strokeWidth="4.5" />
+                <text x={250 - 70 * e - 10} y={268 + 65 * e + 20} fontSize="15" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                  +Z (Profundidade!)
+                </text>
+              </>
+            )}
+
+            {sceneId === "gd-origin" && (
+              <>
+                <text x="360" y="74" textAnchor="middle" fontSize="17" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">
+                  POR QUE GD, ARQUITETURA &amp; BLENDER SÃO Z-UP? (A PLANTA BAIXA!)
+                </text>
+                {/* Drafting Table XY Floorplan */}
+                <polygon points="150,275 430,335 585,255 305,198" fill="rgba(56,189,248,0.18)" stroke="#38BDF8" strokeWidth="2.5" />
+                <text x="455" y="292" fontSize="14" fontWeight="800" fill="#7DD3FC" fontFamily="var(--font-mono), monospace">Chão = Plano XY</text>
+                {/* Rising Z wall extrusion */}
+                <line x1="340" y1="266" x2="340" y2={266 - 145 * e} stroke="#F87171" strokeWidth="6" strokeLinecap="round" />
+                <polygon points={`340,${260 - 145 * e} 330,${276 - 145 * e} 350,${276 - 145 * e}`} fill="#F87171" />
+                <text x="362" y={272 - 145 * e} fontSize="18" fontWeight="800" fill="#FCA5A5" fontFamily="var(--font-mono), monospace">
+                  +Z COTA (Paredes sobem!)
+                </text>
+              </>
+            )}
+
+            {sceneId === "translator" && (
+              <>
+                <text x="360" y="88" textAnchor="middle" fontSize="16" fontWeight="800" fill="#34D399" fontFamily="var(--font-mono), monospace">
+                  TRADUÇÃO EM 1 SEGUNDO: MANTENHA X E TROQUE Y ⇄ Z!
+                </text>
+                <rect x="115" y="122" width="490" height="72" rx="16" fill="rgba(56,189,248,0.14)" stroke="#38BDF8" strokeWidth="2" />
+                <text x="360" y="166" textAnchor="middle" fontSize="26" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-mono), monospace">
+                  GD (UERJ): (A)(<tspan fill="#2DD4BF">+2</tspan>; <tspan fill="#38BDF8">+5</tspan>; <tspan fill="#F87171">+3</tspan>)
+                </text>
+
+                <text x="360" y="232" textAnchor="middle" fontSize="22" fontWeight="800" fill="#FDE68A" fontFamily="var(--font-mono), monospace">
+                  ↓  5 e 3 trocam de lugar!  ↓
+                </text>
+
+                <rect x="115" y="256" width="490" height="72" rx="16" fill="rgba(52,211,153,0.16)" stroke="#34D399" strokeWidth="2" />
+                <text x="360" y="300" textAnchor="middle" fontSize="25" fontWeight="800" fill="#FFFFFF" fontFamily="var(--font-mono), monospace">
+                  Three.js: Vector3(<tspan fill="#2DD4BF">+2</tspan>, <tspan fill="#F87171">+3</tspan>, <tspan fill="#38BDF8">+5</tspan>)
+                </text>
+              </>
             )}
           </g>
         )}
@@ -1017,14 +991,15 @@ function MotionCanvas({
 
 export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
   const [epIndex, setEpIndex] = useState(0);
+  const [timings, setTimings] = useState<EpisodeTimingsMap>({});
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(30);
+  const [duration, setDuration] = useState(95);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [showCaptions, setShowCaptions] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Real-time lip-sync state driven by Web Audio API AnalyserNode
+  // Smoothed real-time lip-sync state (ZERO jitter!)
   const [mouth, setMouth] = useState<MouthFrame>("closed");
   const [energy, setEnergy] = useState(0);
 
@@ -1033,22 +1008,46 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceAttachedRef = useRef(false);
+  const smoothEnergyRef = useRef(0);
+  const lastMouthSwitchRef = useRef(0);
+  const currentMouthRef = useRef<MouthFrame>("closed");
 
-  const episode = VIDEO_EPISODES[epIndex];
-  const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;
+  // Load exact millisecond PCM-measured scene timings from public/audio/video/timings.json
+  useEffect(() => {
+    fetch("/audio/video/timings.json")
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((data: EpisodeTimingsMap) => {
+        if (data && typeof data === "object") setTimings(data);
+      })
+      .catch(() => {});
+  }, []);
 
-  const sceneIndex = Math.max(
-    0,
-    episode.scenes.findIndex((s) => progress >= s.start && progress < s.end)
+  const baseEp = VIDEO_EPISODES[epIndex];
+  const timingEntry = timings[baseEp.id];
+  const scenes: VideoSceneCue[] = timingEntry?.scenes ?? baseEp.scenes;
+  const effectiveDuration =
+    Number.isFinite(duration) && duration > 0
+      ? duration
+      : timingEntry?.duration ?? 95;
+  const progress =
+    effectiveDuration > 0 ? Math.min(1, currentTime / effectiveDuration) : 0;
+
+  // Match active scene by EXACT real seconds!
+  let sceneIndex = scenes.findIndex(
+    (s) => currentTime >= s.startSec && currentTime < s.endSec
   );
-  const activeScene = episode.scenes[sceneIndex] ?? episode.scenes[0];
-  const sceneSpan = Math.max(0.01, activeScene.end - activeScene.start);
+  if (sceneIndex === -1) {
+    sceneIndex = currentTime >= (scenes[scenes.length - 1]?.startSec ?? 0)
+      ? scenes.length - 1
+      : 0;
+  }
+  const activeScene = scenes[sceneIndex] ?? scenes[0];
+  const sceneSpan = Math.max(0.2, activeScene.endSec - activeScene.startSec);
   const localT = Math.max(
     0,
-    Math.min(1, (progress - activeScene.start) / sceneSpan)
+    Math.min(1, (currentTime - activeScene.startSec) / sceneSpan)
   );
 
-  // Attach Web Audio API AnalyserNode on first user playback gesture
   const ensureAudioAnalyser = useCallback(() => {
     const audio = audioRef.current;
     if (!audio || sourceAttachedRef.current) return;
@@ -1061,7 +1060,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
       const ctx = new AC();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.45;
+      analyser.smoothingTimeConstant = 0.65;
       const source = ctx.createMediaElementSource(audio);
       source.connect(analyser);
       analyser.connect(ctx.destination);
@@ -1069,11 +1068,11 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
       analyserRef.current = analyser;
       sourceAttachedRef.current = true;
     } catch {
-      // Fallback oscillator will still animate mouth cleanly
+      // graceful fallback
     }
   }, []);
 
-  // 60fps Sync Loop: audio timeline + real-time amplitude -> lip-sync sprite frame!
+  // 60fps Sync Loop with EMA smoothing + 85ms syllable hold (silky smooth lip-sync!)
   useEffect(() => {
     let rafId = 0;
     const dataBuf = new Uint8Array(128);
@@ -1089,8 +1088,12 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
       }
 
       if (audio.paused || audio.ended) {
-        setMouth("closed");
+        smoothEnergyRef.current *= 0.7;
         setEnergy(0);
+        if (currentMouthRef.current !== "closed") {
+          currentMouthRef.current = "closed";
+          setMouth("closed");
+        }
         return;
       }
 
@@ -1104,28 +1107,40 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
         }
         rms = Math.sqrt(sumSq / dataBuf.length);
       } else {
-        // Fallback natural syllable cadence if Web Audio unavailable
         rms =
-          0.08 +
-          Math.abs(Math.sin(now * 0.015)) * 0.14 +
-          Math.abs(Math.sin(now * 0.027)) * 0.07;
+          0.06 +
+          Math.abs(Math.sin(now * 0.011)) * 0.12 +
+          Math.abs(Math.sin(now * 0.019)) * 0.06;
       }
 
-      const scaled = Math.min(1, rms * 3.8);
-      setEnergy(scaled);
+      // Smooth EMA envelope so mouth never chatters violently
+      const rawScaled = Math.min(1, rms * 3.4);
+      smoothEnergyRef.current =
+        smoothEnergyRef.current * 0.72 + rawScaled * 0.28;
+      const smoothed = smoothEnergyRef.current;
+      setEnergy(smoothed);
 
-      // Quantize vocal amplitude to our 4 Gemini Image mouth sprites!
-      if (scaled < 0.08) setMouth("closed");
-      else if (scaled < 0.24) setMouth("small");
-      else if (scaled < 0.48) setMouth("mid");
-      else setMouth("open");
+      // Quantize with 85ms hold between mouth frame switches
+      let nextMouth: MouthFrame = "closed";
+      if (smoothed < 0.075) nextMouth = "closed";
+      else if (smoothed < 0.22) nextMouth = "small";
+      else if (smoothed < 0.44) nextMouth = "mid";
+      else nextMouth = "open";
+
+      if (
+        nextMouth !== currentMouthRef.current &&
+        now - lastMouthSwitchRef.current >= 85
+      ) {
+        currentMouthRef.current = nextMouth;
+        lastMouthSwitchRef.current = now;
+        setMouth(nextMouth);
+      }
     };
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // Apply playbackRate whenever changed
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.playbackRate = playbackRate;
@@ -1178,18 +1193,11 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
     }, 60);
   };
 
-  const seekToRatio = (ratio: number) => {
-    const audio = audioRef.current;
-    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
-    audio.currentTime = Math.max(0, Math.min(audio.duration, ratio * audio.duration));
-    setCurrentTime(audio.currentTime);
-  };
-
-  const skipBy = (deltaSec: number) => {
+  const seekToSeconds = (sec: number) => {
     const audio = audioRef.current;
     if (!audio) return;
-    const maxD = Number.isFinite(audio.duration) ? audio.duration : duration;
-    audio.currentTime = Math.max(0, Math.min(maxD, audio.currentTime + deltaSec));
+    const maxD = Number.isFinite(audio.duration) ? audio.duration : effectiveDuration;
+    audio.currentTime = Math.max(0, Math.min(maxD, sec));
     setCurrentTime(audio.currentTime);
   };
 
@@ -1207,51 +1215,50 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start animate-fade-up">
-      {/* LEFT: 16:9 CINEMATIC VIDEO PLAYER */}
+      {/* LEFT: 16:9 CINEMATIC MOTION VIDEO PLAYER */}
       <div className="space-y-3">
         <div
           ref={stageRef}
           className="relative rounded-3xl overflow-hidden border-2 border-blueprint-700 bg-[#09101E] shadow-2xl"
         >
-          {/* Hidden HTML5 Audio element powered by pre-generated Gemini 3.8 Flash TTS WAV */}
           <audio
             ref={audioRef}
-            src={episode.audioSrc}
+            src={timingEntry?.audioSrc ?? baseEp.audioSrc}
             preload="metadata"
             onEnded={() => setIsPlaying(false)}
             onPause={() => setIsPlaying(false)}
             onPlay={() => setIsPlaying(true)}
           />
 
-          {/* 16:9 Motion Graphics Stage */}
+          {/* 16:9 Motion Stage */}
           <div
             onClick={() => void togglePlay()}
             className="relative aspect-video w-full cursor-pointer overflow-hidden"
           >
             <MotionCanvas
-              episode={episode}
-              progress={progress}
-              sceneIndex={sceneIndex}
+              episode={baseEp}
+              sceneId={activeScene.id}
               localT={localT}
+              progress={progress}
             />
 
-            {/* Top Studio HUD Overlay */}
+            {/* Top HUD */}
             <div className="pointer-events-none absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950/75 border border-white/15 backdrop-blur-md">
                 <span
-                  className="w-2 h-2 rounded-full animate-pulse"
-                  style={{ backgroundColor: episode.themeAccent }}
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: baseEp.themeAccent }}
                 />
                 <span className="font-mono text-[10px] sm:text-[11px] font-extrabold text-white">
-                  {episode.number} · {activeScene.label}
+                  {baseEp.number} · {activeScene.label}
                 </span>
               </div>
               <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-950/75 border border-white/15 text-[10px] font-mono font-bold text-amber-300 backdrop-blur-md">
-                <Sparkles className="w-3 h-3" /> MOTION · GEMINI 3.8 LIP-SYNC
+                <Sparkles className="w-3 h-3" /> STUDIO · SYNC EXATO
               </span>
             </div>
 
-            {/* DESKTOP/TABLET PICTURE-IN-PICTURE LIP-SYNCED MASCOT AVATAR (Bottom-Right) */}
+            {/* DESKTOP PiP Lip-Sync Mascot (100% STEADY FRAME, SMOOTH LIP-SYNC!) */}
             <div
               onClick={(e) => e.stopPropagation()}
               className="hidden sm:block absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-10"
@@ -1265,16 +1272,16 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
               />
             </div>
 
-            {/* DESKTOP/TABLET TIMED CLOSED CAPTIONS */}
+            {/* DESKTOP Closed Captions */}
             {showCaptions && (
               <div className="hidden sm:flex pointer-events-none absolute bottom-3 left-3 right-36 justify-center">
-                <div className="px-3.5 py-2 rounded-xl bg-slate-950/85 border border-white/15 text-slate-100 text-xs font-semibold leading-snug max-w-xl shadow-lg backdrop-blur-md">
+                <div className="px-3.5 py-2 rounded-xl bg-slate-950/88 border border-white/15 text-slate-100 text-xs font-semibold leading-snug max-w-xl shadow-lg backdrop-blur-md">
                   {activeScene.subtitle}
                 </div>
               </div>
             )}
 
-            {/* Big Play Overlay when paused at start */}
+            {/* Big Play Overlay when paused */}
             {!isPlaying && (
               <div className="absolute inset-0 flex items-center justify-center bg-slate-950/35 transition">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-ph/95 hover:bg-ph text-white flex items-center justify-center shadow-2xl ring-4 ring-white/25 transition-transform hover:scale-105">
@@ -1284,7 +1291,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
             )}
           </div>
 
-          {/* MOBILE-ONLY PRESENTER STRIP (100% unobstructed 16:9 canvas + Prof. Mongezinho lip-sync right next to subtitles!) */}
+          {/* MOBILE-ONLY PRESENTER STRIP (100% unobstructed 16:9 canvas + steady Prof. Mongezinho!) */}
           <div className="flex sm:hidden items-center gap-3 px-3 py-2.5 bg-slate-900/95 border-t border-white/10">
             <LipSyncMascot
               mouth={mouth}
@@ -1305,39 +1312,42 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
             </div>
           </div>
 
-          {/* PRO VIDEO TRANSPORT & CHAPTER SCRUBBER BAR */}
+          {/* PRO VIDEO TRANSPORT & CHAPTER SCRUBBER */}
           <div className="bg-slate-950/95 border-t border-white/10 px-3 sm:px-4 py-3 space-y-2.5 text-slate-200">
-            {/* Timeline Scrubber with Chapter Marker Dots */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="relative h-5 flex items-center">
                 <input
                   type="range"
                   min={0}
                   max={1000}
                   value={Math.round(progress * 1000)}
-                  onChange={(e) => seekToRatio(Number(e.target.value) / 1000)}
+                  onChange={(e) =>
+                    seekToSeconds((Number(e.target.value) / 1000) * effectiveDuration)
+                  }
                   aria-label="Linha do tempo do vídeo"
                   className="w-full accent-sky-400 cursor-pointer h-1.5 rounded-lg relative z-10"
                 />
-                {/* Chapter marker ticks */}
+                {/* Exact scene boundary ticks */}
                 <div className="pointer-events-none absolute inset-x-0 flex items-center">
-                  {episode.scenes.slice(1).map((sc) => (
+                  {scenes.slice(1).map((sc) => (
                     <span
                       key={sc.id}
-                      style={{ left: `${sc.start * 100}%` }}
+                      style={{
+                        left: `${Math.min(99, (sc.startSec / effectiveDuration) * 100)}%`,
+                      }}
                       className="absolute w-1.5 h-3 rounded-full bg-amber-400/90 -translate-x-1/2"
                     />
                   ))}
                 </div>
               </div>
 
-              {/* Clickable Scene Jump Pills */}
+              {/* Exact Scene Jump Pills */}
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                {episode.scenes.map((sc, idx) => (
+                {scenes.map((sc, idx) => (
                   <button
                     key={sc.id}
                     type="button"
-                    onClick={() => seekToRatio(sc.start + 0.005)}
+                    onClick={() => seekToSeconds(sc.startSec + 0.05)}
                     className={`shrink-0 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold transition ${
                       idx === sceneIndex
                         ? "bg-sky-500/25 text-sky-300 border border-sky-400/50"
@@ -1350,7 +1360,6 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
               </div>
             </div>
 
-            {/* Bottom Controls Row */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
                 <button
@@ -1370,7 +1379,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => skipBy(-5)}
+                  onClick={() => seekToSeconds(currentTime - 5)}
                   className="p-1.5 rounded-lg hover:bg-white/10 text-slate-300"
                   title="Voltar 5s"
                   aria-label="Voltar 5 segundos"
@@ -1396,12 +1405,11 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                   <SkipForward className="w-4 h-4" />
                 </button>
                 <span className="font-mono text-[11px] text-slate-400 pl-1">
-                  {formatTime(currentTime)} / {formatTime(duration)}
+                  {formatTime(currentTime)} / {formatTime(effectiveDuration)}
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5">
-                {/* Playback Speed Cycle */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1411,12 +1419,9 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                     setPlaybackRate(next);
                   }}
                   className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 font-mono text-[11px] font-bold"
-                  title="Velocidade de reprodução"
                 >
                   {playbackRate}x
                 </button>
-
-                {/* CC Toggle */}
                 <button
                   type="button"
                   onClick={() => setShowCaptions((v) => !v)}
@@ -1425,18 +1430,14 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                       ? "bg-amber-400/20 text-amber-300"
                       : "text-slate-400 hover:bg-white/10"
                   }`}
-                  title="Ligar/desligar legendas"
                   aria-label="Legendas"
                 >
                   <Captions className="w-4 h-4" />
                 </button>
-
-                {/* Fullscreen */}
                 <button
                   type="button"
                   onClick={() => void toggleFullscreen()}
                   className="p-1.5 rounded-lg hover:bg-white/10 text-slate-300"
-                  title="Tela cheia"
                   aria-label="Tela cheia"
                 >
                   {isFullscreen ? (
@@ -1450,22 +1451,22 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
           </div>
         </div>
 
-        {/* Below Player: Episode Title + Deep Link into Interactive 3D Lab */}
+        {/* Episode Info Card */}
         <div className="rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-50 dark:bg-blueprint-900 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-draft">
           <div>
             <div className="text-[11px] font-mono font-extrabold text-ph dark:text-sky-400">
-              {episode.number} · {episode.tag} · Voz Gemini 3.8 Flash TTS + Lip-Sync Real
+              {baseEp.number} · {baseEp.tag} · Aula Completa · Voz Masculina Gemini 3.8 TTS
             </div>
             <h3 className="font-display text-xl font-bold text-ink-900 dark:text-white mt-0.5">
-              {episode.title}
+              {baseEp.title}
             </h3>
             <p className="text-xs text-ink-500 dark:text-slate-400 mt-0.5">
-              {episode.subtitle}
+              {baseEp.subtitle}
             </p>
           </div>
           <button
             type="button"
-            onClick={() => onOpenInLab(episode.labPreset)}
+            onClick={() => onOpenInLab(baseEp.labPreset)}
             className="shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-ph hover:bg-ph-dark text-white text-xs font-bold transition"
           >
             <Compass className="w-4 h-4" /> Praticar esta Cena no Lab 3D
@@ -1473,20 +1474,21 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
         </div>
       </div>
 
-      {/* RIGHT: 7-EPISODE CHAPTER PLAYLIST */}
+      {/* RIGHT: 7-EPISODE PLAYLIST */}
       <aside className="rounded-3xl border border-paper-300 dark:border-blueprint-700 bg-paper-50 dark:bg-blueprint-900 p-3.5 shadow-draft space-y-2.5">
         <div className="flex items-center justify-between px-1">
           <div className="text-xs font-extrabold uppercase tracking-wider text-ink-500 dark:text-slate-400">
-            Temporada 1 · {VIDEO_EPISODES.length} Episódios
+            Temporada 1 · {VIDEO_EPISODES.length} Aulas
           </div>
           <span className="font-mono text-[10px] font-bold text-lt">
-            Motion HD
+            Sync Exato
           </span>
         </div>
 
         <div className="space-y-1.5">
           {VIDEO_EPISODES.map((ep, idx) => {
             const active = idx === epIndex;
+            const epDur = timings[ep.id]?.duration;
             return (
               <button
                 key={ep.id}
@@ -1519,7 +1521,7 @@ export function MotionVideoPlayer({ onOpenInLab }: MotionVideoPlayerProps) {
                       {ep.number} · {ep.tag}
                     </span>
                     <span className="font-mono text-[10px] opacity-75">
-                      {ep.durationHint}
+                      {epDur ? formatTime(epDur) : ep.durationHint}
                     </span>
                   </div>
                   <div className="text-xs font-bold leading-snug mt-0.5 truncate">

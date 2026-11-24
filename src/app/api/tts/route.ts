@@ -70,61 +70,24 @@ export async function POST(req: NextRequest) {
         ? ["gemini-3.8-flash-lite-tts", "gemini-3.8-flash-tts"]
         : ["gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts"];
 
-    const isDialogue = body.professor === "dialogue";
+    // Always use warm male professor voice (Charon) by default for consistent male narrator persona
+    const speechConfig = {
+      voiceConfig: {
+        prebuiltVoiceConfig: {
+          voiceName: "Charon",
+        },
+      },
+    };
 
-    const speechConfig = isDialogue
-      ? {
-          multiSpeakerVoiceConfig: {
-            speakerVoiceConfigs: [
-              {
-                speaker: "Prof. Monge",
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: "Charon" },
-                },
-              },
-              {
-                speaker: "Profa. Épura",
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: "Kore" },
-                },
-              },
-            ],
-          },
-        }
-      : {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: body.professor === "epura" ? "Kore" : "Charon",
-            },
-          },
-        };
-
-    const parts = isDialogue
-      ? text
-          .split(/\n+/)
-          .map((l) => l.trim())
-          .filter(Boolean)
-          .map((line) => {
-            if (/^profa\.?\s*[eé]pura\s*:/i.test(line)) {
-              return {
-                text: sanitizeForSpeech(
-                  line.replace(/^profa\.?\s*[eé]pura\s*:/i, "")
-                ),
-                speechMetadata: { speaker: "Profa. Épura" },
-              };
-            }
-            return {
-              text: sanitizeForSpeech(
-                line.replace(/^prof\.?\s*monge\s*:/i, "")
-              ),
-              speechMetadata: { speaker: "Prof. Monge" },
-            };
-          })
-      : [
-          {
-            text: sanitizeForSpeech(text),
-          },
-        ];
+    const parts = [
+      {
+        text: sanitizeForSpeech(
+          text
+            .replace(/^prof\.?\s*monge\s*:/gim, "")
+            .replace(/^profa\.?\s*[eé]pura\s*:/gim, "")
+        ),
+      },
+    ];
 
     let lastStatus = 0;
     let lastDetail = "";
@@ -192,11 +155,7 @@ export async function POST(req: NextRequest) {
         audioBase64: outBuffer.toString("base64"),
         mimeType: outMime,
         modelUsed: model,
-        voiceName: isDialogue
-          ? "Charon + Kore"
-          : body.professor === "epura"
-            ? "Kore"
-            : "Charon",
+        voiceName: "Charon",
       });
     }
 
