@@ -2,14 +2,14 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ÉpuraLab · Geometria Descritiva Interativa (UERJ)",
+  title: "ExatasLab · Geometria Descritiva & Cálculo I (UERJ)",
   description:
-    "Estúdio interativo 3D e 2D para dominar Épura, Diedros, Linha de Terra, Abscissa, Afastamento, Cota e os exercícios da Aula 1 de Geometria Descritiva.",
+    "Plataforma interativa de Exatas para a UERJ: Geometria Descritiva em 3D + Épura 2D e Cálculo I (Pré-Cálculo, Funções, Limites, Derivadas e Integrais).",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "ÉpuraLab GD",
+    title: "ExatasLab UERJ",
   },
 };
 

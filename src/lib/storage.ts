@@ -10,6 +10,8 @@ export interface UserProgress {
   completedLessons: string[];
   watchedEpisodes: string[];
   uerjChecklist: Record<string, boolean>;
+  calcCompletedLessons: string[];
+  calcChecklist: Record<string, boolean>;
   topicStats: Record<
     string,
     {
@@ -35,7 +37,11 @@ export interface UserProgress {
   updatedAt: string;
 }
 
-const STORAGE_KEY = "epuralab_uerj_progress_v1";
+const LEGACY_STORAGE_KEY = "epuralab_uerj_progress_v1";
+
+function getStorageKey(userId?: string | null): string {
+  return userId ? `exataslab_progress_${userId}` : LEGACY_STORAGE_KEY;
+}
 
 export const DEFAULT_PROGRESS: UserProgress = {
   xp: 0,
@@ -46,12 +52,19 @@ export const DEFAULT_PROGRESS: UserProgress = {
   completedLessons: [],
   watchedEpisodes: [],
   uerjChecklist: {},
+  calcCompletedLessons: [],
+  calcChecklist: {},
   topicStats: {
     diedros: { attempts: 0, correct: 0 },
     desenhar_epura: { attempts: 0, correct: 0 },
     ler_epura: { attempts: 0, correct: 0 },
     bissetores_planos: { attempts: 0, correct: 0 },
     ordem_xyz: { attempts: 0, correct: 0 },
+    precalc_sets: { attempts: 0, correct: 0 },
+    precalc_func: { attempts: 0, correct: 0 },
+    calc_limits: { attempts: 0, correct: 0 },
+    calc_derivatives: { attempts: 0, correct: 0 },
+    calc_integrals: { attempts: 0, correct: 0 },
   },
   savedSnapshots: [],
   preferences: {
@@ -65,10 +78,13 @@ export const DEFAULT_PROGRESS: UserProgress = {
   updatedAt: new Date().toISOString(),
 };
 
-export function loadProgress(): UserProgress {
+export function loadProgress(userId?: string | null): UserProgress {
   if (typeof window === "undefined") return DEFAULT_PROGRESS;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const key = getStorageKey(userId);
+    const raw =
+      window.localStorage.getItem(key) ??
+      (userId ? window.localStorage.getItem(LEGACY_STORAGE_KEY) : null);
     if (!raw) return DEFAULT_PROGRESS;
     const parsed = JSON.parse(raw) as Partial<UserProgress>;
     return {
@@ -77,6 +93,13 @@ export function loadProgress(): UserProgress {
       watchedEpisodes: Array.isArray(parsed.watchedEpisodes)
         ? parsed.watchedEpisodes
         : [],
+      calcCompletedLessons: Array.isArray(parsed.calcCompletedLessons)
+        ? parsed.calcCompletedLessons
+        : [],
+      calcChecklist:
+        parsed.calcChecklist && typeof parsed.calcChecklist === "object"
+          ? parsed.calcChecklist
+          : {},
       topicStats: {
         ...DEFAULT_PROGRESS.topicStats,
         ...(parsed.topicStats ?? {}),
@@ -91,14 +114,14 @@ export function loadProgress(): UserProgress {
   }
 }
 
-export function saveProgress(next: UserProgress): void {
+export function saveProgress(next: UserProgress, userId?: string | null): void {
   if (typeof window === "undefined") return;
   const payload: UserProgress = {
     ...next,
     updatedAt: new Date().toISOString(),
   };
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    window.localStorage.setItem(getStorageKey(userId), JSON.stringify(payload));
   } catch {
     // ignore quota errors
   }
@@ -111,11 +134,11 @@ export function getMasteryRank(xp: number): {
   percent: number;
 } {
   const tiers = [
-    { min: 0, max: 100, title: "Calouro da Prancheta" },
-    { min: 100, max: 250, title: "Explorador dos Diedros" },
-    { min: 250, max: 500, title: "Desenhista de Épuras" },
-    { min: 500, max: 900, title: "Mestre do Rebatimento" },
-    { min: 900, max: 1500, title: "Discípulo de Monge (UERJ)" },
+    { min: 0, max: 100, title: "Calouro de Exatas" },
+    { min: 100, max: 250, title: "Explorador UERJ" },
+    { min: 250, max: 500, title: "Analista de Funções & Épuras" },
+    { min: 500, max: 900, title: "Mestre do Cálculo & Espaço" },
+    { min: 900, max: 1500, title: "Monitor de Exatas (UERJ)" },
   ];
   const idx = tiers.findIndex((t) => xp < t.max);
   const level = idx === -1 ? tiers.length : idx + 1;

@@ -18,6 +18,8 @@ import {
   UserProgress,
 } from "@/lib/storage";
 import { useProfessorVoice } from "@/lib/voice";
+import type { AuthUser } from "@/lib/auth";
+import { CalcLabState, DEFAULT_CALC_LAB_STATE } from "@/lib/calc-math";
 import { sfx } from "@/lib/sfx";
 import { LabStudio } from "./LabStudio";
 import { LessonsView } from "./LessonsView";
@@ -26,11 +28,19 @@ import { DrawingKitView } from "./DrawingKitView";
 import { TutorDrawer } from "./TutorDrawer";
 import { LiveProfessorSidebar } from "./LiveProfessorSidebar";
 import { ProfessorAvatar } from "./ProfessorAvatar";
+import { SubjectPortal } from "./SubjectPortal";
+import { GoogleAuthButton } from "./GoogleAuthButton";
+import { CalcLabStudio } from "./calc/CalcLabStudio";
+import { CalcLessonsView } from "./calc/CalcLessonsView";
+import { CalcPracticeArena } from "./calc/CalcPracticeArena";
+import { CalcSyllabusView } from "./calc/CalcSyllabusView";
 import {
   Award,
   BookOpen,
+  Calendar,
   Compass,
   GraduationCap,
+  LayoutGrid,
   Layers,
   MessageSquare,
   Moon,
@@ -38,13 +48,22 @@ import {
   Ruler,
   SlidersHorizontal,
   Sun,
+  TrendingUp,
   X,
 } from "lucide-react";
 
+type SubjectId = "hub" | "gd" | "calc1";
 type SectionId = "lab" | "lessons" | "practice" | "kit";
+type CalcSectionId = "lab" | "lessons" | "practice" | "syllabus";
 
 export function EpuraLabApp() {
+  const [activeSubject, setActiveSubject] = useState<SubjectId>("hub");
   const [section, setSection] = useState<SectionId>("lab");
+  const [calcSection, setCalcSection] = useState<CalcSectionId>("lab");
+  const [calcLabState, setCalcLabState] = useState<CalcLabState>(DEFAULT_CALC_LAB_STATE);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [googleConfigured, setGoogleConfigured] = useState(false);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [progress, setProgress] = useState<UserProgress>(DEFAULT_PROGRESS);
   const [hydrated, setHydrated] = useState(false);
 
@@ -76,6 +95,7 @@ export function EpuraLabApp() {
     const openSharedScene = () => {
       const scene = readSharedScene(window.location.hash);
       if (!scene) return;
+      setActiveSubject("gd");
       setSection("lab");
       setActivePresetId(null);
       setPoints(scene.points);
@@ -93,10 +113,46 @@ export function EpuraLabApp() {
       }));
     };
 
-    setProgress(loadProgress());
+    const params = new URLSearchParams(window.location.search);
+    const subjectParam = params.get("disciplina");
+    if (subjectParam === "gd") setActiveSubject("gd");
+    else if (subjectParam === "calc1") setActiveSubject("calc1");
+
+    const authParam = params.get("auth");
+    if (authParam === "ok") {
+      setAuthNotice("Login com Google realizado! Seu progresso agora fica vinculado à sua conta.");
+    } else if (authParam === "unconfigured") {
+      setAuthNotice("Configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET na Vercel para habilitar o login com Google.");
+    } else if (authParam === "cancelled") {
+      setAuthNotice("Login com Google cancelado. Você pode continuar usando normalmente.");
+    }
+    if (authParam) {
+      params.delete("auth");
+      const nextQuery = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + (nextQuery ? `?${nextQuery}` : "") + window.location.hash
+      );
+    }
+
+    setProgress(loadProgress(null));
     openSharedScene();
     if (window.innerWidth >= 1280) setLiveChatOpen(true);
     setHydrated(true);
+
+    fetch("/api/auth/session")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { user: AuthUser | null; googleConfigured: boolean } | null) => {
+        if (!data) return;
+        setAuthUser(data.user);
+        setGoogleConfigured(Boolean(data.googleConfigured));
+        if (data.user?.sub) {
+          setProgress(loadProgress(data.user.sub));
+        }
+      })
+      .catch(() => {});
+
     window.addEventListener("hashchange", openSharedScene);
     return () => window.removeEventListener("hashchange", openSharedScene);
   }, []);
@@ -113,9 +169,49 @@ export function EpuraLabApp() {
   const updateProgress = (updater: (prev: UserProgress) => UserProgress) => {
     setProgress((prev) => {
       const next = updater(prev);
-      if (next !== prev) saveProgress(next);
+      if (next !== prev) saveProgress(next, authUser?.sub);
       return next;
     });
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    setAuthUser(null);
+    setProgress(loadProgress(null));
+    setAuthNotice("Você saiu da conta Google.");
+  };
+
+  const handleToggleCalcLesson = (id: string) => {
+    updateProgress((prev) => {
+      const exists = prev.calcCompletedLessons.includes(id);
+      return {
+        ...prev,
+        calcCompletedLessons: exists
+          ? prev.calcCompletedLessons.filter((l) => l !== id)
+          : [...prev.calcCompletedLessons, id],
+        xp: exists ? prev.xp : prev.xp + 25,
+      };
+    });
+  };
+
+  const handleToggleCalcTopic = (id: string) => {
+    updateProgress((prev) => {
+      const nextVal = !prev.calcChecklist[id];
+      return {
+        ...prev,
+        calcChecklist: { ...prev.calcChecklist, [id]: nextVal },
+        xp: nextVal ? prev.xp + 10 : prev.xp,
+      };
+    });
+  };
+
+  const handleOpenInCalcLab = (nextState: CalcLabState) => {
+    setCalcLabState({ ...nextState });
+    setActiveSubject("calc1");
+    setCalcSection("lab");
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const updatePrefs = (patch: Partial<UserProgress["preferences"]>) => {
@@ -331,62 +427,173 @@ export function EpuraLabApp() {
     { id: "kit", label: "Kit de Desenho", shortLabel: "Kit", icon: Ruler },
   ];
 
+  const calcNavItems: Array<{
+    id: CalcSectionId;
+    label: string;
+    shortLabel: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }> = [
+    { id: "lab", label: "Lab de Funções", shortLabel: "Funções", icon: TrendingUp },
+    { id: "lessons", label: "Aulas Cálculo 1", shortLabel: "Aulas", icon: BookOpen },
+    { id: "practice", label: "Praticar", shortLabel: "Praticar", icon: GraduationCap },
+    { id: "syllabus", label: "Ementa & Notas", shortLabel: "Ementa", icon: Calendar },
+  ];
+
+  if (activeSubject === "hub") {
+    return (
+      <SubjectPortal
+        dark={dark}
+        onToggleTheme={() => updatePrefs({ theme: dark ? "atelier" : "blueprint" })}
+        progress={progress}
+        authUser={authUser}
+        googleConfigured={googleConfigured}
+        authNotice={authNotice}
+        onDismissAuthNotice={() => setAuthNotice(null)}
+        onLogout={handleLogout}
+        onSelectGD={(sec = "lab") => {
+          setActiveSubject("gd");
+          setSection(sec);
+        }}
+        onSelectCalc1={(sec = "lab") => {
+          setActiveSubject("calc1");
+          setCalcSection(sec);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen drafting-bg flex flex-col">
       {/* ---- TOP STUDIO HEADER (Adapted for Desktop & Compact Mobile) ---- */}
       <header className="sticky top-0 z-30 border-b border-paper-300/90 dark:border-blueprint-800 bg-paper-50/90 dark:bg-blueprint-950/90 backdrop-blur-md">
-        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 h-14 lg:h-16 flex items-center justify-between gap-3">
-          {/* Brand Emblem */}
-          <button
-            type="button"
-            onClick={() => setSection("lab")}
-            className="flex items-center gap-2.5 text-left group"
-          >
-            <div className="w-9 h-9 rounded-xl bg-ink-900 dark:bg-sky-500 text-paper-50 dark:text-blueprint-950 flex items-center justify-center shadow-sm group-hover:scale-105 transition">
-              <Compass className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-display text-lg font-bold leading-none text-ink-900 dark:text-white">
-                  ÉpuraLab
-                </span>
-                <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-mono font-extrabold bg-ph-light text-ph dark:bg-sky-950 dark:text-sky-300">
-                  GD · UERJ
-                </span>
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 h-14 lg:h-16 flex items-center justify-between gap-2 sm:gap-3">
+          {/* Brand Emblem + Hub / Subject Switcher */}
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              onClick={() => {
+                sfx.click();
+                setActiveSubject("hub");
+              }}
+              className="flex items-center gap-2 text-left group shrink-0"
+              title="Voltar ao Menu de Disciplinas"
+            >
+              <div className="w-9 h-9 rounded-xl bg-ink-900 dark:bg-sky-500 text-paper-50 dark:text-blueprint-950 flex items-center justify-center shadow-sm group-hover:scale-105 transition">
+                {activeSubject === "calc1" ? (
+                  <TrendingUp className="w-5 h-5" />
+                ) : (
+                  <Compass className="w-5 h-5" />
+                )}
               </div>
-              <div className="text-[10px] sm:text-[11px] text-ink-500 dark:text-slate-400 leading-tight whitespace-nowrap">
-                <span className="sm:hidden">GD 3D ⇄ Épura 2D</span>
-                <span className="hidden sm:inline">
-                  Geometria Descritiva 3D ⇄ Épura 2D
-                </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-display text-lg font-bold leading-none text-ink-900 dark:text-white">
+                    ExatasLab
+                  </span>
+                  <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-mono font-extrabold bg-ph-light text-ph dark:bg-sky-950 dark:text-sky-300">
+                    {activeSubject === "calc1" ? "Cálculo I" : "GD · UERJ"}
+                  </span>
+                </div>
+                <div className="text-[10px] sm:text-[11px] text-ink-500 dark:text-slate-400 leading-tight whitespace-nowrap">
+                  {activeSubject === "calc1"
+                    ? "Pré-Cálculo · Funções · Derivadas"
+                    : "Geometria Descritiva 3D ⇄ Épura 2D"}
+                </div>
               </div>
+            </button>
+
+            {/* Quick Subject Switcher */}
+            <div className="hidden md:flex items-center gap-0.5 p-0.5 rounded-xl bg-paper-200/80 dark:bg-blueprint-900 border border-paper-300/80 dark:border-blueprint-800 ml-1">
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.click();
+                  setActiveSubject("hub");
+                }}
+                className="p-1.5 rounded-lg text-ink-600 dark:text-slate-400 hover:text-ink-900 dark:hover:text-white transition"
+                title="Menu de Disciplinas"
+                aria-label="Menu de Disciplinas"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.click();
+                  setActiveSubject("gd");
+                }}
+                className={`px-2 py-1 rounded-lg text-[11px] font-extrabold transition ${
+                  activeSubject === "gd"
+                    ? "bg-paper-50 dark:bg-blueprint-700 text-ink-900 dark:text-white shadow-xs"
+                    : "text-ink-500 dark:text-slate-400 hover:text-ink-900"
+                }`}
+              >
+                GD
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.click();
+                  setActiveSubject("calc1");
+                }}
+                className={`px-2 py-1 rounded-lg text-[11px] font-extrabold transition ${
+                  activeSubject === "calc1"
+                    ? "bg-paper-50 dark:bg-blueprint-700 text-ink-900 dark:text-white shadow-xs"
+                    : "text-ink-500 dark:text-slate-400 hover:text-ink-900"
+                }`}
+              >
+                Cálculo 1
+              </button>
             </div>
-          </button>
+          </div>
 
           {/* DESKTOP Primary Navigation Tabs */}
           <nav className="hidden lg:flex items-center gap-1 bg-paper-200/75 dark:bg-blueprint-900 p-1 rounded-2xl border border-paper-300/80 dark:border-blueprint-800">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = section === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    sfx.click();
-                    setSection(item.id);
-                  }}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-                    active
-                      ? "bg-paper-50 dark:bg-blueprint-700 text-ink-900 dark:text-white shadow-sm"
-                      : "text-ink-600 dark:text-slate-400 hover:text-ink-900 dark:hover:text-white"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </button>
-              );
-            })}
+            {activeSubject === "gd"
+              ? navItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = section === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        sfx.click();
+                        setSection(item.id);
+                      }}
+                      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                        active
+                          ? "bg-paper-50 dark:bg-blueprint-700 text-ink-900 dark:text-white shadow-sm"
+                          : "text-ink-600 dark:text-slate-400 hover:text-ink-900 dark:hover:text-white"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {item.label}
+                    </button>
+                  );
+                })
+              : calcNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = calcSection === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        sfx.click();
+                        setCalcSection(item.id);
+                      }}
+                      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                        active
+                          ? "bg-paper-50 dark:bg-blueprint-700 text-ink-900 dark:text-white shadow-sm"
+                          : "text-ink-600 dark:text-slate-400 hover:text-ink-900 dark:hover:text-white"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {item.label}
+                    </button>
+                  );
+                })}
           </nav>
 
           {/* Right Action Cluster */}
@@ -395,12 +602,12 @@ export function EpuraLabApp() {
             <button
               type="button"
               onClick={() => openDrawer("profile")}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-100/80 dark:bg-amber-950/50 border border-amber-300/60 dark:border-amber-800 text-bisector dark:text-amber-300 text-xs font-mono font-extrabold hover:opacity-90 transition"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-100/80 dark:bg-amber-950/50 border border-amber-300/60 dark:border-amber-800 text-bisector dark:text-amber-300 text-xs font-mono font-extrabold hover:opacity-90 transition"
               title={`${rank.title} (${progress.xp} XP)`}
             >
               <Award className="w-3.5 h-3.5" />
               <span>{progress.xp}</span>
-              <span className="hidden sm:inline text-[10px] font-sans font-bold opacity-80">
+              <span className="hidden md:inline text-[10px] font-sans font-bold opacity-80">
                 XP
               </span>
             </button>
@@ -435,11 +642,19 @@ export function EpuraLabApp() {
               <SlidersHorizontal className="w-4 h-4" />
             </button>
 
+            {/* Google Auth */}
+            <GoogleAuthButton
+              user={authUser}
+              googleConfigured={googleConfigured}
+              onLogout={handleLogout}
+              compact
+            />
+
             {/* Live Professor Chat Sidebar Toggle */}
             <button
               type="button"
               onClick={() => setLiveChatOpen((v) => !v)}
-              className={`inline-flex items-center gap-2 p-1 sm:pl-1 sm:pr-3.5 rounded-full border text-xs font-bold transition ${
+              className={`inline-flex items-center gap-2 p-1 sm:pl-1 sm:pr-3 rounded-full border text-xs font-bold transition ${
                 liveChatOpen
                   ? "border-ph bg-ph text-white shadow-sm"
                   : "border-ph/30 bg-ph-light/80 dark:bg-sky-950/60 hover:bg-ph-light text-ph dark:text-sky-300"
@@ -447,7 +662,7 @@ export function EpuraLabApp() {
               title="Abrir/fechar Chat ao Vivo com o Professor"
             >
               <ProfessorAvatar professor="monge" size="sm" className="w-7 h-7" />
-              <span className="hidden sm:inline">
+              <span className="hidden xl:inline">
                 {liveChatOpen ? "Chat ao Vivo ●" : "Chat ao Vivo"}
               </span>
             </button>
@@ -458,8 +673,8 @@ export function EpuraLabApp() {
       {/* ---- MAIN CONTENT WORKSPACE + DOCKED LIVE PROFESSOR SIDEBAR ---- */}
       <div className="flex-1 max-w-[1620px] w-full mx-auto px-3 sm:px-6 pt-4 pb-24 lg:pb-10 flex items-start gap-4">
         <main className="flex-1 min-w-0 space-y-4">
-        {/* Welcome / Quick-Start Banner (Dismissible) */}
-        {showIntroTip && section === "lab" && (
+        {/* Welcome / Quick-Start Banner (Dismissible, GD Lab only) */}
+        {activeSubject === "gd" && showIntroTip && section === "lab" && (
           <div className="rounded-2xl border border-ph/25 bg-gradient-to-r from-paper-50 via-ph-light/50 to-paper-50 dark:from-blueprint-900 dark:via-sky-950/40 dark:to-blueprint-900 p-3.5 sm:p-4 shadow-draft flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-ph/15 text-ph dark:text-sky-300 flex items-center justify-center shrink-0 mt-0.5">
@@ -503,7 +718,7 @@ export function EpuraLabApp() {
           </div>
         )}
 
-        {section === "lab" && (
+        {activeSubject === "gd" && section === "lab" && (
           <LabStudio
             points={points}
             segments={segments}
@@ -542,7 +757,7 @@ export function EpuraLabApp() {
           />
         )}
 
-        {section === "lessons" && (
+        {activeSubject === "gd" && section === "lessons" && (
           <LessonsView
             dark={dark}
             completedLessons={progress.completedLessons}
@@ -557,7 +772,7 @@ export function EpuraLabApp() {
           />
         )}
 
-        {section === "practice" && (
+        {activeSubject === "gd" && section === "practice" && (
           <PracticeArena
             notation={progress.preferences.notation}
             dark={dark}
@@ -574,7 +789,7 @@ export function EpuraLabApp() {
           />
         )}
 
-        {section === "kit" && (
+        {activeSubject === "gd" && section === "kit" && (
           <DrawingKitView
             dark={dark}
             voice={voice}
@@ -583,12 +798,53 @@ export function EpuraLabApp() {
             ttsModelTier={progress.preferences.ttsModelTier}
           />
         )}
+
+        {activeSubject === "calc1" && calcSection === "lab" && (
+          <CalcLabStudio
+            state={calcLabState}
+            setState={setCalcLabState}
+            dark={dark}
+            voice={voice}
+            voiceRate={progress.preferences.voiceRate}
+            customApiKey={progress.preferences.customGeminiKey}
+            ttsModelTier={progress.preferences.ttsModelTier}
+          />
+        )}
+
+        {activeSubject === "calc1" && calcSection === "lessons" && (
+          <CalcLessonsView
+            completedLessons={progress.calcCompletedLessons}
+            onToggleComplete={handleToggleCalcLesson}
+            onOpenInCalcLab={handleOpenInCalcLab}
+            voice={voice}
+            voiceRate={progress.preferences.voiceRate}
+            customApiKey={progress.preferences.customGeminiKey}
+            ttsModelTier={progress.preferences.ttsModelTier}
+          />
+        )}
+
+        {activeSubject === "calc1" && calcSection === "practice" && (
+          <CalcPracticeArena
+            xp={progress.xp}
+            streak={progress.streak}
+            onRecordAnswer={handleRecordAnswer}
+            onOpenInCalcLab={handleOpenInCalcLab}
+          />
+        )}
+
+        {activeSubject === "calc1" && calcSection === "syllabus" && (
+          <CalcSyllabusView
+            checklist={progress.calcChecklist}
+            onToggleTopic={handleToggleCalcTopic}
+          />
+        )}
         </main>
 
         {/* DOCKED LIVE PROFESSOR CHAT SIDEBAR (Side-by-side on Desktop, Non-blocking Half-Sheet on Mobile) */}
         <LiveProfessorSidebar
           open={liveChatOpen}
           onClose={() => setLiveChatOpen(false)}
+          subject={activeSubject === "calc1" ? "calc1" : "gd"}
           contextPoints={points}
           onExecuteDirector={handleExecuteDirector}
           voice={voice}
@@ -604,36 +860,67 @@ export function EpuraLabApp() {
         className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-paper-300 dark:border-blueprint-800 bg-paper-50/95 dark:bg-blueprint-950/95 backdrop-blur-md shadow-sheet safe-pb"
       >
         <div className="grid grid-cols-5 px-1 pt-1.5 pb-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = section === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  sfx.click();
-                  setSection(item.id);
-                }}
-                className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition ${
-                  active
-                    ? "text-ph dark:text-sky-400 font-extrabold"
-                    : "text-ink-500 dark:text-slate-400 font-semibold"
-                }`}
-              >
-                <span
-                  className={`px-3 py-1 rounded-full transition ${
-                    active ? "bg-ph-light dark:bg-sky-950" : ""
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                </span>
-                <span className="text-[10px] leading-none">
-                  {item.shortLabel}
-                </span>
-              </button>
-            );
-          })}
+          {activeSubject === "gd"
+            ? navItems.map((item) => {
+                const Icon = item.icon;
+                const active = section === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      sfx.click();
+                      setSection(item.id);
+                    }}
+                    className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition ${
+                      active
+                        ? "text-ph dark:text-sky-400 font-extrabold"
+                        : "text-ink-500 dark:text-slate-400 font-semibold"
+                    }`}
+                  >
+                    <span
+                      className={`px-3 py-1 rounded-full transition ${
+                        active ? "bg-ph-light dark:bg-sky-950" : ""
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    <span className="text-[10px] leading-none">
+                      {item.shortLabel}
+                    </span>
+                  </button>
+                );
+              })
+            : calcNavItems.map((item) => {
+                const Icon = item.icon;
+                const active = calcSection === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      sfx.click();
+                      setCalcSection(item.id);
+                    }}
+                    className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition ${
+                      active
+                        ? "text-lt dark:text-teal-300 font-extrabold"
+                        : "text-ink-500 dark:text-slate-400 font-semibold"
+                    }`}
+                  >
+                    <span
+                      className={`px-3 py-1 rounded-full transition ${
+                        active ? "bg-lt-light dark:bg-teal-950" : ""
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    <span className="text-[10px] leading-none">
+                      {item.shortLabel}
+                    </span>
+                  </button>
+                );
+              })}
 
           {/* 5th Mobile Tab: Live Professor Chat */}
           <button
@@ -666,6 +953,7 @@ export function EpuraLabApp() {
         progress={progress}
         onUpdatePrefs={updatePrefs}
         onLoadSnapshot={(pts) => {
+          setActiveSubject("gd");
           setActivePresetId(null);
           setPoints(pts.map((p) => ({ ...p })));
           setSegments([]);
@@ -675,7 +963,7 @@ export function EpuraLabApp() {
         onDeleteSnapshot={handleDeleteSnapshot}
         onResetProgress={() => {
           setProgress(DEFAULT_PROGRESS);
-          saveProgress(DEFAULT_PROGRESS);
+          saveProgress(DEFAULT_PROGRESS, authUser?.sub);
         }}
         voice={voice}
       />

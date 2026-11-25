@@ -1,7 +1,7 @@
 {
-  "name": "ÉpuraLab · Geometria Descritiva UERJ",
-  "short_name": "ÉpuraLab GD",
-  "description": "Laboratório interativo 3D e 2D para dominar Épura, Diedros, Linha de Terra e Geometria Descritiva.",
+  "name": "ExatasLab · Geometria Descritiva & Cálculo I (UERJ)",
+  "short_name": "ExatasLab",
+  "description": "Plataforma interativa para Geometria Descritiva (3D + Épura) e Cálculo I (Pré-Cálculo, Funções, Limites, Derivadas e Integrais) na UERJ.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FAF8F3",

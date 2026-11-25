@@ -28,6 +28,7 @@ interface ChatEntry {
 interface LiveProfessorSidebarProps {
   open: boolean;
   onClose: () => void;
+  subject?: "gd" | "calc1";
   contextPoints: GDPoint[];
   onExecuteDirector: (cmd: TutorDirectorCommand) => void;
   voice: VoiceState;
@@ -36,7 +37,7 @@ interface LiveProfessorSidebarProps {
   ttsModelTier: TtsModelTier;
 }
 
-const LIVE_CHIPS = [
+const GD_LIVE_CHIPS = [
   { label: "Circula o afastamento!", q: "Circula o afastamento e mostra por que +Y desce na épura!" },
   { label: "2º Diedro ao vivo", q: "Mostra um ponto no 2º diedro e rebate para a épura!" },
   { label: "Circula a Linha de Terra", q: "Circula a Linha de Terra e explica o que ela faz" },
@@ -47,9 +48,21 @@ const LIVE_CHIPS = [
   { label: "Y-Up vs Cota Z", q: "Qual a diferença do Y-Up do Three.js para a cota Z?" },
 ];
 
+const CALC_LIVE_CHIPS = [
+  { label: "O que é Domínio Natural?", q: "O que é domínio natural de uma função e como achar?" },
+  { label: "O que é a Raiz?", q: "O que é a raiz de uma função?" },
+  { label: "[a, b] vs ]a, b[", q: "Qual a diferença entre intervalo fechado [a, b] e aberto ]a, b[?" },
+  { label: "ℚ vs ℤ (Conjuntos)", q: "Qual a diferença entre naturais, inteiros, racionais e reais?" },
+  { label: "Limite 0/0", q: "Por que o limite 0/0 pode existir mesmo tendo um buraco na função?" },
+  { label: "Secante → Tangente", q: "Como a reta secante vira a derivada (reta tangente)?" },
+  { label: "Regra da Cadeia", q: "Como aplicar a regra da cadeia sem errar na P2?" },
+  { label: "Nota MP e PF", q: "Como funciona a média MP e a prova final PF em Cálculo 1?" },
+];
+
 export function LiveProfessorSidebar({
   open,
   onClose,
+  subject = "gd",
   contextPoints,
   onExecuteDirector,
   voice,
@@ -57,6 +70,7 @@ export function LiveProfessorSidebar({
   customApiKey,
   ttsModelTier,
 }: LiveProfessorSidebarProps) {
+  const chips = subject === "calc1" ? CALC_LIVE_CHIPS : GD_LIVE_CHIPS;
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -64,14 +78,28 @@ export function LiveProfessorSidebar({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<{ stop: () => void } | null>(null);
 
+  const isCalc = subject === "calc1";
+  const introText = isCalc
+    ? "Estou conectado ao seu Lab de Cálculo 1 e Pré-Cálculo! Pergunte sobre Domínio Natural, Raízes, Intervalos, Limites, Derivadas, Integrais ou as notas MP/PF da UERJ."
+    : "Estou conectado ao seu Laboratório 3D e 2D! Me pergunte qualquer dúvida (ou fale no microfone 🎙️) — eu explico em voz alta e circulo na hora no desenho o que estou falando!";
+
   const [messages, setMessages] = useState<ChatEntry[]>([
     {
       id: "intro-live",
       role: "tutor",
       professor: "monge",
-      text: "Estou conectado ao seu Laboratório 3D e 2D! Me pergunte qualquer dúvida (ou fale no microfone 🎙️) — eu explico em voz alta e circulo na hora no desenho o que estou falando!",
+      text: introText,
     },
   ]);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].id === "intro-live") {
+        return [{ ...prev[0], text: introText }];
+      }
+      return prev;
+    });
+  }, [introText]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -99,6 +127,7 @@ export function LiveProfessorSidebar({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: q,
+          subject,
           contextPoints: contextPoints.map((p) => ({
             label: p.label,
             x: p.x,
@@ -186,7 +215,11 @@ export function LiveProfessorSidebar({
     };
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SR) {
-      setInput("Circula o afastamento e explica!");
+      setInput(
+        isCalc
+          ? "Qual o domínio natural de f(x) = √(x+1)?"
+          : "Circula o afastamento e explica!"
+      );
       return;
     }
     const rec = new SR();
@@ -237,7 +270,9 @@ export function LiveProfessorSidebar({
             <div className="text-[10px] font-mono text-ink-500 dark:text-slate-400 truncate">
               {voice.engine === "gemini-3.8"
                 ? voice.modelUsed
-                : "Fala + Circula no Lab 3D/2D"}
+                : isCalc
+                  ? "Pré-Cálculo & Cálculo I (UERJ)"
+                  : "Fala + Circula no Lab 3D/2D"}
             </div>
           </div>
         </div>
@@ -279,7 +314,7 @@ export function LiveProfessorSidebar({
 
       {/* Quick Demo Action Chips */}
       <div className="px-3 py-2 border-b border-paper-200/80 dark:border-blueprint-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-paper-100/60 dark:bg-blueprint-950/60">
-        {LIVE_CHIPS.map((chip) => (
+        {chips.map((chip) => (
           <button
             key={chip.label}
             type="button"
@@ -406,7 +441,9 @@ export function LiveProfessorSidebar({
           placeholder={
             listening
               ? "Ouvindo sua dúvida..."
-              : "Ex: Circula o afastamento de (P)(+2;-3;+4)"
+              : isCalc
+                ? "Ex: Qual o domínio natural de √(x+1)?"
+                : "Ex: Circula o afastamento de (P)(+2;-3;+4)"
           }
           className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-paper-100 dark:bg-blueprint-950 border border-paper-300 dark:border-blueprint-700 text-xs outline-none focus:border-ph"
         />

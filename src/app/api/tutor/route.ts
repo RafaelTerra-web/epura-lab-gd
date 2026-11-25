@@ -402,14 +402,92 @@ function buildLocalDirectorResponse(
   };
 }
 
+function buildLocalCalcResponse(question: string): TutorApiResponse {
+  const q = question.toLowerCase();
+
+  if (q.includes("domínio") || q.includes("dominio")) {
+    return {
+      professor: "monge",
+      source: "local-calc",
+      answer:
+        "Domínio natural é o maior subconjunto de ℝ onde a fórmula de f(x) faz sentido sem quebrar nenhuma regra matemática: (1) denominador diferente de zero, (2) dentro de raiz de índice par maior ou igual a zero (≥ 0) e (3) dentro de logaritmo estritamente maior que zero (> 0)! Abra o Lab de Funções na função Raiz √x ou ln(x) para ver o domínio iluminado direto no eixo X.",
+    };
+  }
+  if (q.includes("raiz") || q.includes("zero")) {
+    return {
+      professor: "monge",
+      source: "local-calc",
+      answer:
+        "A raiz (ou zero) de uma função é todo valor x do domínio tal que f(x) = 0. Geometricamente, são os pontos exatos onde o gráfico y = f(x) corta o eixo horizontal X! Por exemplo, em f(x) = 0,5x² − 2, as raízes são x = −2 e x = +2.",
+    };
+  }
+  if (q.includes("intervalo") || q.includes("[a") || q.includes("]a") || q.includes("desigualdade") || q.includes("inequa")) {
+    return {
+      professor: "monge",
+      source: "local-calc",
+      answer:
+        "No intervalo fechado [a, b] = { x ∈ ℝ / a ≤ x ≤ b } os extremos a e b ENTRAM (bolinha fechada ●). No aberto ]a, b[ = { x ∈ ℝ / a < x < b } eles FICAM FORA (bolinha aberta ○). E nas desigualdades, lembre sempre: ao multiplicar ou dividir por um número negativo, o sinal da desigualdade inverte!",
+    };
+  }
+  if (q.includes("natural") || q.includes("raciona") || q.includes("inteiro") || q.includes("conjunto") || q.includes("número real") || q.includes("numero real")) {
+    return {
+      professor: "monge",
+      source: "local-calc",
+      answer:
+        "A hierarquia é ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ: Naturais ℕ = {1,2,3,...}; Inteiros ℤ = {...,−2,−1,0,1,2,...}; Racionais ℚ = {a/b | a,b ∈ ℤ e b ≠ 0} (frações!); e Irracionais 𝕀 (√2, π, e). Juntando ℚ ∪ 𝕀 formamos a reta real contínua ℝ, onde o Cálculo I acontece!",
+    };
+  }
+  if (q.includes("limite") || q.includes("0/0") || q.includes("continuidade") || q.includes("tvi")) {
+    return {
+      professor: "monge",
+      source: "local-calc",
+      answer:
+        "O limite lim_{x→a} f(x) observa para onde a curva aponta perto de x = a, mesmo que exista um buraco aberto ali (como em (x²−1)/(x−1) onde 0/0 fatora para x + 1 → 2). Se o limite lateral esquerdo e direito batem com f(a), a função é contínua — e o TVI garante raiz sempre que uma função contínua em [a, b] troca de sinal!",
+    };
+  }
+  if (q.includes("cadeia") || q.includes("derivad") || q.includes("tangente") || q.includes("secante") || q.includes("hôpital") || q.includes("hopital")) {
+    return {
+      professor: "monge",
+      source: "local-calc",
+      answer:
+        "A derivada f'(x₀) nasce quando o passo h da reta secante tende a zero e ela vira a reta tangente no ponto! Para funções compostas f(g(x)), a Regra da Cadeia diz: [f(g(x))]' = f'(g(x)) · g'(x) — derive de fora mantendo o recheio, depois multiplique pela derivada de dentro. No Lab de Funções você pode animar h → 0 ao vivo!",
+    };
+  }
+  if (q.includes("integral") || q.includes("primitiva")) {
+    return {
+      professor: "monge",
+      source: "local-calc",
+      answer:
+        "A integral indefinida ∫ f(x) dx = F(x) + C busca toda família de primitivas cuja derivada devolve f(x). Nunca esqueça do '+ C', lembre que ∫ (1/x) dx = ln|x| + C, use Substituição (u) para inverter a Regra da Cadeia e Por Partes (∫ u dv = uv − ∫ v du) para produtos!",
+    };
+  }
+  if (q.includes("nota") || q.includes("média") || q.includes("media") || q.includes("pf") || q.includes("prova") || q.includes("presen")) {
+    return {
+      professor: "monge",
+      source: "local-calc",
+      answer:
+        "Pela regra do Prof. Mateus Spezia na UERJ: MP = (P1+P2+P3)/3 e presença mínima de 75%. Se MP ≥ 7 você passa direto; se MP < 3 reprova sem PF; se 3 < MP < 7 faz a PF (prevista p/ 20/04/2027) e precisa de MF = (MP+PF)/2 ≥ 5! Use o Simulador na aba Ementa & Notas para calcular na hora.",
+    };
+  }
+
+  return {
+    professor: "monge",
+    source: "local-calc",
+    answer:
+      "Estou no modo Cálculo I (UERJ · Stewart & Guidorizzi)! Pode me perguntar sobre Pré-Cálculo (conjuntos ℕ⊂ℤ⊂ℚ⊂ℝ, intervalos [a,b], domínio natural, raiz de função), Limites 0/0, Derivadas, Regra da Cadeia, Integração Indefinida ou regras das provas P1/P2/P3/PF.",
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as {
       question?: string;
+      subject?: "gd" | "calc1";
       contextPoints?: ContextPoint[];
       customApiKey?: string;
     };
     const question = (body.question ?? "").trim();
+    const subject = body.subject === "calc1" ? "calc1" : "gd";
     if (!question) {
       return NextResponse.json({ error: "Pergunta vazia" }, { status: 400 });
     }
@@ -420,7 +498,16 @@ export async function POST(req: NextRequest) {
         .map((p) => formatPointCoords(p.label, p.x, p.y, p.z))
         .join(", ");
 
-      const systemPrompt = `Você é o Prof. Monge, professor interativo de Geometria Descritiva da UERJ com controle ao vivo de um Laboratório 3D + Épura 2D.
+      const systemPrompt =
+        subject === "calc1"
+          ? `Você é o tutor interativo de Cálculo I e Pré-Cálculo da UERJ (baseado em Stewart Vol. 1, Guidorizzi Vol. 1 e ementa do Prof. Mateus Spezia: 1) Funções, Limites, Continuidade, TVI; 2) Derivadas, Cadeia, Aproximação Linear; 3) Aplicações, Máx/Mín, TVM, Concavidade, Otimização, L'Hôpital; 4) Integração Indefinida e Métodos).
+Responda EXCLUSIVAMENTE em JSON válido:
+{
+  "answer": "Explicação calorosa, clara e didática em português do Brasil (2 a 4 frases), usando exemplos concretos e fáceis de visualizar.",
+  "professor": "monge"
+}
+Dúvida do aluno: ${question}`
+          : `Você é o Prof. Monge, professor interativo de Geometria Descritiva da UERJ com controle ao vivo de um Laboratório 3D + Épura 2D.
 Convenção brasileira (Z-Up): ponto espacial (A)(abscissa; afastamento; cota) = (x; y; z). Projeção horizontal A em π, vertical A' em π'. No rebatimento (90° horário), cota + sobe (A') e afastamento + DESCE (A). Em Computação 3D (Three.js/Unity Y-Up), o mesmo ponto vira Vector3(x, z, y).
 
 Responda EXCLUSIVAMENTE em JSON válido neste formato:
@@ -483,7 +570,7 @@ Dúvida do aluno: ${question}`;
                 return NextResponse.json({
                   answer: parsedJson.answer,
                   professor: "monge",
-                  director: parsedJson.director,
+                  director: subject === "gd" ? parsedJson.director : undefined,
                   source: model,
                 } satisfies TutorApiResponse);
               }
@@ -498,7 +585,9 @@ Dúvida do aluno: ${question}`;
     }
 
     return NextResponse.json(
-      buildLocalDirectorResponse(question, body.contextPoints)
+      subject === "calc1"
+        ? buildLocalCalcResponse(question)
+        : buildLocalDirectorResponse(question, body.contextPoints)
     );
   } catch {
     return NextResponse.json(buildLocalDirectorResponse("epura"));
