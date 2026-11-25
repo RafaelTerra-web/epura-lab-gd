@@ -188,8 +188,30 @@ export function CalcLabStudio({
   const [animatingH, setAnimatingH] = useState(false);
   const [selectedArrowIdx, setSelectedArrowIdx] = useState<number | null>(null);
   const [selectedNumIdx, setSelectedNumIdx] = useState(3); // starts on 1/2 to reinforce ℚ vs ℤ!
-  const [ineqA, setIneqA] = useState(-2);
-  const [ineqB, setIneqB] = useState(4);
+  const [ineqMode, setIneqMode] = useState<"linear" | "quadratic">(
+    state.inequalityPreset?.mode ?? "quadratic"
+  );
+  const [ineqA, setIneqA] = useState(state.inequalityPreset?.linA ?? 2);
+  const [ineqB, setIneqB] = useState(state.inequalityPreset?.linB ?? -1);
+  const [ineqSign, setIneqSign] = useState<"<=" | ">=">(
+    state.inequalityPreset?.linSign ?? "<="
+  );
+  const [quadR1, setQuadR1] = useState(state.inequalityPreset?.r1 ?? -2);
+  const [quadR2, setQuadR2] = useState(state.inequalityPreset?.r2 ?? 1);
+  const [quadSign, setQuadSign] = useState<">=" | "<=">(
+    state.inequalityPreset?.quadSign ?? ">="
+  );
+
+  useEffect(() => {
+    if (!state.inequalityPreset) return;
+    setIneqMode(state.inequalityPreset.mode);
+    if (state.inequalityPreset.linA !== undefined) setIneqA(state.inequalityPreset.linA);
+    if (state.inequalityPreset.linB !== undefined) setIneqB(state.inequalityPreset.linB);
+    if (state.inequalityPreset.linSign !== undefined) setIneqSign(state.inequalityPreset.linSign);
+    if (state.inequalityPreset.r1 !== undefined) setQuadR1(state.inequalityPreset.r1);
+    if (state.inequalityPreset.r2 !== undefined) setQuadR2(state.inequalityPreset.r2);
+    if (state.inequalityPreset.quadSign !== undefined) setQuadSign(state.inequalityPreset.quadSign);
+  }, [state.inequalityPreset]);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -780,6 +802,62 @@ export function CalcLabStudio({
                     />
                   )}
 
+                  {/* Linear Slope Triangle: tg(α) = Δy / Δx = a (from notebook!) */}
+                  {state.kind === "linear" && Math.abs(state.params.a) > 1e-4 && (() => {
+                    const xStart = Math.max(-4, Math.min(2, Math.round(state.x0)));
+                    const dx = 1.5;
+                    const xEnd = xStart + dx;
+                    const yStart = state.params.a * xStart + state.params.b;
+                    const yEnd = state.params.a * xEnd + state.params.b;
+                    if (Math.abs(yStart) > 4.2 || Math.abs(yEnd) > 4.2) return null;
+                    const sx1 = toSvgX(xStart);
+                    const sy1 = toSvgY(yStart);
+                    const sx2 = toSvgX(xEnd);
+                    const sy2 = toSvgY(yEnd);
+                    return (
+                      <g>
+                        <polygon
+                          points={`${sx1},${sy1} ${sx2},${sy1} ${sx2},${sy2}`}
+                          fill="#F59E0B"
+                          fillOpacity="0.16"
+                        />
+                        <line x1={sx1} y1={sy1} x2={sx2} y2={sy1} stroke="#F59E0B" strokeWidth="2.2" strokeDasharray="5 3" />
+                        <line x1={sx2} y1={sy1} x2={sx2} y2={sy2} stroke="#EF4444" strokeWidth="2.2" strokeDasharray="5 3" />
+                        <text
+                          x={(sx1 + sx2) / 2}
+                          y={sy1 + (state.params.a > 0 ? 15 : -7)}
+                          textAnchor="middle"
+                          fontSize="10.5"
+                          fontWeight="800"
+                          fill="#D97706"
+                          fontFamily="var(--font-mono), monospace"
+                        >
+                          Δx = {fmtNum(dx)}
+                        </text>
+                        <text
+                          x={sx2 + 8}
+                          y={(sy1 + sy2) / 2 + 4}
+                          fontSize="10.5"
+                          fontWeight="800"
+                          fill="#EF4444"
+                          fontFamily="var(--font-mono), monospace"
+                        >
+                          Δy = {fmtSigned(yEnd - yStart)}
+                        </text>
+                        <text
+                          x={sx1 + 22}
+                          y={sy1 + (state.params.a > 0 ? -6 : 14)}
+                          fontSize="10.5"
+                          fontWeight="800"
+                          fill="#F59E0B"
+                          fontFamily="var(--font-mono), monospace"
+                        >
+                          α (tg α = {fmtNum(state.params.a)})
+                        </text>
+                      </g>
+                    );
+                  })()}
+
                   {/* Roots markers */}
                   {state.showRoots &&
                     roots.map((r) => (
@@ -924,6 +1002,29 @@ export function CalcLabStudio({
                   </div>
                 </div>
               </div>
+
+              {/* Notebook Proof Banner for Função Afim (a ≠ 0) */}
+              {state.kind === "linear" && Math.abs(state.params.a) > 1e-4 && (
+                <div className="rounded-2xl border border-amber-400/50 bg-amber-50/75 dark:bg-amber-950/25 p-3.5 text-xs space-y-1.5">
+                  <div className="font-mono text-[10.5px] font-extrabold uppercase text-amber-800 dark:text-amber-300">
+                    Demonstração do Caderno · Função Afim (a ≠ 0)
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-[11.5px] text-ink-800 dark:text-slate-100">
+                    <div className="p-2 rounded-xl bg-paper-50/90 dark:bg-blueprint-900/70 border border-paper-200 dark:border-blueprint-800">
+                      <span className="text-amber-700 dark:text-amber-300 font-extrabold">Inclinação:</span>{" "}
+                      tg α = Δy/Δx = {fmtNum(state.params.a)} ({state.params.a > 0 ? "subindo ↗" : "descendo ↘"})
+                    </div>
+                    <div className="p-2 rounded-xl bg-paper-50/90 dark:bg-blueprint-900/70 border border-paper-200 dark:border-blueprint-800">
+                      <span className="text-emerald-700 dark:text-emerald-300 font-extrabold">Raiz (y = 0):</span>{" "}
+                      x = −b/a = {fmtNum(-state.params.b / state.params.a)}
+                    </div>
+                    <div className="p-2 rounded-xl bg-paper-50/90 dark:bg-blueprint-900/70 border border-paper-200 dark:border-blueprint-800">
+                      <span className="text-ph dark:text-sky-300 font-extrabold">Prova Im_f = ℝ:</span>{" "}
+                      x = (y − b)/a ⇒ f((y−b)/a) = y
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* RIGHT: Function Selector, Sliders & Narrator */}
@@ -1028,7 +1129,9 @@ export function CalcLabStudio({
                   </button>
                 </div>
 
-                {(["a", "b", "c"] as const).map((key) => (
+                {(["a", "b", "c"] as const)
+                  .filter((key) => !meta.paramLabels[key].startsWith("Não usado"))
+                  .map((key) => (
                   <label key={key} className="block space-y-1">
                     <div className="flex justify-between text-xs font-bold text-ink-700 dark:text-slate-200">
                       <span>{meta.paramLabels[key]}</span>
@@ -1550,9 +1653,23 @@ export function CalcLabStudio({
                   </div>
                 </div>
               </div>
+              {/* Notebook Tip: Intervalos como Blocos Construtores + Ilimitados */}
+              <div className="p-3 rounded-xl bg-paper-100/90 dark:bg-blueprint-900 border border-paper-300/80 dark:border-blueprint-800 text-[11.5px] space-y-1.5 text-ink-700 dark:text-slate-200">
+                <div className="font-mono text-[10.5px] font-extrabold uppercase text-ph dark:text-sky-400">
+                  Anotação da Aula (24/11) · Intervalos como Blocos Construtores
+                </div>
+                <div className="flex flex-wrap gap-1.5 font-mono text-[11px]">
+                  <span className="px-2 py-0.5 rounded-md bg-paper-50 dark:bg-blueprint-950 border border-paper-300/70 dark:border-blueprint-800">Semiabertos: ]a, b] ou [a, b[</span>
+                  <span className="px-2 py-0.5 rounded-md bg-paper-50 dark:bg-blueprint-950 border border-paper-300/70 dark:border-blueprint-800">Ilimitados: ]−∞, a] e [a, +∞[</span>
+                  <span className="px-2 py-0.5 rounded-md bg-paper-50 dark:bg-blueprint-950 border border-paper-300/70 dark:border-blueprint-800">A = ⋃ Iᵢ · B = ⋂ Iᵢ</span>
+                </div>
+                <p className="text-[11px] text-ink-500 dark:text-slate-400">
+                  Convenção do professor: <strong>Conjuntos</strong> com letra maiúscula (A, B, X, Y) · <strong>Elementos</strong> com minúscula (x, y, p) · <strong>⇔</strong> significa &ldquo;se e somente se&rdquo;.
+                </p>
+              </div>
             </div>
 
-            {/* Right: Venn Diagram + Linear Inequality Solver */}
+            {/* Right: Venn Diagram + Linear & Quadratic Inequality Solver */}
             <div className="space-y-3">
               {/* Venn Diagram mirroring the notebook drawing! */}
               <div className="rounded-2xl border border-paper-300 dark:border-blueprint-700 bg-paper-50 dark:bg-blueprint-900 p-4 shadow-draft space-y-2">
@@ -1590,35 +1707,179 @@ export function CalcLabStudio({
                 </svg>
               </div>
 
-              {/* Inequality Interactive Demo */}
+              {/* Inequality Interactive Demo (Linear & Quadratic Factoring from Notebook!) */}
               <div className="rounded-2xl border border-amber-300/70 dark:border-amber-700/60 bg-paper-50 dark:bg-blueprint-900 p-4 shadow-draft space-y-2.5">
-                <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-bisector dark:text-amber-300">
-                  <AlertTriangle className="w-3.5 h-3.5" /> Desigualdade (Inequação)
-                </div>
-                <div className="font-mono text-sm font-extrabold text-ink-900 dark:text-white">
-                  {fmtNum(ineqA)}x {ineqB >= 0 ? `+ ${fmtNum(ineqB)}` : `− ${fmtNum(Math.abs(ineqB))}`} ≥ 0
-                </div>
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono w-14">a = {fmtSigned(ineqA)}</span>
-                    <input type="range" min={-4} max={4} step={1} value={ineqA} onChange={(e) => setIneqA(Number(e.target.value) || 1)} className="flex-1 accent-amber-500" />
+                <div className="flex items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-bisector dark:text-amber-300">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Desigualdades (Aula 24/11)
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono w-14">b = {fmtSigned(ineqB)}</span>
-                    <input type="range" min={-6} max={6} step={1} value={ineqB} onChange={(e) => setIneqB(Number(e.target.value))} className="flex-1 accent-amber-500" />
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sfx.tick();
+                        setIneqMode("linear");
+                      }}
+                      className={`px-2 py-0.5 rounded-lg text-[10.5px] font-extrabold border transition ${
+                        ineqMode === "linear"
+                          ? "bg-ink-900 text-paper-50 border-ink-900 dark:bg-sky-500 dark:text-blueprint-950"
+                          : "bg-paper-100 dark:bg-blueprint-950 text-ink-600 dark:text-slate-300 border-paper-300 dark:border-blueprint-700"
+                      }`}
+                    >
+                      1º Grau
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sfx.tick();
+                        setIneqMode("quadratic");
+                      }}
+                      className={`px-2 py-0.5 rounded-lg text-[10.5px] font-extrabold border transition ${
+                        ineqMode === "quadratic"
+                          ? "bg-ink-900 text-paper-50 border-ink-900 dark:bg-sky-500 dark:text-blueprint-950"
+                          : "bg-paper-100 dark:bg-blueprint-950 text-ink-600 dark:text-slate-300 border-paper-300 dark:border-blueprint-700"
+                      }`}
+                    >
+                      2º Grau (Sinais)
+                    </button>
                   </div>
                 </div>
-                <div className="p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300/60 dark:border-amber-800 font-mono text-xs space-y-1">
-                  <div>
-                    1. {fmtNum(ineqA)}x ≥ {fmtNum(-ineqB)}
-                  </div>
-                  <div className="font-extrabold text-ink-900 dark:text-amber-200">
-                    2.{" "}
-                    {ineqA < 0
-                      ? `Divide por ${ineqA} (negativo → INVERTE ≥ para ≤!): x ≤ ${fmtNum(-ineqB / ineqA)} ⇒ ]−∞, ${fmtNum(-ineqB / ineqA)}]`
-                      : `Divide por +${ineqA} (mantém ≥): x ≥ ${fmtNum(-ineqB / ineqA)} ⇒ [${fmtNum(-ineqB / ineqA)}, +∞[`}
-                  </div>
-                </div>
+
+                {ineqMode === "linear" ? (() => {
+                  const signSym = ineqSign === "<=" ? "≤" : "≥";
+                  const inverted = ineqA < 0;
+                  const finalSym = inverted ? (ineqSign === "<=" ? "≥" : "≤") : signSym;
+                  const cut = -ineqB / ineqA;
+                  const intervalOut =
+                    finalSym === "≤"
+                      ? `]−∞, ${fmtNum(cut)}]`
+                      : `[${fmtNum(cut)}, +∞[`;
+                  return (
+                    <>
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <div className="font-mono text-sm font-extrabold text-ink-900 dark:text-white">
+                          A = &#123; x ∈ ℝ / {fmtNum(ineqA)}x {ineqB >= 0 ? `+ ${fmtNum(ineqB)}` : `− ${fmtNum(Math.abs(ineqB))}`} {signSym} 0 &#125;
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIneqSign((s) => (s === "<=" ? ">=" : "<="))}
+                          className="px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono text-[11px] font-extrabold"
+                        >
+                          Sinal: {signSym}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => { setIneqA(2); setIneqB(-1); setIneqSign("<="); }}
+                          className="px-2 py-0.5 rounded-lg bg-paper-100 dark:bg-blueprint-950 border border-paper-300 dark:border-blueprint-800 text-[10.5px] font-mono font-bold"
+                        >
+                          Caderno: 2x − 1 ≤ 0
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setIneqA(-2); setIneqB(4); setIneqSign(">="); }}
+                          className="px-2 py-0.5 rounded-lg bg-paper-100 dark:bg-blueprint-950 border border-paper-300 dark:border-blueprint-800 text-[10.5px] font-mono font-bold"
+                        >
+                          Inverte sinal: −2x + 4 ≥ 0
+                        </button>
+                      </div>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono w-14">a = {fmtSigned(ineqA)}</span>
+                          <input type="range" min={-4} max={4} step={1} value={ineqA} onChange={(e) => setIneqA(Number(e.target.value) || 1)} className="flex-1 accent-amber-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono w-14">b = {fmtSigned(ineqB)}</span>
+                          <input type="range" min={-6} max={6} step={1} value={ineqB} onChange={(e) => setIneqB(Number(e.target.value))} className="flex-1 accent-amber-500" />
+                        </div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300/60 dark:border-amber-800 font-mono text-xs space-y-1">
+                        <div>
+                          1. {fmtNum(ineqA)}x {signSym} {fmtNum(-ineqB)}
+                        </div>
+                        <div className="font-extrabold text-ink-900 dark:text-amber-200">
+                          2. {inverted ? `Divide por ${ineqA} (negativo → INVERTE para ${finalSym}!)` : `Divide por +${ineqA} (mantém ${finalSym})`}: x {finalSym} {fmtNum(cut)} ⇔ A = {intervalOut}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })() : (() => {
+                  const lo = Math.min(quadR1, quadR2);
+                  const hi = Math.max(quadR1, quadR2);
+                  const bCoef = -(lo + hi);
+                  const cCoef = lo * hi;
+                  const fmtFactor = (r: number) =>
+                    r === 0 ? "x" : r < 0 ? `(x + ${fmtNum(-r)})` : `(x − ${fmtNum(r)})`;
+                  const polyStr = `x²${bCoef === 0 ? "" : bCoef > 0 ? ` + ${bCoef === 1 ? "" : fmtNum(bCoef)}x` : ` − ${bCoef === -1 ? "" : fmtNum(-bCoef)}x`}${cCoef === 0 ? "" : cCoef > 0 ? ` + ${fmtNum(cCoef)}` : ` − ${fmtNum(-cCoef)}`}`;
+                  const solStr =
+                    lo === hi
+                      ? quadSign === ">="
+                        ? "ℝ"
+                        : `{ ${fmtNum(lo)} }`
+                      : quadSign === ">="
+                        ? `]−∞, ${fmtNum(lo)}] ∪ [${fmtNum(hi)}, +∞[`
+                        : `[${fmtNum(lo)}, ${fmtNum(hi)}]`;
+                  return (
+                    <>
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <div className="font-mono text-xs sm:text-sm font-extrabold text-ink-900 dark:text-white">
+                          B = &#123; x ∈ ℝ / {polyStr} {quadSign === ">=" ? "≥" : "≤"} 0 &#125;
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setQuadSign((s) => (s === ">=" ? "<=" : ">="))}
+                          className="px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono text-[11px] font-extrabold"
+                        >
+                          {quadSign === ">=" ? "≥ 0 (+)" : "≤ 0 (−)"}
+                        </button>
+                      </div>
+                      <div className="font-mono text-[11.5px] text-ph dark:text-sky-300 font-bold">
+                        Fatoração: {fmtFactor(lo)}·{fmtFactor(hi)} = {polyStr}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <label className="flex items-center gap-1.5">
+                          <span className="font-mono">r₁={quadR1}</span>
+                          <input type="range" min={-4} max={4} step={1} value={quadR1} onChange={(e) => setQuadR1(Number(e.target.value))} className="flex-1 accent-amber-500" />
+                        </label>
+                        <label className="flex items-center gap-1.5">
+                          <span className="font-mono">r₂={quadR2}</span>
+                          <input type="range" min={-4} max={4} step={1} value={quadR2} onChange={(e) => setQuadR2(Number(e.target.value))} className="flex-1 accent-amber-500" />
+                        </label>
+                      </div>
+                      {/* Visual Sign Table (Quadro de Sinais) */}
+                      <div className="rounded-xl border border-paper-300/80 dark:border-blueprint-700 overflow-hidden font-mono text-[10.5px]">
+                        <div className="grid grid-cols-4 bg-paper-200/80 dark:bg-blueprint-800 font-extrabold text-center py-1">
+                          <div>Fator</div>
+                          <div>x &lt; {fmtNum(lo)}</div>
+                          <div>{fmtNum(lo)} &lt; x &lt; {fmtNum(hi)}</div>
+                          <div>x &gt; {fmtNum(hi)}</div>
+                        </div>
+                        <div className="grid grid-cols-4 text-center py-1 border-t border-paper-200 dark:border-blueprint-800">
+                          <div className="font-bold">{fmtFactor(lo)}</div>
+                          <div className="text-red-600 dark:text-red-400">−</div>
+                          <div className="text-emerald-600 dark:text-emerald-400">+</div>
+                          <div className="text-emerald-600 dark:text-emerald-400">+</div>
+                        </div>
+                        <div className="grid grid-cols-4 text-center py-1 border-t border-paper-200 dark:border-blueprint-800">
+                          <div className="font-bold">{fmtFactor(hi)}</div>
+                          <div className="text-red-600 dark:text-red-400">−</div>
+                          <div className="text-red-600 dark:text-red-400">−</div>
+                          <div className="text-emerald-600 dark:text-emerald-400">+</div>
+                        </div>
+                        <div className="grid grid-cols-4 text-center py-1.5 border-t-2 border-amber-400/60 bg-amber-50/80 dark:bg-amber-950/30 font-extrabold">
+                          <div>Produto</div>
+                          <div className={quadSign === ">=" ? "text-emerald-700 dark:text-emerald-300" : "text-ink-500"}>{quadSign === ">=" ? "(+) ✓" : "(+)"}</div>
+                          <div className={quadSign === "<=" ? "text-emerald-700 dark:text-emerald-300" : "text-red-600 dark:text-red-400"}>{quadSign === "<=" ? "(−) ✓" : "(−)"}</div>
+                          <div className={quadSign === ">=" ? "text-emerald-700 dark:text-emerald-300" : "text-ink-500"}>{quadSign === ">=" ? "(+) ✓" : "(+)"}</div>
+                        </div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-400/50 font-mono text-xs font-extrabold text-emerald-800 dark:text-emerald-200">
+                        Solução: B = {solStr}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>

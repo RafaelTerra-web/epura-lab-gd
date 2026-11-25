@@ -1,4 +1,4 @@
-import { CALC_PRESETS, CalcLabState, DEFAULT_CALC_LAB_STATE } from "./calc-math";
+import { CalcLabState, DEFAULT_CALC_LAB_STATE, getCalcPreset } from "./calc-math";
 
 export type CalcExerciseTrack =
   | "precalc_sets"
@@ -120,6 +120,60 @@ export const CALC_EXERCISES: CalcExercise[] = [
       showRoots: true,
     },
   },
+  {
+    id: "pc-s5",
+    track: "precalc_sets",
+    badge: "Caderno 24/11 · Desigualdade 2º Grau",
+    prompt: "Qual é o conjunto solução B = { x ∈ ℝ / x² + x − 2 ≥ 0 } fatorado como (x + 2)(x − 1) ≥ 0?",
+    options: [
+      "[−2, 1]",
+      "]−∞, −2] ∪ [1, +∞[",
+      "[1, +∞[",
+      "]−∞, −2[ ∪ ]1, +∞[",
+    ],
+    correctIndex: 1,
+    hint: "Monte o quadro de sinais dos fatores (x + 2) e (x − 1): quando AMBOS são negativos, o produto (−)·(−) dá POSITIVO!",
+    explanation:
+      "Fatorando x² + x − 2 = (x + 2)(x − 1). Para x ≤ −2 ambos os fatores são ≤ 0 (produto ≥ 0); entre −2 e 1 têm sinais opostos (produto < 0); para x ≥ 1 ambos são ≥ 0 (produto ≥ 0). Logo B = ]−∞, −2] ∪ [1, +∞[!",
+    xp: 30,
+    labState: {
+      ...DEFAULT_CALC_LAB_STATE,
+      subMode: "intervals",
+      inequalityPreset: {
+        mode: "quadratic",
+        r1: -2,
+        r2: 1,
+        quadSign: ">=",
+      },
+    },
+  },
+  {
+    id: "pc-s6",
+    track: "precalc_sets",
+    badge: "Caderno 24/11 · Intervalo Ilimitado",
+    prompt: "Qual é a solução em notação de intervalo da desigualdade do caderno A = { x ∈ ℝ / 2x − 1 ≤ 0 }?",
+    options: [
+      "[1/2, +∞[",
+      "]−∞, 1/2[",
+      "]−∞, 1/2]",
+      "[0, 1/2]",
+    ],
+    correctIndex: 2,
+    hint: "Resolva 2x − 1 ≤ 0 ⇔ 2x ≤ 1 ⇔ x ≤ 1/2. O extremo 1/2 entra fechado, e −∞ é sempre aberto!",
+    explanation:
+      "2x − 1 ≤ 0 ⇔ 2x ≤ 1 ⇔ x ≤ 1/2. Em notação de intervalo ilimitado: ]−∞, 1/2] (bolinha fechada em 1/2 e colchete aberto no −∞).",
+    xp: 20,
+    labState: {
+      ...DEFAULT_CALC_LAB_STATE,
+      subMode: "intervals",
+      inequalityPreset: {
+        mode: "linear",
+        linA: 2,
+        linB: -1,
+        linSign: "<=",
+      },
+    },
+  },
 
   // ---- PRÉ-CÁLCULO: FUNÇÕES, DOMÍNIO NATURAL & RAIZ ----
   {
@@ -202,7 +256,69 @@ export const CALC_EXERCISES: CalcExercise[] = [
     explanation:
       "Igualando a zero: 0,5x² − 2 = 0 ⇒ 0,5x² = 2 ⇒ x² = 4 ⇒ x = −2 ou x = +2. Geometricamente, são os dois pontos onde a parábola corta o eixo X.",
     xp: 25,
-    labState: CALC_PRESETS[1].state,
+    labState: {
+      ...DEFAULT_CALC_LAB_STATE,
+      subMode: "graph",
+      kind: "quadratic",
+      params: { a: 0.5, b: 0, c: -2 },
+      x0: 2,
+      showDomainImage: true,
+      showRoots: true,
+    },
+  },
+  {
+    id: "pc-f5",
+    track: "precalc_func",
+    badge: "Caderno Ex 2 · Domínio Natural",
+    prompt: "Qual é o domínio natural de f(x) = 1 / (x − 1) em notação de união de intervalos?",
+    options: [
+      "[1, +∞[",
+      "]−∞, 1[ ∪ ]1, +∞[",
+      "]−∞, 1] ∪ [1, +∞[",
+      "]−∞, 0[ ∪ ]0, +∞[",
+    ],
+    correctIndex: 1,
+    hint: "O denominador x − 1 não pode dar zero (1 − 1 = 0). Todo o resto de ℝ funciona!",
+    explanation:
+      "Para não dividir por zero exigimos x − 1 ≠ 0 ⇔ x ≠ 1. Como união de dois intervalos abertos: D_f = ]−∞, 1[ ∪ ]1, +∞[.",
+    xp: 25,
+    labState: getCalcPreset("caderno-ex2-rational"),
+  },
+  {
+    id: "pc-f6",
+    track: "precalc_func",
+    badge: "Caderno · Função Constante",
+    prompt: "Para a função constante f: ℝ → ℝ definida por f(x) = c (com c ∈ ℝ fixo), qual é sua imagem Im_f?",
+    options: [
+      "Im_f = ℝ",
+      "Im_f = [0, c]",
+      "Im_f = { c }",
+      "Im_f = ∅",
+    ],
+    correctIndex: 2,
+    hint: "Qualquer que seja o x de entrada, a saída f(x) sempre cai exatamente na mesma altura y = c!",
+    explanation:
+      "Na função constante f(x) = c, todos os infinitos pontos do domínio D_f = ℝ são levados ao único valor c. Portanto Im_f = { c } (conjunto unitário).",
+    xp: 20,
+    labState: getCalcPreset("caderno-constante"),
+  },
+  {
+    id: "pc-f7",
+    track: "precalc_func",
+    badge: "Caderno · Função Afim",
+    prompt: "Na função afim f(x) = ax + b (com a ≠ 0), por que podemos provar que Im_f = ℝ para todo y ∈ ℝ?",
+    options: [
+      "Porque basta escolher x = 0 para obter qualquer y.",
+      "Porque podemos isolar x = (y − b)/a (já que a ≠ 0) e verificar que f((y − b)/a) = y.",
+      "Porque o gráfico nunca cruza o eixo X.",
+      "Porque a tangente tg α = Δy/Δx é sempre igual a 0.",
+    ],
+    correctIndex: 1,
+    hint: "Dado qualquer alvo y ∈ ℝ, resolva a equação y = ax + b para encontrar qual x de entrada gera esse y!",
+    explanation:
+      "Como a ≠ 0, para qualquer y ∈ ℝ existe x = (y − b)/a ∈ ℝ tal que f((y − b)/a) = a·((y − b)/a) + b = y. Isso prova formalmente que Im_f = ℝ! Além disso, a = Δy/Δx = tg α mede a inclinação da reta e a raiz é x = −b/a.",
+    xp: 30,
+    labState: getCalcPreset("caderno-afim"),
   },
 
   // ---- UNIDADE 1 (P1): LIMITES & CONTINUIDADE ----
@@ -217,7 +333,7 @@ export const CALC_EXERCISES: CalcExercise[] = [
     explanation:
       "Para x ≠ 1, (x² − 1)/(x − 1) = (x − 1)(x + 1)/(x − 1) = x + 1. Logo lim_{x→1} (x + 1) = 1 + 1 = 2 (há um buraco em (1, 2), mas o limite existe!).",
     xp: 30,
-    labState: CALC_PRESETS[3].state,
+    labState: getCalcPreset("u1-limit-hole"),
   },
   {
     id: "u1-l2",
@@ -236,7 +352,7 @@ export const CALC_EXERCISES: CalcExercise[] = [
     explanation:
       "Como 0 está entre f(0) = −3 e f(2) = +5 e f é contínua em [0, 2], o TVI garante a existência de pelo menos um c ∈ ]0, 2[ tal que f(c) = 0 (uma raiz!).",
     xp: 30,
-    labState: CALC_PRESETS[1].state,
+    labState: getCalcPreset("caderno-ineq-quad"),
   },
 
   // ---- UNIDADE 2 & 3 (P2): DERIVADAS & APLICAÇÕES ----
@@ -252,7 +368,7 @@ export const CALC_EXERCISES: CalcExercise[] = [
       "f'(x) = 0,5 · 2x = x. Portanto, em x₀ = 2, o coeficiente angular da tangente é f'(2) = 2.",
     xp: 30,
     labState: {
-      ...CALC_PRESETS[4].state,
+      ...getCalcPreset("u2-secant-tangent"),
       x0: 2,
       h: 0.4,
     },
@@ -318,7 +434,7 @@ export const CALC_EXERCISES: CalcExercise[] = [
     explanation:
       "∫ 3x² dx = 3·(x³/3) = x³ e ∫ 2 dx = 2x. Somando a constante arbitrária de integração: x³ + 2x + C. Conferindo: (x³ + 2x + C)' = 3x² + 2!",
     xp: 30,
-    labState: CALC_PRESETS[6].state,
+    labState: getCalcPreset("u4-antideriv"),
   },
   {
     id: "u4-i2",

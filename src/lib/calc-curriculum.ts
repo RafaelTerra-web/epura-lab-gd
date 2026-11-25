@@ -1,4 +1,4 @@
-import { CALC_PRESETS, CalcLabState, DEFAULT_CALC_LAB_STATE } from "./calc-math";
+import { CalcLabState, DEFAULT_CALC_LAB_STATE, getCalcPreset } from "./calc-math";
 
 export interface CalcLessonExample {
   id: string;
@@ -40,8 +40,8 @@ export const CALC_LESSONS: CalcLessonChapter[] = [
       "ℕ = {1, 2, 3, 4, 5, ...} (naturais de contagem; alguns autores incluem o 0 como ℕ₀).",
       "ℤ = {..., −3, −2, −1, 0, 1, 2, 3, ...} (inteiros: entram os negativos e o zero).",
       "ℚ = { a/b | a, b ∈ ℤ e b ≠ 0 } (racionais: toda fração de inteiros com denominador diferente de zero!).",
-      "𝕀 (Irracionais): números como √2, π e e que NÃO podem virar fração a/b — sem eles a reta teria buracos invisíveis!",
-      "ℝ = ℚ ∪ 𝕀 completa todos os pontos da reta real, permitindo limites e derivadas.",
+      "𝕀 (Irracionais): números como √2, π e e que NÃO podem virar fração a/b — mas podem ser aproximados por racionais tão perto quanto quisermos!",
+      "ℝ = ℚ ∪ 𝕀 completa todos os pontos da reta real. Convenção da aula: Conjuntos com letra MAIÚSCULA (A, B, X, Y) e elementos com minúscula (x, y, p); '⇔' significa 'se e somente se'.",
     ],
     formulas: [
       { label: "Hierarquia", expr: "ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ", note: "Cada conjunto amplia o anterior" },
@@ -87,22 +87,52 @@ export const CALC_LESSONS: CalcLessonChapter[] = [
     summary:
       "Em Cálculo, domínios e soluções de inequações quase nunca são pontos isolados — são intervalos contínuos da reta real! Dominar colchetes fechados [a, b] (bolinha fechada ●), abertos ]a, b[ (bolinha aberta ○), união (∪), interseção (∩) e inversão de sinal ao multiplicar inequações por número negativo é obrigatório para a P1.",
     keyTakeaways: [
-      "Fechado limitado [a, b] = { x ∈ ℝ / a ≤ x ≤ b } inclui as pontas a e b (bolinha fechada ●).",
-      "Aberto ]a, b[ ou (a, b) = { x ∈ ℝ / a < x < b } EXCLUI as pontas a e b (bolinha aberta ○).",
-      "União (X ∪ Y): junta tudo que está em X OU em Y (ou nos dois).",
-      "Interseção (X ∩ Y): pega SOMENTE a região comum onde X E Y se sobrepõem simultaneamente.",
-      "Regra de ouro das Desigualdades: multiplicou ou dividiu por número NEGATIVO? INVERTE o sinal (< vira >, ≤ vira ≥)!",
+      "Limitados: fechado [a, b] = { x ∈ ℝ / a ≤ x ≤ b } (●), aberto ]a, b[ = { x ∈ ℝ / a < x < b } (○), e semiabertos ]a, b] ou [a, b[.",
+      "Ilimitados (aula 24/11): ]−∞, a] = { x ∈ ℝ / x ≤ a } e [a, +∞[ = { x ∈ ℝ / x ≥ a }.",
+      "Intervalos como blocos construtores: formamos conjuntos complexos via união A = ⋃ Iᵢ (p ∈ X ou p ∈ Y) e interseção B = ⋂ Iᵢ (p ∈ X e p ∈ Y).",
+      "Exemplo 1 do caderno (1º grau): A = { x ∈ ℝ / 2x − 1 ≤ 0 } ⇔ 2x ≤ 1 ⇔ x ≤ 1/2 ⇒ A = ]−∞, 1/2].",
+      "Exemplo 2 do caderno (2º grau por fatoração): B = { x ∈ ℝ / x² + x − 2 ≥ 0 }. Fatoramos como (x + 2)(x − 1) ≥ 0; pelo quadro de sinais, produto ≥ 0 fora das raízes: B = ]−∞, −2] ∪ [1, +∞[!",
     ],
     formulas: [
-      { label: "Intervalo Fechado", expr: "[a, b] = { x ∈ ℝ : a ≤ x ≤ b }", note: "Inclui a e b (●)" },
-      { label: "Intervalo Aberto", expr: "]a, b[ = { x ∈ ℝ : a < x < b }", note: "Exclui a e b (○)" },
-      { label: "Interseção", expr: "X ∩ Y = { x : x ∈ X e x ∈ Y }", note: "Usada ao combinar 2 restrições de domínio!" },
+      { label: "Blocos Construtores", expr: "A = ⋃ Iᵢ   ·   B = ⋂ Iᵢ", note: "União (ou) e Interseção (e) de intervalos" },
+      { label: "Ex 1 (Caderno)", expr: "2x − 1 ≤ 0  ⇔  x ≤ 1/2", note: "Solução: ]−∞, 1/2]" },
+      { label: "Ex 2 (Caderno)", expr: "x² + x − 2 = (x+2)(x−1) ≥ 0", note: "Solução: ]−∞, −2] ∪ [1, +∞[" },
     ],
     watchOut:
-      "Nunca feche colchete no infinito! É sempre ]−∞, 3] ou [2, +∞[, pois +∞ e −∞ não são números reais. E ao multiplicar −2x > 6 por −1, o sinal vira: 2x < −6 ⇒ x < −3!",
+      "Nunca feche colchete no infinito (sempre ]−∞, a] ou [a, +∞[). Em inequações de 2º grau como (x+2)(x−1) ≥ 0, NÃO basta exigir ambos ≥ 0! Quando ambos os fatores são negativos (x ≤ −2), menos vezes menos dá MAIS — por isso ]−∞, −2] também entra na solução!",
     voiceScript:
-      "Intervalos de reta são a língua oficial do Cálculo. O colchete voltado para dentro em a, b fechado significa menor ou igual, bolinha fechada. O colchete aberto ou parêntese exclui as bordas, bolinha aberta. Na interseção X inter Y, pegamos só o que vale nos dois conjuntos ao mesmo tempo — é exatamente isso que fazemos quando uma função tem duas restrições de domínio.",
+      "Na aula de 24 de novembro vimos que os intervalos são os blocos construtores dos conjuntos na reta real: fechados, abertos, semiabertos e ilimitados como menos infinito até a. Nas desigualdades, vimos dois exemplos-chave: primeiro, 2x menos 1 menor ou igual a zero dá x menor ou igual a meio. Depois, x ao quadrado mais x menos 2 maior ou igual a zero: fatoramos em x mais 2 vezes x menos 1, montamos o quadro de sinais e descobrimos que o produto é positivo antes do menos 2 e depois do 1!",
     examples: [
+      {
+        id: "ex-desig-quad-caderno",
+        label: "Caderno: x² + x − 2 ≥ 0 (Quadro de Sinais)",
+        formula: "(x+2)(x−1) ≥ 0 ⇒ ]−∞, −2] ∪ [1, +∞[",
+        labState: {
+          ...DEFAULT_CALC_LAB_STATE,
+          subMode: "intervals",
+          inequalityPreset: {
+            mode: "quadratic",
+            r1: -2,
+            r2: 1,
+            quadSign: ">=",
+          },
+        },
+      },
+      {
+        id: "ex-desig-lin-caderno",
+        label: "Caderno: 2x − 1 ≤ 0 (1º Grau)",
+        formula: "x ≤ 1/2 ⇒ ]−∞, 1/2]",
+        labState: {
+          ...DEFAULT_CALC_LAB_STATE,
+          subMode: "intervals",
+          inequalityPreset: {
+            mode: "linear",
+            linA: 2,
+            linB: -1,
+            linSign: "<=",
+          },
+        },
+      },
       {
         id: "ex-intervalos-inter",
         label: "Interseção [−2, 3] ∩ ]0, 4]",
@@ -123,26 +153,6 @@ export const CALC_LESSONS: CalcLessonChapter[] = [
           },
         },
       },
-      {
-        id: "ex-intervalos-union",
-        label: "União [−3, 1[ ∪ [0, 4[",
-        formula: "X ∪ Y = [−3, 4[",
-        labState: {
-          ...DEFAULT_CALC_LAB_STATE,
-          subMode: "intervals",
-          intervalPreset: {
-            a1: -3,
-            b1: 1,
-            closedA1: true,
-            closedB1: false,
-            a2: 0,
-            b2: 4,
-            closedA2: true,
-            closedB2: false,
-            op: "union",
-          },
-        },
-      },
     ],
   },
   {
@@ -157,26 +167,26 @@ export const CALC_LESSONS: CalcLessonChapter[] = [
     summary:
       "Uma função real f: A ⊆ ℝ → ℝ exige três ingredientes: Domínio A (de onde sai), Contradomínio B (para onde vai) e uma Regra f(x) que associa CADA elemento de A a EXATAMENTE UM elemento de B. Aqui respondemos às duas perguntas-chave do seu caderno: o que é Domínio Natural e o que é a Raiz de uma função!",
     keyTakeaways: [
-      "Requisitos para ser função: TODO x ∈ A precisa disparar flecha (existência) e só pode disparar UMA flecha (unicidade).",
-      "Contradomínio (B) é o conjunto de chegada todo; Imagem Im(f) ⊆ B são apenas os valores efetivamente atingidos pelas flechas.",
-      "Gráfico: Gr_f = { (x, y) ∈ ℝ² / y = f(x), x ∈ A }. No plano, toda reta vertical corta o gráfico no máximo 1 vez!",
-      "DOMÍNIO NATURAL: quando o enunciado dá só a fórmula (ex: √(x+1) ou 1/(x−2)), é o MAIOR subconjunto de ℝ onde a conta faz sentido sem erro matemático (denominador ≠ 0, raiz par ≥ 0, logaritmo > 0).",
-      "RAIZ (ou Zero) da função: todo valor x ∈ A que zera a saída, isto é, f(x) = 0. Geometricamente, é onde o gráfico corta o eixo X!",
+      "Notação oficial do caderno: f: A → B, x ↦ f(x). Domínio denotamos por D_f ('de onde sai'); Contradomínio B ('para onde vai').",
+      "Imagem formal: Im_f = { y ∈ B / ∃ x ∈ D_f t.q. f(x) = y } — são apenas os valores de B efetivamente atingidos.",
+      "Gráfico: Gr_f = { (x, y) ∈ ℝ² / y = f(x), x ∈ A }. Toda reta vertical corta Gr_f no máximo 1 vez!",
+      "DOMÍNIO NATURAL (definição da aula): quando não escrevemos o domínio por simplicidade, D_f ⊆ ℝ é o MAIOR subconjunto de ℝ onde a fórmula de f faz sentido.",
+      "Exemplos do caderno: Ex 1) f(x) = √x ⇒ D_f = { x ∈ ℝ | x ≥ 0 } = [0, +∞[;  Ex 2) f(x) = 1/(x−1) ⇒ D_f = { x ∈ ℝ | x ≠ 1 } = ]−∞, 1[ ∪ ]1, +∞[ (denominador não pode zerar!).",
     ],
     formulas: [
-      { label: "Notação", expr: "f: A ⊆ ℝ → ℝ", note: "Domínio A, Contradomínio ℝ" },
-      { label: "Gráfico", expr: "Gr_f = { (x, y) ∈ ℝ² : y = f(x), x ∈ A }", note: "Projeção em X = Domínio; em Y = Imagem" },
-      { label: "Raiz / Zero", expr: "f(x) = 0", note: "Interseção da curva com o eixo X" },
+      { label: "Imagem (Im_f)", expr: "Im_f = { y ∈ B / ∃ x ∈ D_f t.q. f(x) = y }", note: "Notação exata do caderno" },
+      { label: "Ex 1 (Dom. Natural)", expr: "f(x) = √x  ⇒  D_f = [0, +∞[", note: "Raiz quadrada exige x ≥ 0" },
+      { label: "Ex 2 (Dom. Natural)", expr: "f(x) = 1/(x−1)  ⇒  D_f = ]−∞, 1[ ∪ ]1, +∞[", note: "x − 1 ≠ 0 ⇒ x ≠ 1" },
     ],
     watchOut:
-      "Os 3 mandamentos do Domínio Natural em prova: (1) Denominador ≠ 0; (2) Dentro de raiz de índice par ≥ 0; (3) Dentro de logaritmo > 0 (estritamente positivo, zero não entra!).",
+      "Os 3 mandamentos do Domínio Natural em prova: (1) Denominador ≠ 0 (em 1/(x−1), x = 1 dá 1/0!); (2) Dentro de raiz par ≥ 0 (em √x, x ≥ 0); (3) Dentro de logaritmo > 0 (estritamente positivo!).",
     voiceScript:
-      "Para existir uma função, precisamos de três coisas: domínio, de onde sai; contradomínio, para onde vai; e a regra. Cada elemento do domínio deve ter exatamente uma saída. E o que é domínio natural? É o maior conjunto de reais que não quebra a fórmula: sem divisão por zero, sem raiz par de negativo e sem logaritmo de número menor ou igual a zero. Já a raiz da função é todo x que faz f de x dar zero, onde a curva cruza o eixo X.",
+      "Uma função é uma regra que relaciona cada elemento x do domínio D f a um único elemento f de x no contradomínio B. A imagem Im f reúne somente os y que possuem algum x correspondente. Quando não especificamos o domínio, usamos o domínio natural: o maior subconjunto dos reais onde a fórmula faz sentido. No caderno vimos dois exemplos clássicos: raiz de x tem domínio de zero fechado a mais infinito, e um sobre x menos um exclui apenas o 1, ficando menos infinito a 1 aberto união 1 aberto a mais infinito.",
     examples: [
       {
         id: "ex-flechas-valid",
         label: "Diagrama A → B (É Função?)",
-        formula: "f: A → B · Im(f) ⊆ B",
+        formula: "f: A → B · Im_f ⊆ B",
         labState: {
           ...DEFAULT_CALC_LAB_STATE,
           subMode: "arrows",
@@ -185,20 +195,20 @@ export const CALC_LESSONS: CalcLessonChapter[] = [
       },
       {
         id: "ex-dom-natural-sqrt",
-        label: "Domínio Natural √(x + 1) − 1",
-        formula: "D(f) = [−1, +∞[",
-        labState: CALC_PRESETS[0].state,
+        label: "Caderno Ex 1: f(x) = √x",
+        formula: "D_f = [0, +∞[",
+        labState: getCalcPreset("caderno-ex1-sqrt"),
       },
       {
-        id: "ex-raizes-quad",
-        label: "Raízes: f(x) = 0.5x² − 2",
-        formula: "f(−2) = 0 e f(+2) = 0",
-        labState: CALC_PRESETS[1].state,
+        id: "ex-dom-natural-rat",
+        label: "Caderno Ex 2: f(x) = 1/(x−1)",
+        formula: "D_f = ]−∞, 1[ ∪ ]1, +∞[",
+        labState: getCalcPreset("caderno-ex2-rational"),
       },
       {
         id: "ex-dom-natural-ln",
         label: "Domínio Natural ln(x)",
-        formula: "D(f) = ]0, +∞[",
+        formula: "D_f = ]0, +∞[",
         labState: {
           ...DEFAULT_CALC_LAB_STATE,
           subMode: "graph",
@@ -216,53 +226,51 @@ export const CALC_LESSONS: CalcLessonChapter[] = [
     number: "AULA 04",
     tag: "Pré-Cálculo · Ementa 1.3",
     examBadge: "P1",
-    title: "Funções Elementares, Composta (f ∘ g) & Inversa f⁻¹",
-    subtitle: "Afim, quadrática, modular, racional, exponencial, logarítmica, trigonométricas e espelhamento em y = x",
+    title: "Funções Elementares (Constante, Afim...), Composta & Inversa",
+    subtitle: "0) Constante, 1) Afim (tg α = Δy/Δx = a e prova de Im_f = ℝ), Quadrática, Composta (f ∘ g) e Inversa f⁻¹",
     duration: "7 min",
-    notebookRef: "Ementa 1.2 e 1.3 · Stewart Cap. 1 · Guidorizzi Cap. 2",
+    notebookRef: "Anotações do Caderno (Funções Elementares 0 e 1) · Ementa 1.2–1.3",
     summary:
-      "Todas as funções que aparecem nas provas de Cálculo I são combinações de poucas funções elementares. Dominar o formato visual de cada uma — além de compor (f ∘ g)(x) = f(g(x)) e inverter f⁻¹(x) trocando x por y — transforma gráficos complexos em leitura instantânea.",
+      "Começamos a lista oficial das Funções Elementares do seu caderno: 0) Função Constante f(x) = c (reta horizontal, Im_f = {c}) e 1) Função Afim f(x) = ax + b com a ≠ 0 (reta inclinada com tg α = Δy/Δx = a, raiz x = −b/a e demonstração formal de Im_f = ℝ), avançando até composta (f ∘ g) e inversa f⁻¹.",
     keyTakeaways: [
-      "Função Composta (f ∘ g)(x) = f(g(x)): a saída de g entra como entrada em f (atenção: em geral f ∘ g ≠ g ∘ f!).",
-      "Função Inversa f⁻¹ existe quando f é injetora (cada y vem de no máximo um x — Teste da Reta Horizontal!).",
-      "Na prática, achamos f⁻¹ trocando x ↔ y e isolando o novo y. O gráfico de f⁻¹ é o espelho exato de f na diagonal y = x!",
-      "Par clássico de inversas: exponencial e^x (domínio ℝ, imagem ]0, +∞[) ⇄ logaritmo ln(x) (domínio ]0, +∞[, imagem ℝ).",
+      "0) Função Constante: f: ℝ → ℝ, f(x) = c (c ∈ ℝ). Domínio D_f = ℝ e Imagem unitária Im_f = { c } (reta horizontal).",
+      "1) Função Afim: f: ℝ → ℝ, f(x) = ax + b com a, b ∈ ℝ e a ≠ 0. Gráfico é uma reta; raiz (y = 0) é x = −b/a.",
+      "Inclinação na Afim: tg α = Δy / Δx = a! Se a > 0 a reta sobe (crescente); se a < 0 a reta desce (decrescente).",
+      "Prova da Imagem na Afim (caderno!): dado qualquer y ∈ ℝ, escolhemos x = (y − b)/a (existe pois a ≠ 0) ⇒ f((y−b)/a) = y, provando Im_f = ℝ!",
+      "Composta (f ∘ g)(x) = f(g(x)) e Inversa f⁻¹(x): gráficos de f e f⁻¹ (como e^x e ln x) são espelhos exatos na reta y = x!",
     ],
     formulas: [
-      { label: "Composta", expr: "(f ∘ g)(x) = f(g(x))", note: "Base da Regra da Cadeia na P2!" },
-      { label: "Inversa", expr: "f⁻¹(f(x)) = x", note: "Gráficos simétricos na reta y = x" },
-      { label: "Exponencial ⇄ Log", expr: "y = e^x  ⇔  x = ln(y)", note: "Troca domínio pela imagem" },
+      { label: "0) Constante", expr: "f(x) = c  ⇒  D_f = ℝ,  Im_f = { c }", note: "Reta horizontal na altura c" },
+      { label: "1) Afim (Inclinação)", expr: "tg α = Δy/Δx = a   ·   Raiz: x = −b/a", note: "a > 0 sobe · a < 0 desce" },
+      { label: "Prova Im_f = ℝ", expr: "x = (y − b)/a  ⇒  f((y − b)/a) = y", note: "Válido porque a ≠ 0!" },
     ],
     watchOut:
-      "f⁻¹(x) NÃO significa 1/f(x)! O expoente −1 na função significa função inversa (desfazer a regra), enquanto (f(x))⁻¹ = 1/f(x) é o inverso multiplicativo.",
+      "Por que exigimos a ≠ 0 na Função Afim? Porque se a = 0 ela vira Constante (Im_f = {b} ≠ ℝ), e não poderíamos dividir por a em x = (y − b)/a nem na raiz x = −b/a! E atenção: f⁻¹(x) é inversa, NÃO 1/f(x).",
     voiceScript:
-      "Conhecer o formato das funções elementares dá visão de raio-X no Cálculo. Na composição f bola g de x, você aplica g primeiro e joga o resultado dentro de f. Já a função inversa desfaz o caminho de f: no gráfico, basta refletir a curva em torno da diagonal y igual a x, como acontece entre e elevado a x e ln de x.",
+      "Nas funções elementares do seu caderno, o item zero é a função constante f de x igual a c, uma reta horizontal com domínio real e imagem unitária c. O item um é a função afim f de x igual a ax mais b, com a diferente de zero. A constante a mede a inclinação pela tangente de alfa igual a delta y sobre delta x: positiva sobe, negativa desce. A raiz é menos b sobre a, e como podemos isolar x igual a y menos b sobre a, provamos que a imagem é toda a reta real.",
     examples: [
+      {
+        id: "ex-caderno-afim",
+        label: "Caderno: Afim (tg α = Δy/Δx = a)",
+        formula: "f(x) = ax + b · Raiz −b/a · Im_f = ℝ",
+        labState: getCalcPreset("caderno-afim"),
+      },
+      {
+        id: "ex-caderno-constante",
+        label: "Caderno: 0) Constante f(x) = 2",
+        formula: "D_f = ℝ · Im_f = { 2 }",
+        labState: getCalcPreset("caderno-constante"),
+      },
       {
         id: "ex-inversa-exp-ln",
         label: "Espelho e^x ⇄ ln(x)",
         formula: "Simetria em y = x",
-        labState: CALC_PRESETS[2].state,
-      },
-      {
-        id: "ex-racional-assintota",
-        label: "Racional 2/(x − 1)",
-        formula: "Assíntota x = 1",
-        labState: {
-          ...DEFAULT_CALC_LAB_STATE,
-          subMode: "graph",
-          kind: "rational",
-          params: { a: 2, b: 1, c: 0 },
-          x0: 2.5,
-          showDomainImage: true,
-          showRoots: false,
-          showInverse: true,
-        },
+        labState: getCalcPreset("precalc-inverse"),
       },
       {
         id: "ex-seno",
         label: "Trigonométrica 2·sen(x)",
-        formula: "Im(f) = [−2, +2]",
+        formula: "Im_f = [−2, +2]",
         labState: {
           ...DEFAULT_CALC_LAB_STATE,
           subMode: "graph",
@@ -306,7 +314,7 @@ export const CALC_LESSONS: CalcLessonChapter[] = [
         id: "ex-limite-buraco",
         label: "Buraco 0/0 em x = 1",
         formula: "lim (x²−1)/(x−1) = 2",
-        labState: CALC_PRESETS[3].state,
+        labState: getCalcPreset("u1-limit-hole"),
       },
       {
         id: "ex-assintota-infinito",
@@ -356,7 +364,7 @@ export const CALC_LESSONS: CalcLessonChapter[] = [
         id: "ex-sec-tang",
         label: "Animar Secante → Tangente",
         formula: "f(x) = 0.5x² − 1 · h → 0",
-        labState: CALC_PRESETS[4].state,
+        labState: getCalcPreset("u2-secant-tangent"),
       },
       {
         id: "ex-bico-abs",
@@ -409,14 +417,14 @@ export const CALC_LESSONS: CalcLessonChapter[] = [
         id: "ex-cubica-extremos",
         label: "Cúbica: Máximo, Mínimo & Inflexão",
         formula: "f(x) = 0.35x³ − 2x com f'(x)",
-        labState: CALC_PRESETS[5].state,
+        labState: getCalcPreset("u3-extrema-inflection"),
       },
       {
         id: "ex-cubica-concavidade",
         label: "Ver Concavidade f''(x)",
         formula: "Inflexão em x = 0",
         labState: {
-          ...CALC_PRESETS[5].state,
+          ...getCalcPreset("u3-extrema-inflection"),
           showDerivative: true,
           showSecondDeriv: true,
         },
@@ -454,7 +462,7 @@ export const CALC_LESSONS: CalcLessonChapter[] = [
         id: "ex-primitiva-linear",
         label: "Família F(x) = 0.5x² + C",
         formula: "∫ x dx = 0.5x² + C",
-        labState: CALC_PRESETS[6].state,
+        labState: getCalcPreset("u4-antideriv"),
       },
       {
         id: "ex-primitiva-trig",

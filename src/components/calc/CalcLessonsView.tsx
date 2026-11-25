@@ -2,15 +2,19 @@
 
 import React, { useState } from "react";
 import { CALC_LESSONS, CalcLessonChapter } from "@/lib/calc-curriculum";
+import { CALC_VIDEO_EPISODES } from "@/lib/calc-video-episodes";
 import { CalcLabState } from "@/lib/calc-math";
+import { CalcMotionVideoPlayer } from "./CalcMotionVideoPlayer";
 import { ProfessorAvatar } from "@/components/ProfessorAvatar";
 import { TtsModelTier, VoiceState } from "@/lib/voice";
 import { sfx } from "@/lib/sfx";
 import {
   AlertTriangle,
   ArrowRight,
+  BookOpen,
   CheckCircle2,
   Compass,
+  Film,
   Target,
   Volume2,
   VolumeX,
@@ -18,7 +22,9 @@ import {
 
 interface CalcLessonsViewProps {
   completedLessons: string[];
+  watchedEpisodes: string[];
   onToggleComplete: (id: string) => void;
+  onEpisodeWatched: (episodeId: string) => void;
   onOpenInCalcLab: (state: CalcLabState) => void;
   voice: VoiceState;
   voiceRate: number;
@@ -28,13 +34,16 @@ interface CalcLessonsViewProps {
 
 export function CalcLessonsView({
   completedLessons,
+  watchedEpisodes,
   onToggleComplete,
+  onEpisodeWatched,
   onOpenInCalcLab,
   voice,
   voiceRate,
   customApiKey,
   ttsModelTier,
 }: CalcLessonsViewProps) {
+  const [viewMode, setViewMode] = useState<"videos" | "guide">("videos");
   const [activeId, setActiveId] = useState<string>(CALC_LESSONS[0].id);
   const active: CalcLessonChapter =
     CALC_LESSONS.find((l) => l.id === activeId) ?? CALC_LESSONS[0];
@@ -44,7 +53,57 @@ export function CalcLessonsView({
   const isSpeaking = voice.speakingId === speakId;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[310px_1fr] gap-5 items-start">
+    <div className="space-y-4">
+      {/* Mode Switcher: Motion Videos (Gemini TTS) vs Guided Reading Chapters */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex items-center p-1 rounded-2xl bg-paper-200/80 dark:bg-blueprint-900 border border-paper-300 dark:border-blueprint-700 gap-1">
+          <button
+            type="button"
+            data-calc-lessons-tab="videos"
+            onClick={() => {
+              sfx.click();
+              setViewMode("videos");
+            }}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition ${
+              viewMode === "videos"
+                ? "bg-ink-900 text-paper-50 dark:bg-sky-500 dark:text-blueprint-950 shadow-sm"
+                : "text-ink-600 dark:text-slate-300 hover:text-ink-900 dark:hover:text-white"
+            }`}
+          >
+            <Film className="w-4 h-4" />
+            Videoaulas Animadas ({CALC_VIDEO_EPISODES.length} · Gemini TTS)
+          </button>
+          <button
+            type="button"
+            data-calc-lessons-tab="guide"
+            onClick={() => {
+              sfx.click();
+              setViewMode("guide");
+            }}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition ${
+              viewMode === "guide"
+                ? "bg-ink-900 text-paper-50 dark:bg-sky-500 dark:text-blueprint-950 shadow-sm"
+                : "text-ink-600 dark:text-slate-300 hover:text-ink-900 dark:hover:text-white"
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            Apostila Guiada ({CALC_LESSONS.length} Aulas)
+          </button>
+        </div>
+
+        <span className="font-mono text-[11px] font-bold text-ink-500 dark:text-slate-400">
+          {watchedEpisodes.length}/{CALC_VIDEO_EPISODES.length} vídeos · {completedLessons.length}/{CALC_LESSONS.length} apostilas
+        </span>
+      </div>
+
+      {viewMode === "videos" ? (
+        <CalcMotionVideoPlayer
+          watchedEpisodes={watchedEpisodes}
+          onEpisodeWatched={onEpisodeWatched}
+          onOpenInCalcLab={onOpenInCalcLab}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-[310px_1fr] gap-5 items-start">
       {/* Chapter Index */}
       <aside className="space-y-3">
         <div className="hidden lg:block px-1">
@@ -303,6 +362,8 @@ export function CalcLessonsView({
           })()}
         </footer>
       </article>
+        </div>
+      )}
     </div>
   );
 }

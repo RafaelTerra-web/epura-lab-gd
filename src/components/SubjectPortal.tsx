@@ -4,7 +4,8 @@ import React from "react";
 import type { AuthUser } from "@/lib/auth";
 import { UserProgress } from "@/lib/storage";
 import { VIDEO_EPISODES } from "@/lib/video-episodes";
-import { CALC_LESSONS, CALC_SYLLABUS_UNITS } from "@/lib/calc-curriculum";
+import { CALC_SYLLABUS_UNITS } from "@/lib/calc-curriculum";
+import { CALC_VIDEO_EPISODES } from "@/lib/calc-video-episodes";
 import { GoogleAuthButton } from "./GoogleAuthButton";
 import { sfx } from "@/lib/sfx";
 import {
@@ -212,7 +213,7 @@ export function SubjectPortal({
                   <TrendingUp className="w-6 h-6" />
                 </div>
                 <span className="font-mono text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-paper-200/80 dark:bg-blueprint-800 text-ink-700 dark:text-slate-300">
-                  {progress.calcCompletedLessons.length}/{CALC_LESSONS.length} aulas · {doneCalcTopics}/{totalCalcTopics} ementa
+                  {progress.calcWatchedEpisodes.length}/{CALC_VIDEO_EPISODES.length} vídeos · {doneCalcTopics}/{totalCalcTopics} ementa
                 </span>
               </div>
 
@@ -224,14 +225,14 @@ export function SubjectPortal({
                   Cálculo 1 &amp; Pré-Cálculo
                 </h2>
                 <p className="text-sm text-ink-600 dark:text-slate-300 mt-1.5 leading-relaxed">
-                  Comece pelo Pré-Cálculo (Conjuntos ℕ⊂ℤ⊂ℚ⊂ℝ, Intervalos, Diagrama de Flechas, Domínio Natural e Raiz) e avance por Funções, Limites, Derivadas, Integrais e Simulador de Notas P1–P3!
+                  5 Videoaulas animadas com Gemini TTS + Professor, Lab de Funções (Constante, Afim tg α = a, Domínio Natural √x e 1/(x−1), Quadro de Sinais x²+x−2≥0), Exercícios e Simulador P1–P3!
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-1.5">
                 {[
                   { label: "Lab de Funções", sec: "lab" as const, icon: TrendingUp },
-                  { label: "Aulas Pré-Cálculo → P3", sec: "lessons" as const, icon: BookOpen },
+                  { label: "5 Videoaulas Motion", sec: "lessons" as const, icon: Film },
                   { label: "Praticar Exercícios", sec: "practice" as const, icon: GraduationCap },
                   { label: "Ementa & Notas", sec: "syllabus" as const, icon: Calendar },
                 ].map((pill) => {

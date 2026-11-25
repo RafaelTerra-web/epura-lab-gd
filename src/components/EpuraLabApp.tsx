@@ -214,6 +214,17 @@ export function EpuraLabApp() {
     }
   };
 
+  const handleCalcEpisodeWatched = (episodeId: string) => {
+    updateProgress((prev) => {
+      if (prev.calcWatchedEpisodes.includes(episodeId)) return prev;
+      return {
+        ...prev,
+        calcWatchedEpisodes: [...prev.calcWatchedEpisodes, episodeId],
+        xp: prev.xp + 30,
+      };
+    });
+  };
+
   const updatePrefs = (patch: Partial<UserProgress["preferences"]>) => {
     updateProgress((prev) => ({
       ...prev,
@@ -814,7 +825,9 @@ export function EpuraLabApp() {
         {activeSubject === "calc1" && calcSection === "lessons" && (
           <CalcLessonsView
             completedLessons={progress.calcCompletedLessons}
+            watchedEpisodes={progress.calcWatchedEpisodes}
             onToggleComplete={handleToggleCalcLesson}
+            onEpisodeWatched={handleCalcEpisodeWatched}
             onOpenInCalcLab={handleOpenInCalcLab}
             voice={voice}
             voiceRate={progress.preferences.voiceRate}

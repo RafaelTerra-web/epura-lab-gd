@@ -1,0 +1,200 @@
+{
+  "calc-ep01-conjuntos": {
+    "audioSrc": "/audio/calc-video/calc-ep01-conjuntos.wav",
+    "duration": 110.56,
+    "scenes": [
+      {
+        "id": "intro",
+        "label": "Por que Cálculo vive em ℝ?",
+        "subtitle": "Cálculo I estuda o comportamento de funções reais com valores reais — precisamos de uma reta contínua sem buracos.",
+        "startSec": 0,
+        "endSec": 19.49
+      },
+      {
+        "id": "hierarchy",
+        "label": "Hierarquia ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ",
+        "subtitle": "ℕ = {1,2,3...} ⊂ ℤ (inteiros) ⊂ ℚ = {a/b | a,b ∈ ℤ, b ≠ 0} (frações!). Atenção: frações moram em ℚ, não em ℤ!",
+        "startSec": 19.49,
+        "endSec": 43.399
+      },
+      {
+        "id": "irrationals",
+        "label": "Irracionais 𝕀 & Aproximação",
+        "subtitle": "ℝ = ℚ ∪ 𝕀: números como √2 e π não viram fração a/b, mas podem ser aproximados por racionais com precisão infinita.",
+        "startSec": 43.399,
+        "endSec": 77.829
+      },
+      {
+        "id": "conventions",
+        "label": "Notação Oficial do Caderno",
+        "subtitle": "Conjuntos levam letra MAIÚSCULA (A, B, X, Y); elementos levam minúscula (x, y, p); '⇔' significa 'se e somente se'.",
+        "startSec": 77.829,
+        "endSec": 110.559
+      }
+    ]
+  },
+  "calc-ep02-intervalos": {
+    "audioSrc": "/audio/calc-video/calc-ep02-intervalos.wav",
+    "duration": 149.37,
+    "scenes": [
+      {
+        "id": "types",
+        "label": "Fechado ● vs Aberto ○ & Ilimitados",
+        "subtitle": "[a, b] inclui os extremos (●); ]a, b[ exclui (○). Ilimitados: ]−∞, a] e [a, +∞[ sempre abertos no infinito!",
+        "startSec": 0,
+        "endSec": 36.95
+      },
+      {
+        "id": "venn",
+        "label": "Blocos Construtores & Venn",
+        "subtitle": "União X ∪ Y (p ∈ X OU p ∈ Y) junta tudo; Interseção X ∩ Y (p ∈ X E p ∈ Y) pega só a região comum.",
+        "startSec": 36.95,
+        "endSec": 69.019
+      },
+      {
+        "id": "ineq-linear",
+        "label": "Ex 1 Caderno: 2x − 1 ≤ 0",
+        "subtitle": "2x − 1 ≤ 0 ⇔ 2x ≤ 1 ⇔ x ≤ 1/2 ⇒ A = ]−∞, 1/2]. E atenção: dividir por número negativo INVERTE o sinal!",
+        "startSec": 69.019,
+        "endSec": 94.029
+      },
+      {
+        "id": "ineq-quad",
+        "label": "Ex 2 Caderno: x² + x − 2 ≥ 0",
+        "subtitle": "Fatorando: (x + 2)(x − 1) ≥ 0. Pelo quadro de sinais, (−)·(−) = (+) para x ≤ −2 e (+)·(+) = (+) para x ≥ 1!",
+        "startSec": 94.029,
+        "endSec": 132.059
+      },
+      {
+        "id": "takeaway",
+        "label": "Solução Final na Reta",
+        "subtitle": "B = ]−∞, −2] ∪ [1, +∞[ — união de dois intervalos ilimitados construídos pelos sinais dos fatores!",
+        "startSec": 132.059,
+        "endSec": 149.368
+      }
+    ]
+  },
+  "calc-ep03-funcoes": {
+    "audioSrc": "/audio/calc-video/calc-ep03-funcoes.wav",
+    "duration": 134.99,
+    "scenes": [
+      {
+        "id": "arrows",
+        "label": "Domínio, Contradomínio & Regra",
+        "subtitle": "f: A → B exige que TODO x ∈ A dispare exatamente UMA flecha. Imagem Im_f = { y ∈ B / ∃ x ∈ D_f t.q. f(x) = y }.",
+        "startSec": 0,
+        "endSec": 27.59
+      },
+      {
+        "id": "graph-test",
+        "label": "Gráfico Gr_f & Reta Vertical",
+        "subtitle": "Gr_f = { (x, y) ∈ ℝ² / y = f(x), x ∈ A }. Toda reta vertical corta o gráfico de uma função no máximo 1 vez!",
+        "startSec": 27.59,
+        "endSec": 57.179
+      },
+      {
+        "id": "dom-sqrt",
+        "label": "Domínio Natural · Ex 1: √x",
+        "subtitle": "Domínio Natural é o maior subconjunto de ℝ onde f faz sentido. Para f(x) = √x, exigimos x ≥ 0 ⇒ D_f = [0, +∞[.",
+        "startSec": 57.179,
+        "endSec": 80.549
+      },
+      {
+        "id": "dom-rat",
+        "label": "Domínio Natural · Ex 2: 1/(x−1)",
+        "subtitle": "Denominador não pode zerar! Em f(x) = 1/(x−1), x ≠ 1 ⇒ D_f = ]−∞, 1[ ∪ ]1, +∞[ (assíntota vertical em x = 1).",
+        "startSec": 80.549,
+        "endSec": 102.619
+      },
+      {
+        "id": "roots",
+        "label": "O que é a Raiz de uma Função?",
+        "subtitle": "Raiz (ou zero) é todo x que faz f(x) = 0 — exatamente onde a curva atravessa o eixo horizontal X!",
+        "startSec": 102.619,
+        "endSec": 134.988
+      }
+    ]
+  },
+  "calc-ep04-elementares": {
+    "audioSrc": "/audio/calc-video/calc-ep04-elementares.wav",
+    "duration": 160.01,
+    "scenes": [
+      {
+        "id": "constant",
+        "label": "0) Função Constante: f(x) = c",
+        "subtitle": "f: ℝ → ℝ levando todo x na mesma constante c. Gráfico é uma reta horizontal com D_f = ℝ e Im_f = { c }.",
+        "startSec": 0,
+        "endSec": 33.93
+      },
+      {
+        "id": "afim-slope",
+        "label": "1) Função Afim · tg α = Δy/Δx = a",
+        "subtitle": "f(x) = ax + b (a ≠ 0). O coeficiente a mede a inclinação: tg α = Δy/Δx = a (a > 0 sobe; a < 0 desce)!",
+        "startSec": 33.93,
+        "endSec": 70.359
+      },
+      {
+        "id": "afim-proof",
+        "label": "Raiz x = −b/a & Prova Im_f = ℝ",
+        "subtitle": "Zerando y = 0 achamos a raiz x = −b/a. E dado qualquer y ∈ ℝ, x = (y−b)/a garante f((y−b)/a) = y ⇒ Im_f = ℝ!",
+        "startSec": 70.359,
+        "endSec": 109.309
+      },
+      {
+        "id": "composed",
+        "label": "Função Composta (f ∘ g)(x)",
+        "subtitle": "Na composição f(g(x)), a saída da primeira máquina g alimenta a segunda máquina f — base da Regra da Cadeia!",
+        "startSec": 109.309,
+        "endSec": 141.719
+      },
+      {
+        "id": "inverse",
+        "label": "Inversa f⁻¹: Espelho em y = x",
+        "subtitle": "Trocar x ↔ y reflete o gráfico na diagonal y = x: e^x e ln(x) são espelhos perfeitos um do outro!",
+        "startSec": 141.719,
+        "endSec": 160.008
+      }
+    ]
+  },
+  "calc-ep05-calc-preview": {
+    "audioSrc": "/audio/calc-video/calc-ep05-calc-preview.wav",
+    "duration": 144.25,
+    "scenes": [
+      {
+        "id": "limits",
+        "label": "P1 · Limite 0/0 (Buraco) & TVI",
+        "subtitle": "Em (x²−1)/(x−1), f(1) não existe (buraco aberto!), mas pela esquerda e direita a altura tende a L = 2!",
+        "startSec": 0,
+        "endSec": 22.41
+      },
+      {
+        "id": "deriv-secant",
+        "label": "P2 · Derivada: Secante → Tangente",
+        "subtitle": "Quando o passo h encolhe até zero, a reta secante gira e vira a reta tangente com inclinação f'(x₀)!",
+        "startSec": 22.41,
+        "endSec": 58.459
+      },
+      {
+        "id": "deriv-apps",
+        "label": "P2 · Máximos, Mínimos & Inflexão",
+        "subtitle": "f'(x) = 0 revela picos e vales (otimização); f''(x) revela concavidade (∪ ou ∩) e o ponto de inflexão!",
+        "startSec": 58.459,
+        "endSec": 92.729
+      },
+      {
+        "id": "integrals",
+        "label": "P3 · Integral Indefinida F(x) + C",
+        "subtitle": "Integrar desfaz a derivada: ∫ f(x) dx = F(x) + C cria uma família infinita de curvas deslocadas por +C!",
+        "startSec": 92.729,
+        "endSec": 113.039
+      },
+      {
+        "id": "uerj-roadmap",
+        "label": "Estratégia UERJ · Prof. Mateus Spezia",
+        "subtitle": "MP = (P1+P2+P3)/3 ≥ 7 aprova direto! Presença ≥ 75% obrigatória; PR 13/04/2027 e PF 20/04/2027.",
+        "startSec": 113.039,
+        "endSec": 144.248
+      }
+    ]
+  }
+}

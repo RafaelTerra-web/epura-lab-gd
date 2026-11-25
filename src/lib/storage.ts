@@ -11,6 +11,7 @@ export interface UserProgress {
   watchedEpisodes: string[];
   uerjChecklist: Record<string, boolean>;
   calcCompletedLessons: string[];
+  calcWatchedEpisodes: string[];
   calcChecklist: Record<string, boolean>;
   topicStats: Record<
     string,
@@ -53,6 +54,7 @@ export const DEFAULT_PROGRESS: UserProgress = {
   watchedEpisodes: [],
   uerjChecklist: {},
   calcCompletedLessons: [],
+  calcWatchedEpisodes: [],
   calcChecklist: {},
   topicStats: {
     diedros: { attempts: 0, correct: 0 },
@@ -95,6 +97,9 @@ export function loadProgress(userId?: string | null): UserProgress {
         : [],
       calcCompletedLessons: Array.isArray(parsed.calcCompletedLessons)
         ? parsed.calcCompletedLessons
+        : [],
+      calcWatchedEpisodes: Array.isArray(parsed.calcWatchedEpisodes)
+        ? parsed.calcWatchedEpisodes
         : [],
       calcChecklist:
         parsed.calcChecklist && typeof parsed.calcChecklist === "object"

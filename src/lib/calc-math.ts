@@ -1,4 +1,5 @@
 export type CalcFnKind =
+  | "constant"
   | "linear"
   | "quadratic"
   | "cubic"
@@ -45,6 +46,15 @@ export interface CalcLabState {
     closedB2: boolean;
     op: "union" | "intersection" | "diff";
   };
+  inequalityPreset?: {
+    mode: "linear" | "quadratic";
+    linA?: number;
+    linB?: number;
+    linSign?: "<=" | ">=";
+    r1?: number;
+    r2?: number;
+    quadSign?: ">=" | "<=";
+  };
 }
 
 export interface CalcFnMeta {
@@ -87,21 +97,40 @@ function fmtShiftX(b: number): string {
 }
 
 export const CALC_FUNCTIONS: Record<CalcFnKind, CalcFnMeta> = {
+  constant: {
+    kind: "constant",
+    name: "0) Função Constante (f(x) = c)",
+    shortTag: "Constante",
+    unitTag: "Pré-Cálculo · Caderno",
+    formula: (p) => `f(x) = ${fmtNum(p.c)}`,
+    derivFormula: () => "f'(x) = 0 (reta horizontal)",
+    antiderivFormula: (p, C) => `F(x) = ${fmtNum(p.c)}x${fmtTermSign(C)}`,
+    domainLabel: () => "D_f = ℝ  (]−∞, +∞[)",
+    imageLabel: (p) => `Im_f = { ${fmtNum(p.c)} }`,
+    domainRestriction: (p) =>
+      `Para todo x ∈ ℝ a saída é sempre constante c = ${fmtNum(p.c)}: Im_f é conjunto unitário.`,
+    defaultParams: { a: 0, b: 0, c: 2 },
+    defaultX0: 1.5,
+    paramLabels: { a: "Não usado (a)", b: "Não usado (b)", c: "Constante (c)" },
+  },
   linear: {
     kind: "linear",
-    name: "Função Afim (1º Grau)",
+    name: "1) Função Afim (f(x) = ax + b, a ≠ 0)",
     shortTag: "Afim",
-    unitTag: "Pré-Cálculo",
+    unitTag: "Pré-Cálculo · Caderno",
     formula: (p) => `f(x) = ${fmtNum(p.a)}x${fmtTermSign(p.b)}`,
-    derivFormula: (p) => `f'(x) = ${fmtNum(p.a)} (constante)`,
+    derivFormula: (p) => `f'(x) = ${fmtNum(p.a)}  (tg α = Δy/Δx = a)`,
     antiderivFormula: (p, C) =>
       `F(x) = ${fmtNum(p.a / 2)}x²${p.b !== 0 ? `${fmtTermSign(p.b)}x` : ""}${fmtTermSign(C)}`,
-    domainLabel: () => "D(f) = ℝ  (]−∞, +∞[)",
-    imageLabel: (p) => (Math.abs(p.a) < 1e-6 ? `Im(f) = { ${fmtNum(p.b)} }` : "Im(f) = ℝ"),
-    domainRestriction: () => "Sem restrições: válida para todo x real.",
+    domainLabel: () => "D_f = ℝ  (]−∞, +∞[)",
+    imageLabel: (p) => (Math.abs(p.a) < 1e-6 ? `Im_f = { ${fmtNum(p.b)} }` : "Im_f = ℝ"),
+    domainRestriction: (p) =>
+      Math.abs(p.a) < 1e-6
+        ? `Com a = 0 vira função constante y = ${fmtNum(p.b)}.`
+        : `Inclinação a = ${fmtNum(p.a)} (${p.a > 0 ? "subindo" : "descendo"}); raiz x = −b/a = ${fmtNum(-p.b / p.a)}; Im_f = ℝ pois f((y−b)/a) = y.`,
     defaultParams: { a: 1.5, b: -1, c: 0 },
     defaultX0: 1,
-    paramLabels: { a: "Coef. angular (a)", b: "Coef. linear (b)", c: "Não usado (c)" },
+    paramLabels: { a: "Inclinação (a = tg α)", b: "Coef. linear (b)", c: "Não usado (c)" },
   },
   quadratic: {
     kind: "quadratic",
@@ -173,11 +202,11 @@ export const CALC_FUNCTIONS: Record<CalcFnKind, CalcFnMeta> = {
     derivFormula: (p) => `f'(x) = ${fmtNum(-p.a)} / (${fmtShiftX(p.b)})²`,
     antiderivFormula: (p, C) =>
       `F(x) = ${fmtNum(p.a)}·ln|${fmtShiftX(p.b)}|${p.c !== 0 ? `${fmtTermSign(p.c)}x` : ""}${fmtTermSign(C)}`,
-    domainLabel: (p) => `D(f) = ℝ − { ${fmtNum(p.b)} }`,
-    imageLabel: (p) => `Im(f) = ℝ − { ${fmtNum(p.c)} }`,
+    domainLabel: (p) => `D_f = ]−∞, ${fmtNum(p.b)}[ ∪ ]${fmtNum(p.b)}, +∞[`,
+    imageLabel: (p) => `Im_f = ℝ − { ${fmtNum(p.c)} }`,
     domainRestriction: (p) =>
-      `Domínio Natural: denominador ≠ 0 ⇒ x ≠ ${fmtNum(p.b)} (assíntota vertical).`,
-    defaultParams: { a: 2, b: 1, c: 0 },
+      `Domínio Natural: denominador ≠ 0 ⇒ x ≠ ${fmtNum(p.b)} (não pode dar 0 embaixo!).`,
+    defaultParams: { a: 1, b: 1, c: 0 },
     defaultX0: 2.5,
     paramLabels: { a: "Numerador (a)", b: "Assíntota vertical (b)", c: "Assíntota horizontal (c)" },
   },
@@ -281,6 +310,8 @@ export const CALC_FUNCTIONS: Record<CalcFnKind, CalcFnMeta> = {
 
 export function evalCalcFn(kind: CalcFnKind, x: number, p: CalcParams): number | null {
   switch (kind) {
+    case "constant":
+      return p.c;
     case "linear":
       return p.a * x + p.b;
     case "quadratic":
@@ -319,6 +350,8 @@ export function evalCalcFn(kind: CalcFnKind, x: number, p: CalcParams): number |
 
 export function evalCalcDeriv(kind: CalcFnKind, x: number, p: CalcParams): number | null {
   switch (kind) {
+    case "constant":
+      return 0;
     case "linear":
       return p.a;
     case "quadratic":
@@ -361,6 +394,7 @@ export function evalCalcSecondDeriv(
   p: CalcParams
 ): number | null {
   switch (kind) {
+    case "constant":
     case "linear":
     case "hole_limit":
       return 0;
@@ -401,6 +435,8 @@ export function evalCalcAntideriv(
   C: number
 ): number | null {
   switch (kind) {
+    case "constant":
+      return p.c * x + C;
     case "linear":
       return 0.5 * p.a * x * x + p.b * x + C;
     case "quadratic":
@@ -592,31 +628,76 @@ export const DEFAULT_CALC_LAB_STATE: CalcLabState = {
 
 export const CALC_PRESETS: CalcPreset[] = [
   {
-    id: "precalc-domain-sqrt",
-    label: "Domínio Natural √(x+1)",
-    badge: "Pré-Cálculo",
-    description: "Radicando ≥ 0 limita o domínio em [−1, +∞[ no eixo X e a imagem no eixo Y.",
+    id: "caderno-ex1-sqrt",
+    label: "Caderno Ex 1: √x",
+    badge: "Domínio Natural",
+    description: "Ex 1 da aula: f(x) = √x tem D_f = { x ∈ ℝ | x ≥ 0 } = [0, +∞[.",
     state: {
       ...DEFAULT_CALC_LAB_STATE,
       subMode: "graph",
       kind: "sqrt",
-      params: { a: 1.5, b: -1, c: -1 },
-      x0: 3,
+      params: { a: 1, b: 0, c: 0 },
+      x0: 4,
       showDomainImage: true,
       showRoots: true,
     },
   },
   {
-    id: "precalc-roots",
-    label: "Raízes da Parábola",
-    badge: "Pré-Cálculo",
-    description: "Onde o gráfico cruza o eixo X (y = 0): raízes x = −2 e x = +2.",
+    id: "caderno-ex2-rational",
+    label: "Caderno Ex 2: 1/(x−1)",
+    badge: "Domínio Natural",
+    description: "Ex 2 da aula: denominador ≠ 0 ⇒ D_f = ]−∞, 1[ ∪ ]1, +∞[.",
+    state: {
+      ...DEFAULT_CALC_LAB_STATE,
+      subMode: "graph",
+      kind: "rational",
+      params: { a: 1, b: 1, c: 0 },
+      x0: 2,
+      showDomainImage: true,
+      showRoots: false,
+    },
+  },
+  {
+    id: "caderno-afim",
+    label: "Afim: tg α = Δy/Δx = a",
+    badge: "Funções Elementares",
+    description: "Função Afim f(x) = ax + b (a ≠ 0): inclinação tg α = a, raiz x = −b/a e prova de Im_f = ℝ.",
+    state: {
+      ...DEFAULT_CALC_LAB_STATE,
+      subMode: "graph",
+      kind: "linear",
+      params: { a: 1, b: 1, c: 0 },
+      x0: 1,
+      showDomainImage: true,
+      showRoots: true,
+    },
+  },
+  {
+    id: "caderno-constante",
+    label: "Constante: f(x) = c",
+    badge: "Funções Elementares",
+    description: "Item 0 do caderno: f: ℝ → ℝ constante com D_f = ℝ e Im_f = { c }.",
+    state: {
+      ...DEFAULT_CALC_LAB_STATE,
+      subMode: "graph",
+      kind: "constant",
+      params: { a: 0, b: 0, c: 2 },
+      x0: 1.5,
+      showDomainImage: true,
+      showRoots: false,
+    },
+  },
+  {
+    id: "caderno-ineq-quad",
+    label: "x² + x − 2 ≥ 0 (Fatorada)",
+    badge: "Desigualdades",
+    description: "Parábola (x+2)(x−1): positiva (≥ 0) em ]−∞, −2] ∪ [1, +∞[!",
     state: {
       ...DEFAULT_CALC_LAB_STATE,
       subMode: "graph",
       kind: "quadratic",
-      params: { a: 0.5, b: 0, c: -2 },
-      x0: 2,
+      params: { a: 1, b: 1, c: -2 },
+      x0: 1,
       showDomainImage: true,
       showRoots: true,
     },
@@ -704,3 +785,8 @@ export const CALC_PRESETS: CalcPreset[] = [
     },
   },
 ];
+
+export function getCalcPreset(id: string): CalcLabState {
+  const found = CALC_PRESETS.find((p) => p.id === id);
+  return found ? { ...found.state } : { ...DEFAULT_CALC_LAB_STATE };
+}

@@ -429,6 +429,22 @@ function buildLocalCalcResponse(question: string): TutorApiResponse {
         "No intervalo fechado [a, b] = { x ∈ ℝ / a ≤ x ≤ b } os extremos a e b ENTRAM (bolinha fechada ●). No aberto ]a, b[ = { x ∈ ℝ / a < x < b } eles FICAM FORA (bolinha aberta ○). E nas desigualdades, lembre sempre: ao multiplicar ou dividir por um número negativo, o sinal da desigualdade inverte!",
     };
   }
+  if (q.includes("afim") || q.includes("constante") || q.includes("inclina") || q.includes("tg") || q.includes("delta y")) {
+    return {
+      professor: "monge",
+      source: "local-calc",
+      answer:
+        "Na Função Constante f(x) = c, D_f = ℝ e Im_f = { c } (reta horizontal). Já na Função Afim f(x) = ax + b (a ≠ 0), o gráfico é uma reta com inclinação a = Δy/Δx = tg α (a > 0 sobe, a < 0 desce), raiz x = −b/a e Im_f = ℝ porque para qualquer y podemos escolher x = (y − b)/a e obter f((y − b)/a) = y!",
+    };
+  }
+  if (q.includes("fatora") || q.includes("x²") || q.includes("x^2") || q.includes("sinais")) {
+    return {
+      professor: "monge",
+      source: "local-calc",
+      answer:
+        "Para resolver uma desigualdade quadrática como x² + x − 2 ≥ 0, primeiro fatoramos como (x + 2)(x − 1) ≥ 0 e analisamos os sinais de cada fator na reta! Para x ≤ −2 ambos são negativos ((−)·(−) = +) e para x ≥ 1 ambos são positivos ((+)·(+) = +), dando B = ]−∞, −2] ∪ [1, +∞[. Confira o Quadro de Sinais ao vivo no Lab → Reta Real!",
+    };
+  }
   if (q.includes("natural") || q.includes("raciona") || q.includes("inteiro") || q.includes("conjunto") || q.includes("número real") || q.includes("numero real")) {
     return {
       professor: "monge",
