@@ -1,0 +1,558 @@
+{
+  "list-q01": {
+    "audioSrc": "/audio/calc-list/list-q01.mp3",
+    "duration": 318.41,
+    "scenes": [
+      {
+        "id": "items-ab",
+        "label": "(a) √45  e  (b) √18 / √2",
+        "subtitle": "(a) √45 = √(9·5) = 3√5 é IRRACIONAL. (b) √18/√2 = √(18/2) = √9 = 3 é RACIONAL!",
+        "startSec": 0,
+        "endSec": 74.45
+      },
+      {
+        "id": "items-cd",
+        "label": "(c) 0,2727...  e  (d) (√2+1)(√2−1)",
+        "subtitle": "(c) 100x − x = 27 ⇒ x = 27/99 = 3/11 (Racional). (d) Diferença de quadrados: (√2)² − 1² = 1 (Racional).",
+        "startSec": 74.45,
+        "endSec": 152.279
+      },
+      {
+        "id": "diag-setup",
+        "label": "Diagonal do Quadrado (d = √2) · Hipótese",
+        "subtitle": "Por Pitágoras: d² = 1² + 1² = 2 ⇒ d = √2. Suponha por absurdo que √2 = p/q irredutível (mdc(p,q)=1).",
+        "startSec": 152.279,
+        "endSec": 228.199
+      },
+      {
+        "id": "diag-proof",
+        "label": "Contradição: p e q ambos pares ⇒ √2 ∈ 𝕀",
+        "subtitle": "p² = 2q² ⇒ p é par (p = 2k) ⇒ 4k² = 2q² ⇒ q² = 2k² ⇒ q também é par! Contradição com fração irredutível!",
+        "startSec": 228.199,
+        "endSec": 318.409
+      }
+    ]
+  },
+  "list-q02": {
+    "audioSrc": "/audio/calc-list/list-q02.mp3",
+    "duration": 311.16,
+    "scenes": [
+      {
+        "id": "inter-union",
+        "label": "(a) A ∩ B = (1, 3)  e  (b) A ∪ B = [−2, 5]",
+        "subtitle": "A = [−2, 3) e B = (1, 5]. Na interseção entram só os comuns: (1, 3). Na união junta tudo: [−2, 5].",
+        "startSec": 0,
+        "endSec": 77.65
+      },
+      {
+        "id": "complement",
+        "label": "(c) Complementar ℝ \\ A = (−∞, −2) ∪ [3, +∞)",
+        "subtitle": "Atenção aos extremos! −2 estava EM A (●), logo SAI do complemento (○). 3 estava FORA de A (○), logo ENTRA (●)!",
+        "startSec": 77.65,
+        "endSec": 161.379
+      },
+      {
+        "id": "no-min",
+        "label": "Por que (1, 3) NÃO tem menor elemento?",
+        "subtitle": "Para qualquer m ∈ (1, 3), o ponto médio (1 + m)/2 está entre 1 e m — sempre existe alguém ainda menor em (1, 3)!",
+        "startSec": 161.379,
+        "endSec": 240.169
+      },
+      {
+        "id": "no-max",
+        "label": "Por que (1, 3) NÃO tem maior elemento?",
+        "subtitle": "Analogamente, para qualquer M ∈ (1, 3), (M + 3)/2 ∈ (1, 3) é ainda maior que M! 1 e 3 são fronteiras fora do conjunto.",
+        "startSec": 240.169,
+        "endSec": 311.159
+      }
+    ]
+  },
+  "list-q03": {
+    "audioSrc": "/audio/calc-list/list-q03.mp3",
+    "duration": 295.84,
+    "scenes": [
+      {
+        "id": "item-a",
+        "label": "(a) (x − 1)(x + 3) ≤ 0 · Quadro de Sinais",
+        "subtitle": "Raízes −3 e 1. Produto fica negativo entre as raízes; como é ≤ 0, extremos fechados: S = [−3, 1]!",
+        "startSec": 0,
+        "endSec": 77.53
+      },
+      {
+        "id": "item-b-signs",
+        "label": "(b) (x − 1)/(x + 2) > 0 · Quociente",
+        "subtitle": "Numerador zera em 1; denominador proíbe −2 (○). Quociente > 0 onde sinais coincidem: (−∞, −2) ∪ (1, +∞)!",
+        "startSec": 77.53,
+        "endSec": 149.409
+      },
+      {
+        "id": "item-b-trap",
+        "label": "⚡ Por que NÃO multiplicar direto por (x + 2)?",
+        "subtitle": "Não sabemos o sinal de x + 2! Se x < −2, x + 2 é NEGATIVO e inverte > para <. Multiplicar sem casos apaga (−∞, −2)!",
+        "startSec": 149.409,
+        "endSec": 242.379
+      },
+      {
+        "id": "item-c",
+        "label": "(c) x² < 4 ⇔ (x − 2)(x + 2) < 0",
+        "subtitle": "Traga o 4 para a esquerda: x² − 4 < 0 ⇔ (x − 2)(x + 2) < 0 ⇔ |x| < 2 ⇒ S = (−2, 2)!",
+        "startSec": 242.379,
+        "endSec": 295.839
+      }
+    ]
+  },
+  "list-q04": {
+    "audioSrc": "/audio/calc-list/list-q04.mp3",
+    "duration": 288.75,
+    "scenes": [
+      {
+        "id": "items-ab",
+        "label": "(a) √(5 − 2x)  e  (b) 1 / (x² − 4)",
+        "subtitle": "(a) 5 − 2x ≥ 0 ⇒ x ≤ 5/2 ⇒ (−∞, 5/2]. (b) x² ≠ 4 ⇒ x ≠ ±2 ⇒ (−∞, −2) ∪ (−2, 2) ∪ (2, +∞).",
+        "startSec": 0,
+        "endSec": 80.89
+      },
+      {
+        "id": "item-c",
+        "label": "(c) h(x) = √(x + 1) / (x − 2) · Dupla Restrição",
+        "subtitle": "Interseção de x + 1 ≥ 0 (x ≥ −1) COM x − 2 ≠ 0 (x ≠ 2) ⇒ D_h = [−1, 2) ∪ (2, +∞)!",
+        "startSec": 80.89,
+        "endSec": 141.449
+      },
+      {
+        "id": "item-d",
+        "label": "(d) p(x) = √((x − 1)/(x + 2)) · Raiz do Quociente",
+        "subtitle": "Quociente ≥ 0! Reaproveitamos Q03(b): x = 1 ENTRA fechado (√0 = 0), mas x = −2 segue ABERTO (denom. 0): (−∞, −2) ∪ [1, +∞)!",
+        "startSec": 141.449,
+        "endSec": 228.339
+      },
+      {
+        "id": "item-e",
+        "label": "(e) q(x) = 1 / √(9 − x²) · Raiz no Denominador!",
+        "subtitle": "Raiz no denominador exige ESTRITAMENTE positivo: 9 − x² > 0 ⇔ x² < 9 ⇔ −3 < x < 3 ⇒ D_q = (−3, 3)!",
+        "startSec": 228.339,
+        "endSec": 288.749
+      }
+    ]
+  },
+  "list-q05": {
+    "audioSrc": "/audio/calc-list/list-q05.mp3",
+    "duration": 304.47,
+    "scenes": [
+      {
+        "id": "evals",
+        "label": "(a) Calculando f(−1), f(0) e f(2)",
+        "subtitle": "Substituindo com parênteses de proteção: f(−1) = 1 + 3 + 2 = 6; f(0) = 2; f(2) = 4 − 6 + 2 = 0!",
+        "startSec": 0,
+        "endSec": 57.78
+      },
+      {
+        "id": "solve-eq",
+        "label": "(a) Resolvendo f(x) = 2",
+        "subtitle": "x² − 3x + 2 = 2 ⇒ cancela o 2: x² − 3x = 0 ⇒ coloca x em evidência: x(x − 3) = 0 ⇒ x = 0 ou x = 3!",
+        "startSec": 57.78,
+        "endSec": 128.879
+      },
+      {
+        "id": "expand-fxh",
+        "label": "(b) Expandindo f(x + h) sem Errar!",
+        "subtitle": "Troque CADA x por (x + h): (x+h)² − 3(x+h) + 2 = x² + 2xh + h² − 3x − 3h + 2 (nunca esqueça do 2xh!).",
+        "startSec": 128.879,
+        "endSec": 222.219
+      },
+      {
+        "id": "quotient",
+        "label": "(b) Cancelamento Mágico & Spoiler da Derivada!",
+        "subtitle": "Subtraindo f(x) sobram só termos com h: h(2x + h − 3)/h = 2x + h − 3! Quando h → 0, nasce f'(x) = 2x − 3!",
+        "startSec": 222.219,
+        "endSec": 304.469
+      }
+    ]
+  },
+  "list-q06": {
+    "audioSrc": "/audio/calc-list/list-q06.mp3",
+    "duration": 218.63,
+    "scenes": [
+      {
+        "id": "domains",
+        "label": "(a) Domínios Máximos & Fatoração",
+        "subtitle": "D_g = ℝ, mas em f o denominador exige x ≠ 1! Só para x ≠ 1 podemos cancelar (x − 1) e obter f(x) = x + 1.",
+        "startSec": 0,
+        "endSec": 87.18
+      },
+      {
+        "id": "graphs-diff",
+        "label": "(b) Mesmo Gráfico? O Buraco em (1, 2)!",
+        "subtitle": "NÃO! g(1) = 2 (bolinha cheia ●). Em f, x = 1 gera 0/0 (indefinido!), arrancando o ponto (1, 2) com um buraco vazio ○!",
+        "startSec": 87.18,
+        "endSec": 157.769
+      },
+      {
+        "id": "images",
+        "label": "(c) Imagens Im_g = ℝ  vs  Im_f = ℝ \\ {2}",
+        "subtitle": "Como x + 1 = 2 só aconteceria em x = 1 (fora de D_f!), o valor y = 2 NUNCA é atingido por f: Im_f = (−∞, 2) ∪ (2, +∞)!",
+        "startSec": 157.769,
+        "endSec": 218.629
+      }
+    ]
+  },
+  "list-q07": {
+    "audioSrc": "/audio/calc-list/list-q07.mp3",
+    "duration": 216.88,
+    "scenes": [
+      {
+        "id": "compare-fg",
+        "label": "(a) f: ℝ→ℝ  vs  g: ℝ→[0, ∞)",
+        "subtitle": "Ambas têm Im = [0, ∞). Em f sobram os negativos no contradomínio ℝ; em g a imagem coincide 100% com o contradomínio!",
+        "startSec": 0,
+        "endSec": 79.15
+      },
+      {
+        "id": "image-h",
+        "label": "(a) Pegadinha de h: [−2, 1] → ℝ (Vértice x = 0!)",
+        "subtitle": "Cuidado: Im_h NÃO é [h(1), h(−2)] = [1, 4]! Como x = 0 está em [−2, 1], o mínimo é h(0) = 0 e o máximo h(−2) = 4 ⇒ Im_h = [0, 4]!",
+        "startSec": 79.15,
+        "endSec": 146.409
+      },
+      {
+        "id": "solve-4",
+        "label": "(b) Resolvendo f(x)=4, g(x)=4 e h(x)=4",
+        "subtitle": "x² = 4 dá ±2. Em f e g ambos entram: {−2, 2}. Em h, o domínio é [−2, 1]: +2 está FORA! Só sobrevive x = −2!",
+        "startSec": 146.409,
+        "endSec": 216.879
+      }
+    ]
+  },
+  "list-q08": {
+    "audioSrc": "/audio/calc-list/list-q08.mp3",
+    "duration": 301.91,
+    "scenes": [
+      {
+        "id": "anatomy",
+        "label": "(a) Domínio [−3, 4], Imagem [−2, 3], f(−1) e f(1)",
+        "subtitle": "Os 3 segmentos cobrem todo [−3, 4] em X e [−2, 3] em Y. Em x = 1, (1, 1) é vazia ○ e (1, −2) é cheia ● ⇒ f(1) = −2!",
+        "startSec": 0,
+        "endSec": 87.85
+      },
+      {
+        "id": "roots-eq0",
+        "label": "(b) Resolvendo f(x) = 0 (Equações dos Segmentos)",
+        "subtitle": "Trecho 1: reta de (−3,−1) a (−1,3) é y = 2x + 5 ⇒ zera em x = −5/2! Trecho 3: reta de (1,−2) a (4,1) é y = x − 3 ⇒ zera em x = 3!",
+        "startSec": 87.85,
+        "endSec": 169.779
+      },
+      {
+        "id": "eq-1-trap",
+        "label": "(b) Resolvendo f(x) = 1 · A Pegadinha da Bolinha ○!",
+        "subtitle": "A reta horizontal y = 1 corta o trecho 1 em x = −2 e o trecho 3 em x = 4. Em x = 1 há bolinha vazia ○ — NÃO é solução!",
+        "startSec": 169.779,
+        "endSec": 235.309
+      },
+      {
+        "id": "neg-region",
+        "label": "(c) Onde f(x) < 0? (Abaixo do Eixo X)",
+        "subtitle": "Estritamente abaixo do eixo X: de −3 fechado até −5/2 aberto, unido com 1 fechado até 3 aberto ⇒ [−3, −5/2) ∪ [1, 3)!",
+        "startSec": 235.309,
+        "endSec": 301.909
+      }
+    ]
+  },
+  "list-q09": {
+    "audioSrc": "/audio/calc-list/list-q09.mp3",
+    "duration": 247.63,
+    "scenes": [
+      {
+        "id": "item-a",
+        "label": "(a) y² = x em [0, ∞) · Viola Unicidade!",
+        "subtitle": "Existe saída para todo x ≥ 0, mas para todo x > 0 (ex: x = 4) há DUAS saídas y = ±2! Reta vertical corta 2 vezes ⇒ NÃO é função.",
+        "startSec": 0,
+        "endSec": 65.92
+      },
+      {
+        "id": "item-b",
+        "label": "(b) y³ = x em ℝ · Existência & Unicidade OK!",
+        "subtitle": "Todo real (positivo, zero ou negativo!) possui UMA e somente UMA raiz cúbica real y = ∛x ⇒ SIM, define função!",
+        "startSec": 65.92,
+        "endSec": 132.249
+      },
+      {
+        "id": "item-c",
+        "label": "(c) x² + y² = 1 · O Círculo Unitário",
+        "subtitle": "Isolando y: y = ±√(1 − x²). Para x = 0 temos y = +1 e y = −1! Viola a unicidade ⇒ NÃO é função.",
+        "startSec": 132.249,
+        "endSec": 192.509
+      },
+      {
+        "id": "item-c-fix",
+        "label": "Salvando o Círculo: Impor y ≥ 0 (Semicírculo)",
+        "subtitle": "Ao exigir y ≥ 0, descartamos o arco de baixo e sobra uma única saída por x: y = √(1 − x²) em [−1, 1]!",
+        "startSec": 192.509,
+        "endSec": 247.629
+      }
+    ]
+  },
+  "list-q10": {
+    "audioSrc": "/audio/calc-list/list-q10.mp3",
+    "duration": 221.96,
+    "scenes": [
+      {
+        "id": "find-ab",
+        "label": "(a) Achando a, b e Interseções com os Eixos",
+        "subtitle": "a = (−4 − 4)/(3 − (−1)) = −8/4 = −2. De f(−1) = 4 vem b = 2 ⇒ f(x) = −2x + 2. Cortes: (0, 2) e (1, 0)!",
+        "startSec": 0,
+        "endSec": 91.41
+      },
+      {
+        "id": "diff-quot",
+        "label": "(b) [f(x + h) − f(x)] / h = −2 · Significado Geométrico",
+        "subtitle": "(−2(x+h)+2 − (−2x+2))/h = −2h/h = −2! Geometricamente, é o coeficiente angular a = tg α: desce 2 em y a cada +1 em x!",
+        "startSec": 91.41,
+        "endSec": 169.729
+      },
+      {
+        "id": "restricted-im",
+        "label": "(c) Imagem na Restrição [−1, 3]",
+        "subtitle": "Como a = −2 < 0, a reta só desce! Vai do topo f(−1) = 4 até o fundo f(3) = −4 ⇒ Im = [−4, 4]!",
+        "startSec": 169.729,
+        "endSec": 221.959
+      }
+    ]
+  },
+  "list-q11": {
+    "audioSrc": "/audio/calc-list/list-q11.mp3",
+    "duration": 235.9,
+    "scenes": [
+      {
+        "id": "complete-sq",
+        "label": "(a) Completando o Quadrado: 2(x − 2)² − 2",
+        "subtitle": "2(x² − 4x) + 6 = 2[(x − 2)² − 4] + 6 = 2(x − 2)² − 2! Vértice V = (2, −2) e eixo de simetria x = 2!",
+        "startSec": 0,
+        "endSec": 88.22
+      },
+      {
+        "id": "roots-sign",
+        "label": "(b) Raízes {1, 3}, Sinal & Imagem [−2, +∞)",
+        "subtitle": "2(x−2)² = 2 ⇒ x − 2 = ±1 ⇒ raízes 1 e 3! Concavidade ∪: negativa em (1, 3), positiva fora, e mínimo global em y = −2!",
+        "startSec": 88.22,
+        "endSec": 171.699
+      },
+      {
+        "id": "restrict-03",
+        "label": "(c) Pegadinha da Restrição a [0, 3]!",
+        "subtitle": "q(0) = 6 e q(3) = 0, MAS o vértice x = 2 mora dentro de [0, 3] com q(2) = −2! Logo a imagem vai de −2 até 6: [−2, 6]!",
+        "startSec": 171.699,
+        "endSec": 235.899
+      }
+    ]
+  },
+  "list-q12": {
+    "audioSrc": "/audio/calc-list/list-q12.mp3",
+    "duration": 208.39,
+    "scenes": [
+      {
+        "id": "cubic-sqrt",
+        "label": "(a) y = x³  e  (b) y = √x",
+        "subtitle": "y = x³ sobe suavemente por todo ℝ (D = Im = ℝ). Já y = √x nasce em (0,0) e vive só no 1º quadrante (D = Im = [0, ∞)).",
+        "startSec": 0,
+        "endSec": 75.4
+      },
+      {
+        "id": "inv-x",
+        "label": "(c) y = 1/x · Preserva o Sinal de x!",
+        "subtitle": "Em y = 1/x, x > 0 gera y > 0 (1º quadrante) e x < 0 gera y < 0 (3º quadrante). D = Im = ℝ \\ {0} com assíntotas x=0 e y=0.",
+        "startSec": 75.4,
+        "endSec": 133.469
+      },
+      {
+        "id": "inv-x2",
+        "label": "(d) y = 1/x² · Sempre Positiva (Função Par!)",
+        "subtitle": "Elevar ao quadrado elimina o sinal negativo: x² > 0 para todo x ≠ 0! Os dois ramos sobem no 1º e 2º quadrantes: Im = (0, +∞)!",
+        "startSec": 133.469,
+        "endSec": 208.389
+      }
+    ]
+  },
+  "list-q13": {
+    "audioSrc": "/audio/calc-list/list-q13.mp3",
+    "duration": 225.24,
+    "scenes": [
+      {
+        "id": "unit-circle",
+        "label": "(a) Círculo de Raio 1 ⇒ Imagem [−1, 1]",
+        "subtitle": "Cada ângulo x em radianos marca o ponto (cos x, sin x) no círculo x² + y² = 1: abscissa e ordenada variam exatamente de −1 a +1!",
+        "startSec": 0,
+        "endSec": 72.32
+      },
+      {
+        "id": "period-2pi",
+        "label": "(b) Periodicidade 2π: Uma Volta Completa!",
+        "subtitle": "O comprimento da circunferência de raio 1 é 2π. Somar 2π radianos leva exatamente ao mesmo ponto: sin(x+2π)=sin x e cos(x+2π)=cos x!",
+        "startSec": 72.32,
+        "endSec": 120.169
+      },
+      {
+        "id": "sketch-sin",
+        "label": "Esboço de y = sin x em [−π, π]",
+        "subtitle": "Zeros em −π, 0 e π; vale mínimo −1 em −π/2 e pico máximo +1 em +π/2 (função ímpar!).",
+        "startSec": 120.169,
+        "endSec": 173.079
+      },
+      {
+        "id": "sketch-cos",
+        "label": "Esboço de y = cos x em [−π, π]",
+        "subtitle": "Pico máximo +1 em x = 0; zeros em −π/2 e +π/2; mínimo −1 nas pontas −π e +π (função par!).",
+        "startSec": 173.079,
+        "endSec": 225.239
+      }
+    ]
+  },
+  "list-q14": {
+    "audioSrc": "/audio/calc-list/list-q14.mp3",
+    "duration": 216.01,
+    "scenes": [
+      {
+        "id": "trans-ab",
+        "label": "(a) √(x − 2) vs (b) √x + 2 · Dentro vs Fora!",
+        "subtitle": "Em (a), o −2 está DENTRO da raiz → desloca o DOMÍNIO 2 para a direita ([2, ∞)). Em (b), +2 está FORA → sobe a IMAGEM 2 para cima ([2, ∞))!",
+        "startSec": 0,
+        "endSec": 93.5
+      },
+      {
+        "id": "trans-c",
+        "label": "(c) y = −√x · Reflexão no Eixo X",
+        "subtitle": "O sinal negativo FORA da raiz inverte todas as alturas y: a curva espelha para baixo do eixo X! D = [0, ∞) e Im = (−∞, 0].",
+        "startSec": 93.5,
+        "endSec": 153.939
+      },
+      {
+        "id": "trans-d",
+        "label": "(d) y = √(−x) · Reflexão no Eixo Y (x ≤ 0!)",
+        "subtitle": "O menos DENTRO da raiz exige −x ≥ 0 ⇔ x ≤ 0! Não é raiz de negativo: para x = −4, −x = +4 ⇒ √4 = 2! D = (−∞, 0], Im = [0, ∞).",
+        "startSec": 153.939,
+        "endSec": 216.009
+      }
+    ]
+  },
+  "list-q15": {
+    "audioSrc": "/audio/calc-list/list-q15.mp3",
+    "duration": 230.21,
+    "scenes": [
+      {
+        "id": "basics",
+        "label": "(a) Domínio, Raiz (−2, 0) & Corte Y (0, −2)",
+        "subtitle": "Denominador x − 1 ≠ 0 ⇒ D_r = ℝ \\ {1}. Raiz: x + 2 = 0 ⇒ x = −2. Corte em Y: r(0) = 2/(−1) = −2!",
+        "startSec": 0,
+        "endSec": 76.86
+      },
+      {
+        "id": "decomp",
+        "label": "(b) Truque Algébrico: r(x) = 1 + 3/(x − 1) & Esboço",
+        "subtitle": "Escreva x + 2 = (x − 1) + 3 e divida! Nasce 1 + 3/(x − 1): assíntota vertical x = 1 e horizontal y = 1!",
+        "startSec": 76.86,
+        "endSec": 157.969
+      },
+      {
+        "id": "im-ineq",
+        "label": "(c) Imagem ℝ \\ {1} & Desigualdade r(x) > 1",
+        "subtitle": "Como 3/(x−1) nunca zera, r(x) nunca vale 1 ⇒ Im_r = ℝ \\ {1}. E r(x) > 1 ⇔ 3/(x−1) > 0 ⇔ x > 1 ⇒ (1, +∞)!",
+        "startSec": 157.969,
+        "endSec": 230.209
+      }
+    ]
+  },
+  "list-q16": {
+    "audioSrc": "/audio/calc-list/list-q16.mp3",
+    "duration": 201.56,
+    "scenes": [
+      {
+        "id": "piecewise",
+        "label": "(a) Abrindo o Módulo em Duas Fórmulas",
+        "subtitle": "Se x ≥ 2, x − 2 ≥ 0 então sai igual: x − 2. Se x < 2, x − 2 < 0 então trocamos o sinal: −(x − 2) = 2 − x!",
+        "startSec": 0,
+        "endSec": 69
+      },
+      {
+        "id": "graph-v",
+        "label": "(b) Gráfico em 'V', Domínio ℝ & Imagem [0, ∞)",
+        "subtitle": "Duas semirretas encontrando no vértice (2, 0) e passando por (0, 2) e (4, 2). D_m = ℝ e Im_m = [0, +∞)!",
+        "startSec": 69,
+        "endSec": 121.599
+      },
+      {
+        "id": "distance",
+        "label": "(c) |x − 2| = 3 e |x − 2| ≤ 3 como Distância até 2!",
+        "subtitle": "|x − 2| é a distância de x até o centro 2! Distância = 3 cai em −1 e 5. Distância ≤ 3 preenche o segmento [−1, 5]!",
+        "startSec": 121.599,
+        "endSec": 201.559
+      }
+    ]
+  },
+  "list-q17": {
+    "audioSrc": "/audio/calc-list/list-q17.mp3",
+    "duration": 295.77,
+    "scenes": [
+      {
+        "id": "deduce-cv",
+        "label": "(a) Modelando Massa, Volume & C(v) = 2 + 8/(1 + v)",
+        "subtitle": "Sal total = 10 + 2v gramas; volume total = 1 + v litros. Dividindo: C(v) = (10 + 2v)/(1 + v) = 2 + 8/(1 + v) g/L!",
+        "startSec": 0,
+        "endSec": 76.82
+      },
+      {
+        "id": "phys-dom-im",
+        "label": "(b) Domínio Físico [0, +∞) & Imagem (2, 10]",
+        "subtitle": "v ≥ 0! Em v = 0 temos C(0) = 10 g/L (fechado). À medida que v cresce, 8/(1+v) > 0 cai rumo a 0 sem zerar ⇒ Im = (2, 10]!",
+        "startSec": 76.82,
+        "endSec": 166.839
+      },
+      {
+        "id": "solve-4-2",
+        "label": "(c) C = 4 g/L (v = 3 L) & Por que C = 2 g/L dá Absurdo?",
+        "subtitle": "2 + 8/(1+v) = 4 ⇒ 1+v = 4 ⇒ v = 3 L! Já 2 + 8/(1+v) = 2 exige 8/(1+v) = 0 ⇒ 8 = 0 (impossível com volume finito!).",
+        "startSec": 166.839,
+        "endSec": 249.049
+      },
+      {
+        "id": "dilution-graph",
+        "label": "(d) Gráfico da Diluição & Assíntota C = 2",
+        "subtitle": "A curva começa em (0, 10), passa por (3, 4) e se aproxima cada vez mais da assíntota C = 2 sem jamais tocá-la!",
+        "startSec": 249.049,
+        "endSec": 295.769
+      }
+    ]
+  },
+  "list-q18": {
+    "audioSrc": "/audio/calc-list/list-q18.mp3",
+    "duration": 310.34,
+    "scenes": [
+      {
+        "id": "pythagoras",
+        "label": "(a) Pitágoras entre Fonte P(0, 3) e Sensor Q(x, 0)",
+        "subtitle": "Triângulo retângulo com catetos |x| e 3: r² = x² + 9 ⇒ E(x) = K / r² = K / (x² + 9)!",
+        "startSec": 0,
+        "endSec": 82.42
+      },
+      {
+        "id": "max-image",
+        "label": "(b) Domínio ℝ, Máximo em x = 0 & Imagem (0, K/9]",
+        "subtitle": "Como x² ≥ 0, o denominador x² + 9 tem mínimo em x = 0 (valor 9), onde E atinge o MÁXIMO K/9! E(x) > 0 sempre ⇒ Im = (0, K/9].",
+        "startSec": 82.42,
+        "endSec": 167.849
+      },
+      {
+        "id": "half-power",
+        "label": "(c) Onde a Iluminação Cai pela Metade? (x = ±3 m)",
+        "subtitle": "K/(x² + 9) = (1/2)(K/9) = K/18 ⇒ x² + 9 = 18 ⇒ x² = 9 ⇒ x = −3 m ou x = +3 m!",
+        "startSec": 167.849,
+        "endSec": 237.449
+      },
+      {
+        "id": "symmetry",
+        "label": "(d) Gráfico em Sino & Simetria Par E(−x) = E(x)",
+        "subtitle": "E(−x) = K/((−x)² + 9) = E(x)! Geometricamente, o sensor à esquerda (−x, 0) e à direita (+x, 0) estão à mesma distância da lâmpada!",
+        "startSec": 237.449,
+        "endSec": 310.339
+      }
+    ]
+  }
+}

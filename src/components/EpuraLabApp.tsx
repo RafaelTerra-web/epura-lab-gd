@@ -60,6 +60,7 @@ export function EpuraLabApp() {
   const [activeSubject, setActiveSubject] = useState<SubjectId>("hub");
   const [section, setSection] = useState<SectionId>("lab");
   const [calcSection, setCalcSection] = useState<CalcSectionId>("lab");
+  const [calcLessonsTab, setCalcLessonsTab] = useState<"videos" | "list" | "guide">("videos");
   const [calcLabState, setCalcLabState] = useState<CalcLabState>(DEFAULT_CALC_LAB_STATE);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [googleConfigured, setGoogleConfigured] = useState(false);
@@ -465,9 +466,10 @@ export function EpuraLabApp() {
           setActiveSubject("gd");
           setSection(sec);
         }}
-        onSelectCalc1={(sec = "lab") => {
+        onSelectCalc1={(sec = "lab", tab) => {
           setActiveSubject("calc1");
           setCalcSection(sec);
+          if (tab) setCalcLessonsTab(tab);
         }}
       />
     );
@@ -826,6 +828,7 @@ export function EpuraLabApp() {
           <CalcLessonsView
             completedLessons={progress.calcCompletedLessons}
             watchedEpisodes={progress.calcWatchedEpisodes}
+            initialTab={calcLessonsTab}
             onToggleComplete={handleToggleCalcLesson}
             onEpisodeWatched={handleCalcEpisodeWatched}
             onOpenInCalcLab={handleOpenInCalcLab}

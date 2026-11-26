@@ -6,6 +6,7 @@ import { UserProgress } from "@/lib/storage";
 import { VIDEO_EPISODES } from "@/lib/video-episodes";
 import { CALC_SYLLABUS_UNITS } from "@/lib/calc-curriculum";
 import { CALC_VIDEO_EPISODES } from "@/lib/calc-video-episodes";
+import { CALC_LIST_EPISODES } from "@/lib/calc-list-episodes";
 import { GoogleAuthButton } from "./GoogleAuthButton";
 import { sfx } from "@/lib/sfx";
 import {
@@ -13,6 +14,7 @@ import {
   Award,
   BookOpen,
   Calendar,
+  ClipboardList,
   Compass,
   Film,
   GraduationCap,
@@ -32,7 +34,7 @@ interface SubjectPortalProps {
   onDismissAuthNotice: () => void;
   onLogout: () => Promise<void>;
   onSelectGD: (section?: "lab" | "lessons" | "practice" | "kit") => void;
-  onSelectCalc1: (section?: "lab" | "lessons" | "practice" | "syllabus") => void;
+  onSelectCalc1: (section?: "lab" | "lessons" | "practice" | "syllabus", lessonsTab?: "videos" | "list" | "guide") => void;
 }
 
 export function SubjectPortal({
@@ -213,7 +215,7 @@ export function SubjectPortal({
                   <TrendingUp className="w-6 h-6" />
                 </div>
                 <span className="font-mono text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-paper-200/80 dark:bg-blueprint-800 text-ink-700 dark:text-slate-300">
-                  {progress.calcWatchedEpisodes.length}/{CALC_VIDEO_EPISODES.length} vídeos · {doneCalcTopics}/{totalCalcTopics} ementa
+                  {progress.calcWatchedEpisodes.length}/{CALC_VIDEO_EPISODES.length + CALC_LIST_EPISODES.length} vídeos · {doneCalcTopics}/{totalCalcTopics} ementa
                 </span>
               </div>
 
@@ -225,16 +227,17 @@ export function SubjectPortal({
                   Cálculo 1 &amp; Pré-Cálculo
                 </h2>
                 <p className="text-sm text-ink-600 dark:text-slate-300 mt-1.5 leading-relaxed">
-                  5 Videoaulas animadas com Gemini TTS + Professor, Lab de Funções (Constante, Afim tg α = a, Domínio Natural √x e 1/(x−1), Quadro de Sinais x²+x−2≥0), Exercícios e Simulador P1–P3!
+                  5 Videoaulas de Teoria + <strong>18 Videoaulas resolvendo cada questão da Lista (Stewart §§1.1–1.2)</strong> com Gemini TTS, Lab de Funções, Quadro de Sinais e Simulador P1–P3!
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  { label: "Lab de Funções", sec: "lab" as const, icon: TrendingUp },
-                  { label: "5 Videoaulas Motion", sec: "lessons" as const, icon: Film },
-                  { label: "Praticar Exercícios", sec: "practice" as const, icon: GraduationCap },
-                  { label: "Ementa & Notas", sec: "syllabus" as const, icon: Calendar },
+                  { label: "Lab de Funções", sec: "lab" as const, tab: undefined, icon: TrendingUp },
+                  { label: "Lista Resolvida (18 Q)", sec: "lessons" as const, tab: "list" as const, icon: ClipboardList },
+                  { label: "5 Videoaulas Teoria", sec: "lessons" as const, tab: "videos" as const, icon: Film },
+                  { label: "Praticar", sec: "practice" as const, tab: undefined, icon: GraduationCap },
+                  { label: "Ementa & Notas", sec: "syllabus" as const, tab: undefined, icon: Calendar },
                 ].map((pill) => {
                   const Icon = pill.icon;
                   return (
@@ -243,7 +246,7 @@ export function SubjectPortal({
                       type="button"
                       onClick={() => {
                         sfx.click();
-                        onSelectCalc1(pill.sec);
+                        onSelectCalc1(pill.sec, pill.tab);
                       }}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-paper-100 dark:bg-blueprint-950 border border-paper-300/80 dark:border-blueprint-800 hover:border-lt text-xs font-bold text-ink-700 dark:text-slate-200 transition"
                     >

@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CALC_LESSONS, CalcLessonChapter } from "@/lib/calc-curriculum";
 import { CALC_VIDEO_EPISODES } from "@/lib/calc-video-episodes";
+import { CALC_LIST_EPISODES } from "@/lib/calc-list-episodes";
 import { CalcLabState } from "@/lib/calc-math";
 import { CalcMotionVideoPlayer } from "./CalcMotionVideoPlayer";
+import { CalcListVideoPlayer } from "./CalcListVideoPlayer";
 import { ProfessorAvatar } from "@/components/ProfessorAvatar";
 import { TtsModelTier, VoiceState } from "@/lib/voice";
 import { sfx } from "@/lib/sfx";
@@ -13,6 +15,7 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  ClipboardList,
   Compass,
   Film,
   Target,
@@ -20,9 +23,12 @@ import {
   VolumeX,
 } from "lucide-react";
 
+export type CalcLessonsTab = "videos" | "list" | "guide";
+
 interface CalcLessonsViewProps {
   completedLessons: string[];
   watchedEpisodes: string[];
+  initialTab?: CalcLessonsTab;
   onToggleComplete: (id: string) => void;
   onEpisodeWatched: (episodeId: string) => void;
   onOpenInCalcLab: (state: CalcLabState) => void;
@@ -35,6 +41,7 @@ interface CalcLessonsViewProps {
 export function CalcLessonsView({
   completedLessons,
   watchedEpisodes,
+  initialTab = "videos",
   onToggleComplete,
   onEpisodeWatched,
   onOpenInCalcLab,
@@ -43,7 +50,10 @@ export function CalcLessonsView({
   customApiKey,
   ttsModelTier,
 }: CalcLessonsViewProps) {
-  const [viewMode, setViewMode] = useState<"videos" | "guide">("videos");
+  const [viewMode, setViewMode] = useState<CalcLessonsTab>(initialTab);
+  useEffect(() => {
+    setViewMode(initialTab);
+  }, [initialTab]);
   const [activeId, setActiveId] = useState<string>(CALC_LESSONS[0].id);
   const active: CalcLessonChapter =
     CALC_LESSONS.find((l) => l.id === activeId) ?? CALC_LESSONS[0];
@@ -51,12 +61,18 @@ export function CalcLessonsView({
   const isDone = completedLessons.includes(active.id);
   const speakId = `calc-lesson-${active.id}`;
   const isSpeaking = voice.speakingId === speakId;
+  const theoryWatched = CALC_VIDEO_EPISODES.filter((e) =>
+    watchedEpisodes.includes(e.id)
+  ).length;
+  const listWatched = CALC_LIST_EPISODES.filter((e) =>
+    watchedEpisodes.includes(e.id)
+  ).length;
 
   return (
     <div className="space-y-4">
-      {/* Mode Switcher: Motion Videos (Gemini TTS) vs Guided Reading Chapters */}
+      {/* Mode Switcher: Motion Theory Videos, 18-Question List Resolution Videos, and Guided Reading */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center p-1 rounded-2xl bg-paper-200/80 dark:bg-blueprint-900 border border-paper-300 dark:border-blueprint-700 gap-1">
+        <div className="inline-flex flex-wrap items-center p-1 rounded-2xl bg-paper-200/80 dark:bg-blueprint-900 border border-paper-300 dark:border-blueprint-700 gap-1">
           <button
             type="button"
             data-calc-lessons-tab="videos"
@@ -64,14 +80,30 @@ export function CalcLessonsView({
               sfx.click();
               setViewMode("videos");
             }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition ${
               viewMode === "videos"
                 ? "bg-ink-900 text-paper-50 dark:bg-sky-500 dark:text-blueprint-950 shadow-sm"
                 : "text-ink-600 dark:text-slate-300 hover:text-ink-900 dark:hover:text-white"
             }`}
           >
             <Film className="w-4 h-4" />
-            Videoaulas Animadas ({CALC_VIDEO_EPISODES.length} · Gemini TTS)
+            Teoria ({CALC_VIDEO_EPISODES.length} Vídeos)
+          </button>
+          <button
+            type="button"
+            data-calc-lessons-tab="list"
+            onClick={() => {
+              sfx.click();
+              setViewMode("list");
+            }}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition ${
+              viewMode === "list"
+                ? "bg-lt text-white dark:bg-teal-400 dark:text-blueprint-950 shadow-sm"
+                : "text-ink-700 dark:text-slate-200 hover:text-lt dark:hover:text-teal-300"
+            }`}
+          >
+            <ClipboardList className="w-4 h-4" />
+            Resolução da Lista ({CALC_LIST_EPISODES.length} · Q01–Q18)
           </button>
           <button
             type="button"
@@ -80,24 +112,30 @@ export function CalcLessonsView({
               sfx.click();
               setViewMode("guide");
             }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition ${
               viewMode === "guide"
                 ? "bg-ink-900 text-paper-50 dark:bg-sky-500 dark:text-blueprint-950 shadow-sm"
                 : "text-ink-600 dark:text-slate-300 hover:text-ink-900 dark:hover:text-white"
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            Apostila Guiada ({CALC_LESSONS.length} Aulas)
+            Apostila ({CALC_LESSONS.length})
           </button>
         </div>
 
         <span className="font-mono text-[11px] font-bold text-ink-500 dark:text-slate-400">
-          {watchedEpisodes.length}/{CALC_VIDEO_EPISODES.length} vídeos · {completedLessons.length}/{CALC_LESSONS.length} apostilas
+          {theoryWatched}/{CALC_VIDEO_EPISODES.length} teoria · {listWatched}/{CALC_LIST_EPISODES.length} lista · {completedLessons.length}/{CALC_LESSONS.length} apostilas
         </span>
       </div>
 
       {viewMode === "videos" ? (
         <CalcMotionVideoPlayer
+          watchedEpisodes={watchedEpisodes}
+          onEpisodeWatched={onEpisodeWatched}
+          onOpenInCalcLab={onOpenInCalcLab}
+        />
+      ) : viewMode === "list" ? (
+        <CalcListVideoPlayer
           watchedEpisodes={watchedEpisodes}
           onEpisodeWatched={onEpisodeWatched}
           onOpenInCalcLab={onOpenInCalcLab}
